@@ -24,6 +24,251 @@ function App() {
   const [score, setScore] = useState(0);
   const [quizFinished, setQuizFinished] = useState(false);
 
+  // ================= SITE PAGES =================
+  // Notes, Books और Questions अब इसी React app में खुलेंगे।
+  // किसी अलग /notes या /books URL की जरूरत नहीं है।
+  const [activePage, setActivePage] = useState("home");
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedNote, setSelectedNote] = useState(null);
+
+  // ================= LOCAL DAILY CURRENT AFFAIRS =================
+  // Current Affairs के लिए कोई Live API / Google Search नहीं।
+  const currentAffairsQuestions = [
+    {
+      question: "भारत में राष्ट्रीय लघु उद्योग दिवस (National Small Industry Day) कब मनाया जाता है?",
+      options: {
+        A: "30 अगस्त",
+        B: "15 अगस्त",
+        C: "26 जनवरी",
+        D: "2 अक्टूबर",
+      },
+      answer: "A",
+      explanation: "राष्ट्रीय लघु उद्योग दिवस 30 अगस्त को मनाया जाता है।",
+    },
+    {
+      question: "भारतीय संविधान को संविधान सभा ने कब अंगीकृत किया था?",
+      options: {
+        A: "15 अगस्त 1947",
+        B: "26 नवंबर 1949",
+        C: "26 जनवरी 1950",
+        D: "9 दिसंबर 1946",
+      },
+      answer: "B",
+      explanation: "संविधान सभा ने भारतीय संविधान को 26 नवंबर 1949 को अंगीकृत किया था।",
+    },
+    {
+      question: "भारतीय संविधान कब लागू हुआ?",
+      options: {
+        A: "26 जनवरी 1950",
+        B: "26 नवंबर 1949",
+        C: "15 अगस्त 1947",
+        D: "2 अक्टूबर 1950",
+      },
+      answer: "A",
+      explanation: "भारतीय संविधान 26 जनवरी 1950 को लागू हुआ।",
+    },
+    {
+      question: "भारतीय रिज़र्व बैंक (RBI) का मुख्यालय कहाँ है?",
+      options: {
+        A: "नई दिल्ली",
+        B: "मुंबई",
+        C: "कोलकाता",
+        D: "चेन्नई",
+      },
+      answer: "B",
+      explanation: "RBI का केंद्रीय कार्यालय मुंबई में स्थित है।",
+    },
+    {
+      question: "भारत छोड़ो आंदोलन किस वर्ष शुरू हुआ था?",
+      options: {
+        A: "1930",
+        B: "1935",
+        C: "1942",
+        D: "1947",
+      },
+      answer: "C",
+      explanation: "भारत छोड़ो आंदोलन अगस्त 1942 में शुरू हुआ था।",
+    },
+    {
+      question: "नीति आयोग (NITI Aayog) ने किस संस्था का स्थान लिया?",
+      options: {
+        A: "वित्त आयोग",
+        B: "योजना आयोग",
+        C: "चुनाव आयोग",
+        D: "UPSC",
+      },
+      answer: "B",
+      explanation: "नीति आयोग ने योजना आयोग का स्थान लिया और 1 जनवरी 2015 को अस्तित्व में आया।",
+    },
+    {
+      question: "GST भारत में किस प्रकार का कर है?",
+      options: {
+        A: "प्रत्यक्ष कर",
+        B: "अप्रत्यक्ष कर",
+        C: "संपत्ति कर",
+        D: "केवल आयात कर",
+      },
+      answer: "B",
+      explanation: "GST एक अप्रत्यक्ष और गंतव्य-आधारित कर व्यवस्था है।",
+    },
+    {
+      question: "हड़प्पा सभ्यता का प्रसिद्ध बंदरगाह स्थल कौन-सा था?",
+      options: {
+        A: "लोथल",
+        B: "कालीबंगा",
+        C: "राखीगढ़ी",
+        D: "बनावली",
+      },
+      answer: "A",
+      explanation: "लोथल गुजरात में स्थित हड़प्पा सभ्यता का प्रमुख समुद्री व्यापारिक केंद्र माना जाता है।",
+    },
+    {
+      question: "ऋग्वेद को सामान्यतः किस रूप में जाना जाता है?",
+      options: {
+        A: "सबसे प्राचीन वेद",
+        B: "सबसे नवीन वेद",
+        C: "बौद्ध ग्रंथ",
+        D: "जैन ग्रंथ",
+      },
+      answer: "A",
+      explanation: "ऋग्वेद चार वेदों में सबसे प्राचीन माना जाता है।",
+    },
+    {
+      question: "UPPCS की तैयारी में उत्तर प्रदेश Current Affairs पढ़ने का सबसे अच्छा तरीका क्या है?",
+      options: {
+        A: "राज्य की योजनाएँ, नियुक्तियाँ और महत्वपूर्ण घटनाएँ पढ़ना",
+        B: "केवल मनोरंजन समाचार पढ़ना",
+        C: "केवल खेल समाचार पढ़ना",
+        D: "Current Affairs छोड़ देना",
+      },
+      answer: "A",
+      explanation: "UPPCS के लिए उत्तर प्रदेश की योजनाएँ, नियुक्तियाँ और महत्वपूर्ण घटनाएँ विशेष रूप से उपयोगी हैं।",
+    },
+  ];
+
+  const [caQuestions, setCaQuestions] = useState([]);
+  const [caQuestionIndex, setCaQuestionIndex] = useState(0);
+  const [caSelectedOption, setCaSelectedOption] = useState("");
+  const [caSubmitted, setCaSubmitted] = useState(false);
+  const [caScore, setCaScore] = useState(0);
+  const [caFinished, setCaFinished] = useState(false);
+
+  const startCurrentAffairs = () => {
+    const questions = [...currentAffairsQuestions]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10);
+
+    setCaQuestions(questions);
+    setCaQuestionIndex(0);
+    setCaSelectedOption("");
+    setCaSubmitted(false);
+    setCaScore(0);
+    setCaFinished(false);
+  };
+
+  const restartCurrentAffairs = () => {
+    startCurrentAffairs();
+  };
+
+  // ================= BOOKS =================
+  const books = [
+    {
+      id: 1,
+      title: "प्राचीन भारत",
+      icon: "🏺",
+      description: "हड़प्पा सभ्यता, वैदिक काल, महाजनपद और मौर्य काल।",
+      chapters: ["हड़प्पा सभ्यता", "वैदिक काल", "महाजनपद", "मौर्य साम्राज्य"],
+    },
+    {
+      id: 2,
+      title: "आधुनिक भारत",
+      icon: "🇮🇳",
+      description: "1857 के विद्रोह से स्वतंत्रता आंदोलन तक।",
+      chapters: ["1857 का विद्रोह", "भारतीय राष्ट्रीय कांग्रेस", "गांधी युग", "भारत छोड़ो आंदोलन"],
+    },
+    {
+      id: 3,
+      title: "भारतीय संविधान",
+      icon: "⚖️",
+      description: "भारतीय राजव्यवस्था और संविधान के महत्वपूर्ण विषय।",
+      chapters: ["संविधान की विशेषताएँ", "मौलिक अधिकार", "राष्ट्रपति", "संसद"],
+    },
+    {
+      id: 4,
+      title: "भारतीय भूगोल",
+      icon: "🌍",
+      description: "भारत का भौतिक और आर्थिक भूगोल।",
+      chapters: ["भारत का भौतिक स्वरूप", "भारत की नदियाँ", "मिट्टी", "जलवायु"],
+    },
+    {
+      id: 5,
+      title: "भारतीय अर्थव्यवस्था",
+      icon: "💰",
+      description: "GDP, महँगाई, बैंकिंग, GST और आर्थिक नीतियाँ।",
+      chapters: ["GDP", "मुद्रास्फीति", "रेपो दर", "GST", "नीति आयोग"],
+    },
+  ];
+
+  // ================= NOTES =================
+  const notes = [
+    {
+      id: 1,
+      title: "हड़प्पा सभ्यता",
+      subject: "प्राचीन इतिहास",
+      icon: "🏺",
+      points: [
+        "हड़प्पा सभ्यता को सिंधु घाटी सभ्यता भी कहा जाता है।",
+        "प्रमुख स्थलों में हड़प्पा, मोहनजोदड़ो, धोलावीरा और लोथल शामिल हैं।",
+        "नगर नियोजन और विकसित जल निकासी इसकी प्रमुख विशेषताएँ थीं।",
+      ],
+    },
+    {
+      id: 2,
+      title: "वैदिक काल",
+      subject: "प्राचीन इतिहास",
+      icon: "📜",
+      points: [
+        "वैदिक काल को सामान्यतः ऋग्वैदिक और उत्तर वैदिक काल में बाँटा जाता है।",
+        "ऋग्वेद सबसे प्राचीन वेद माना जाता है।",
+        "उत्तर वैदिक काल में कृषि और सामाजिक-राजनीतिक संस्थाओं का विस्तार हुआ।",
+      ],
+    },
+    {
+      id: 3,
+      title: "1857 का विद्रोह",
+      subject: "आधुनिक इतिहास",
+      icon: "🔥",
+      points: [
+        "1857 का विद्रोह ब्रिटिश शासन के विरुद्ध एक बड़ा विद्रोह था।",
+        "मेरठ से शुरू होकर यह दिल्ली सहित कई क्षेत्रों में फैल गया।",
+        "बहादुर शाह जफर को विद्रोहियों ने प्रतीकात्मक नेतृत्व दिया।",
+      ],
+    },
+    {
+      id: 4,
+      title: "भारतीय संविधान",
+      subject: "राजव्यवस्था",
+      icon: "⚖️",
+      points: [
+        "भारतीय संविधान 26 नवंबर 1949 को अंगीकृत किया गया।",
+        "26 जनवरी 1950 को संविधान लागू हुआ।",
+        "मौलिक अधिकार संविधान के भाग III में दिए गए हैं।",
+      ],
+    },
+    {
+      id: 5,
+      title: "रेपो दर",
+      subject: "अर्थव्यवस्था",
+      icon: "🏦",
+      points: [
+        "रेपो दर वह दर है जिस पर RBI बैंकों को अल्पकालिक धन उपलब्ध कराता है।",
+        "रेपो दर मौद्रिक नीति का महत्वपूर्ण साधन है।",
+        "रेपो दर में बदलाव से ऋण और बाजार की तरलता प्रभावित हो सकती है।",
+      ],
+    },
+  ];
+
+
   // ================= ASK AI =================
 
   const askAI = async () => {
@@ -293,6 +538,379 @@ function App() {
     return "quiz-option";
   };
 
+
+  // ================= PAGE HELPERS =================
+
+  const renderBooksPage = () => (
+    <main className="ai-container">
+      <div className="ai-card">
+        <div className="ai-title">📚 Study With Power Books</div>
+        <div className="ai-subtitle">
+          📖 विषयवार Books और Chapters — UPPCS परीक्षा के लिए
+        </div>
+
+        {!selectedBook ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "18px",
+              marginTop: "25px",
+            }}
+          >
+            {books.map((book) => (
+              <button
+                key={book.id}
+                type="button"
+                onClick={() => setSelectedBook(book)}
+                style={{
+                  textAlign: "left",
+                  padding: "22px",
+                  borderRadius: "16px",
+                  border: "1px solid #dce3ed",
+                  background: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 5px 16px rgba(0,0,0,0.05)",
+                }}
+              >
+                <div style={{ fontSize: "40px" }}>{book.icon}</div>
+                <h2 style={{ margin: "10px 0" }}>{book.title}</h2>
+                <p style={{ color: "#64748b", lineHeight: 1.6 }}>
+                  {book.description}
+                </p>
+                <strong>📖 {book.chapters.length} Chapters →</strong>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ marginTop: "25px" }}>
+            <button
+              type="button"
+              className="ai-button"
+              onClick={() => setSelectedBook(null)}
+            >
+              ⬅️ सभी Books
+            </button>
+
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "25px",
+                borderRadius: "16px",
+                background: "#f8fafc",
+                border: "1px solid #dce3ed",
+              }}
+            >
+              <div style={{ fontSize: "45px" }}>{selectedBook.icon}</div>
+              <h2>{selectedBook.title}</h2>
+              <p style={{ lineHeight: 1.7 }}>{selectedBook.description}</p>
+
+              <h3>📑 Chapters</h3>
+              {selectedBook.chapters.map((chapter, index) => (
+                <div
+                  key={chapter}
+                  style={{
+                    padding: "15px",
+                    marginTop: "10px",
+                    borderRadius: "10px",
+                    background: "#fff",
+                    border: "1px solid #dce3ed",
+                    fontWeight: 600,
+                  }}
+                >
+                  {index + 1}. {chapter}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+
+  const renderNotesPage = () => (
+    <main className="ai-container">
+      <div className="ai-card">
+        <div className="ai-title">📄 Study With Power Notes</div>
+        <div className="ai-subtitle">
+          📝 Topic-wise Notes — परीक्षा के लिए महत्वपूर्ण बिंदु
+        </div>
+
+        {!selectedNote ? (
+          <div style={{ marginTop: "25px" }}>
+            {notes.map((note) => (
+              <button
+                key={note.id}
+                type="button"
+                onClick={() => setSelectedNote(note)}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "20px",
+                  marginBottom: "14px",
+                  borderRadius: "15px",
+                  border: "1px solid #dce3ed",
+                  background: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: "32px" }}>{note.icon}</div>
+                <h2 style={{ margin: "8px 0" }}>{note.title}</h2>
+                <div style={{ color: "#64748b" }}>{note.subject}</div>
+                <div style={{ marginTop: "10px", color: "#2563eb", fontWeight: 700 }}>
+                  पूरा Note पढ़ें →
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ marginTop: "25px" }}>
+            <button
+              type="button"
+              className="ai-button"
+              onClick={() => setSelectedNote(null)}
+            >
+              ⬅️ सभी Notes
+            </button>
+
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "25px",
+                borderRadius: "16px",
+                background: "#f8fafc",
+                border: "1px solid #dce3ed",
+              }}
+            >
+              <div style={{ fontSize: "42px" }}>{selectedNote.icon}</div>
+              <h2>{selectedNote.title}</h2>
+              <div style={{ color: "#64748b", marginBottom: "18px" }}>
+                📚 {selectedNote.subject}
+              </div>
+
+              {selectedNote.points.map((point, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: "15px",
+                    marginTop: "10px",
+                    borderRadius: "12px",
+                    background: "#fff",
+                    borderLeft: "4px solid #2563eb",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <strong>{index + 1}.</strong> {point}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+
+  const renderQuestionsPage = () => (
+    <main className="ai-container">
+      <div className="ai-card">
+        <div className="ai-title">❓ Practice Questions</div>
+        <div className="ai-subtitle">
+          🎯 AI MCQ Generator और Daily Current Affairs Quiz
+        </div>
+
+        <div
+          style={{
+            marginTop: "25px",
+            padding: "20px",
+            borderRadius: "15px",
+            background: "#f8fafc",
+            border: "1px solid #dce3ed",
+          }}
+        >
+          <h3>📰 Daily Current Affairs Quiz</h3>
+          <p style={{ lineHeight: 1.6 }}>
+            यह Quiz local questions पर चलता है। Live Search या Gemini API की जरूरत नहीं है।
+          </p>
+
+          <button
+            type="button"
+            className="ai-button"
+            onClick={startCurrentAffairs}
+          >
+            📰 आज का Current Affairs Quiz शुरू करें
+          </button>
+        </div>
+
+        {caQuestions.length > 0 && (
+          <div style={{ marginTop: "25px" }}>
+            {!caFinished ? (
+              <>
+                <div
+                  style={{
+                    padding: "20px",
+                    borderRadius: "15px",
+                    background: "#fff",
+                    border: "1px solid #dce3ed",
+                  }}
+                >
+                  <strong>
+                    प्रश्न {caQuestionIndex + 1} / {caQuestions.length}
+                  </strong>
+
+                  <h3 style={{ lineHeight: 1.6 }}>
+                    {caQuestionIndex + 1}.{" "}
+                    {caQuestions[caQuestionIndex].question}
+                  </h3>
+
+                  {Object.entries(caQuestions[caQuestionIndex].options).map(
+                    ([key, value]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        disabled={caSubmitted}
+                        onClick={() => setCaSelectedOption(key)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "14px",
+                          marginTop: "10px",
+                          borderRadius: "10px",
+                          border:
+                            caSelectedOption === key
+                              ? "2px solid #2563eb"
+                              : "1px solid #dce3ed",
+                          background:
+                            caSubmitted &&
+                            caQuestions[caQuestionIndex].answer === key
+                              ? "#dcfce7"
+                              : caSubmitted &&
+                                caSelectedOption === key
+                              ? "#fee2e2"
+                              : "#fff",
+                          cursor: caSubmitted ? "default" : "pointer",
+                        }}
+                      >
+                        <strong>{key})</strong> {value}
+                      </button>
+                    )
+                  )}
+
+                  {!caSubmitted ? (
+                    <button
+                      type="button"
+                      className="ai-button"
+                      disabled={!caSelectedOption}
+                      onClick={() => {
+                        if (!caSelectedOption) return;
+                        if (
+                          caSelectedOption ===
+                          caQuestions[caQuestionIndex].answer
+                        ) {
+                          setCaScore((prev) => prev + 1);
+                        }
+                        setCaSubmitted(true);
+                      }}
+                      style={{ marginTop: "18px" }}
+                    >
+                      ✅ उत्तर जमा करें
+                    </button>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          marginTop: "18px",
+                          padding: "15px",
+                          borderRadius: "12px",
+                          background:
+                            caSelectedOption ===
+                            caQuestions[caQuestionIndex].answer
+                              ? "#dcfce7"
+                              : "#fee2e2",
+                        }}
+                      >
+                        {caSelectedOption ===
+                        caQuestions[caQuestionIndex].answer
+                          ? "🎉 सही उत्तर!"
+                          : `❌ गलत। सही उत्तर: ${caQuestions[caQuestionIndex].answer}`}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          padding: "15px",
+                          borderRadius: "12px",
+                          background: "#fff8e5",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        💡 {caQuestions[caQuestionIndex].explanation}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="ai-button"
+                        onClick={() => {
+                          if (caQuestionIndex === caQuestions.length - 1) {
+                            setCaFinished(true);
+                          } else {
+                            setCaQuestionIndex((prev) => prev + 1);
+                            setCaSelectedOption("");
+                            setCaSubmitted(false);
+                          }
+                        }}
+                        style={{ marginTop: "18px" }}
+                      >
+                        {caQuestionIndex === caQuestions.length - 1
+                          ? "🏆 परिणाम देखें"
+                          : "➡️ अगला प्रश्न"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "30px",
+                  textAlign: "center",
+                  borderRadius: "16px",
+                  background: "#f8fafc",
+                  border: "1px solid #dce3ed",
+                }}
+              >
+                <div style={{ fontSize: "55px" }}>🏆</div>
+                <h2>Current Affairs Quiz पूरा हुआ!</h2>
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "18px 30px",
+                    borderRadius: "14px",
+                    background: "#eafaf0",
+                    color: "#137333",
+                    fontSize: "28px",
+                    fontWeight: 800,
+                  }}
+                >
+                  🎯 Score: {caScore} / {caQuestions.length}
+                </div>
+                <br />
+                <button
+                  type="button"
+                  className="ai-button"
+                  onClick={restartCurrentAffairs}
+                  style={{ marginTop: "20px" }}
+                >
+                  🔄 फिर से शुरू करें
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+
   // ================= PAGE =================
 
   return (
@@ -316,32 +934,44 @@ function App() {
 
         <nav className="site-nav">
           <button
+            type="button"
             onClick={() => {
-              window.location.href = "/";
+              setActivePage("home");
+              setSelectedBook(null);
+              setSelectedNote(null);
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             🏠 Home
           </button>
 
           <button
+            type="button"
             onClick={() => {
-              window.location.href = "/notes";
+              setActivePage("notes");
+              setSelectedNote(null);
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             📄 Notes
           </button>
 
           <button
+            type="button"
             onClick={() => {
-              window.location.href = "/books";
+              setActivePage("books");
+              setSelectedBook(null);
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             📚 Books
           </button>
 
           <button
+            type="button"
             onClick={() => {
-              window.location.href = "/questions";
+              setActivePage("questions");
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             ❓ Questions
@@ -349,6 +979,14 @@ function App() {
         </nav>
       </header>
 
+      {activePage === "books"
+        ? renderBooksPage()
+        : activePage === "notes"
+        ? renderNotesPage()
+        : activePage === "questions"
+        ? renderQuestionsPage()
+        : (
+          <>
       {/* ================================================= */}
       {/*                AI STUDY ASSISTANT                 */}
       {/* ================================================= */}
@@ -427,6 +1065,50 @@ function App() {
               </div>
             </div>
           )}
+        </div>
+
+
+        {/* ================================================= */}
+        {/*             DAILY CURRENT AFFAIRS                */}
+        {/* ================================================= */}
+
+        <div className="ai-card" style={{ marginTop: "30px" }}>
+          <div className="ai-title" style={{ fontSize: "30px" }}>
+            📰 Daily Current Affairs Quiz
+          </div>
+
+          <div className="ai-subtitle">
+            🎯 UPPCS परीक्षा के लिए Local Current Affairs Practice
+          </div>
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "18px",
+              borderRadius: "14px",
+              background: "#f8fafc",
+              border: "1px solid #dce3ed",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ lineHeight: 1.6 }}>
+              📅 10 MCQ • सही उत्तर • Explanation • Score
+              <br />
+              यह Quiz Live नहीं है और Gemini API पर निर्भर नहीं है।
+            </p>
+
+            <button
+              type="button"
+              className="ai-button"
+              onClick={() => {
+                setActivePage("questions");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                setTimeout(startCurrentAffairs, 50);
+              }}
+            >
+              📰 आज का Current Affairs Quiz शुरू करें
+            </button>
+          </div>
         </div>
 
         {/* ================================================= */}
@@ -854,6 +1536,8 @@ function App() {
           )}
         </div>
       </main>
+          </>
+        )}
     </div>
   );
 }
