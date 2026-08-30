@@ -1,17 +1,26 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const PORT = 5000;
+// Render अपना PORT देता है
+const PORT = process.env.PORT || 5000;
+
+// ================= REACT FRONTEND =================
+
+// React की dist folder serve करें
+const distPath = path.join(__dirname, "..", "dist");
+
+app.use(express.static(distPath));
 
 // ================= HOME =================
 
 app.get("/", (req, res) => {
-  res.send("Study With Power Free AI Server चालू है ✅");
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
 // ================= AI ASSISTANT =================
@@ -68,11 +77,9 @@ ${question}
       "http://localhost:11434/api/generate",
       {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json"
         },
-
         body: JSON.stringify({
           model: "gemma3",
           prompt: prompt,
@@ -105,11 +112,18 @@ ${question}
   }
 });
 
+// ================= SPA FALLBACK =================
+
+// React के दूसरे pages के लिए
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
 // ================= SERVER =================
 
 app.listen(PORT, () => {
   console.log("==============================");
   console.log("✅ Study With Power Free AI Server");
-  console.log(`🌐 http://localhost:${PORT}`);
+  console.log(`🌐 Server running on port ${PORT}`);
   console.log("==============================");
 });
