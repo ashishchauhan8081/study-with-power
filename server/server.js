@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+require("dotenv").config();
+
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
@@ -8,10 +10,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Render अपना PORT देता है
+// ================= PORT =================
+
 const PORT = process.env.PORT || 5000;
 
-// ================= GEMINI AI =================
+// ================= GEMINI API =================
+
+// API key check
+if (!process.env.GEMINI_API_KEY) {
+  console.error("❌ GEMINI_API_KEY नहीं मिली!");
+} else {
+  console.log("✅ Gemini API Key मिल गई");
+}
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
@@ -35,13 +45,23 @@ app.post("/api/ask", async (req, res) => {
   try {
     const { question } = req.body;
 
+    // प्रश्न check
     if (!question || !question.trim()) {
       return res.status(400).json({
         error: "कृपया प्रश्न लिखिए।"
       });
     }
 
+    // API key check
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "Gemini API Key सेट नहीं है।"
+      });
+    }
+
     console.log("📩 प्रश्न:", question);
+
+    // ================= PROMPT =================
 
     const prompt = `
 आप "Study With Power" के AI Study Assistant हैं।
@@ -76,12 +96,14 @@ app.post("/api/ask", async (req, res) => {
 6. इतिहास, भूगोल, राजनीति, विज्ञान और अर्थव्यवस्था के प्रश्नों में परीक्षा उपयोगी तथ्य जरूर दें।
 7. यदि प्रश्न में टाइपिंग की छोटी गलती हो तो उसका सही अर्थ समझकर उत्तर दें।
 8. उत्तर विद्यार्थियों और प्रतियोगी परीक्षा की तैयारी के लिए उपयोगी रखें।
+9. यदि किसी तथ्य को लेकर निश्चित जानकारी उपलब्ध न हो तो गलत जानकारी न दें।
 
 विद्यार्थी का प्रश्न:
 ${question}
 `;
 
-    // Gemini से उत्तर
+    // ================= GEMINI =================
+
     const response = await ai.models.generateContent({
       model: "gemini-3.7-flash",
       contents: prompt
@@ -96,7 +118,9 @@ ${question}
     });
 
   } catch (error) {
-    console.error("❌ GEMINI AI ERROR:", error);
+
+    console.error("❌ GEMINI AI ERROR:");
+    console.error(error);
 
     res.status(500).json({
       error:
@@ -107,6 +131,7 @@ ${question}
 
 // ================= SPA FALLBACK =================
 
+// React के दूसरे pages के लिए
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
@@ -114,8 +139,10 @@ app.get(/.*/, (req, res) => {
 // ================= SERVER =================
 
 app.listen(PORT, "0.0.0.0", () => {
+
   console.log("==============================");
   console.log("✅ Study With Power AI Server");
   console.log(`🌐 Server running on port ${PORT}`);
   console.log("==============================");
+
 });
