@@ -23,6 +23,7 @@ function App() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [quizFinished, setQuizFinished] = useState(false);
+  const [userAnswers, setUserAnswers] = useState([]);
 
   // ================= ASK AI =================
 
@@ -82,6 +83,7 @@ function App() {
     setSubmitted(false);
     setScore(0);
     setQuizFinished(false);
+    setUserAnswers([]);
 
     try {
       const response = await fetch("/api/mcq", {
@@ -246,10 +248,20 @@ function App() {
     if (!selectedOption || submitted) return;
 
     const mcq = mcqs[currentQuestion];
+    const correct = isCorrectAnswer(mcq, selectedOption);
 
-    if (isCorrectAnswer(mcq, selectedOption)) {
+    if (correct) {
       setScore((prev) => prev + 1);
     }
+
+    setUserAnswers((prev) => [
+      ...prev.filter((item) => item.questionIndex !== currentQuestion),
+      {
+        questionIndex: currentQuestion,
+        selectedOption,
+        correct,
+      },
+    ]);
 
     setSubmitted(true);
   };
@@ -271,6 +283,7 @@ function App() {
     setSubmitted(false);
     setScore(0);
     setQuizFinished(false);
+    setUserAnswers([]);
   };
 
   const getOptionClass = (key, mcq) => {
@@ -795,63 +808,246 @@ function App() {
             </div>
           )}
 
-          {/* ================= FINAL SCORE ================= */}
+          {/* ================= FINAL SCORE / SCORECARD ================= */}
 
           {mcqs.length > 0 && !mcqLoading && quizFinished && (
             <div
               style={{
                 marginTop: "30px",
-                padding: "35px 20px",
-                textAlign: "center",
+                padding: "30px 20px",
                 borderRadius: "18px",
                 background: "#f8fafc",
                 border: "1px solid #dce3ed",
               }}
             >
-              <div style={{ fontSize: "55px" }}>🏆</div>
+              {(() => {
+                const percentage = Math.round(
+                  (score / mcqs.length) * 100
+                );
+                const wrong = mcqs.length - score;
 
-              <h2 style={{ fontSize: "30px", margin: "10px 0" }}>
-                Quiz पूरा हुआ!
-              </h2>
+                let message = "📖 और अभ्यास की जरूरत है।";
+                if (percentage === 100) {
+                  message = "🌟 शानदार! सभी उत्तर सही हैं।";
+                } else if (percentage >= 70) {
+                  message = "👏 बहुत अच्छा! आपकी तैयारी अच्छी है।";
+                } else if (percentage >= 50) {
+                  message = "👍 अच्छा प्रयास! थोड़ी और तैयारी करें।";
+                }
 
-              <p style={{ fontSize: "21px" }}>
-                📚 {mcqTopic} — {mcqExam}
-              </p>
+                return (
+                  <>
+                    {/* RESULT HEADER */}
+                    <div
+                      style={{
+                        textAlign: "center",
+                        paddingBottom: "25px",
+                        borderBottom: "1px solid #dce3ed",
+                      }}
+                    >
+                      <div style={{ fontSize: "55px" }}>🏆</div>
 
-              <div
-                style={{
-                  display: "inline-block",
-                  marginTop: "10px",
-                  padding: "20px 35px",
-                  borderRadius: "15px",
-                  background: "#eafaf0",
-                  color: "#137333",
-                  fontSize: "28px",
-                  fontWeight: "800",
-                }}
-              >
-                🎯 Score: {score} / {mcqs.length}
-              </div>
+                      <h2
+                        style={{
+                          fontSize: "30px",
+                          margin: "8px 0",
+                        }}
+                      >
+                        Quiz पूरा हुआ!
+                      </h2>
 
-              <p style={{ fontSize: "18px", marginTop: "20px" }}>
-                {score === mcqs.length
-                  ? "🌟 शानदार! सभी उत्तर सही हैं।"
-                  : score >= mcqs.length * 0.7
-                  ? "👏 बहुत अच्छा! आपकी तैयारी अच्छी है।"
-                  : score >= mcqs.length * 0.5
-                  ? "👍 अच्छा प्रयास! थोड़ी और तैयारी करें।"
-                  : "📖 और अभ्यास की जरूरत है। फिर से प्रयास करें।"}
-              </p>
+                      <p style={{ fontSize: "19px", margin: "5px 0" }}>
+                        📚 {mcqTopic} — {mcqExam}
+                      </p>
 
-              <button
-                className="ai-button"
-                onClick={restartQuiz}
-                style={{ marginTop: "10px" }}
-              >
-                🔄 Quiz फिर से शुरू करें
-              </button>
+                      <div
+                        style={{
+                          margin: "22px auto 15px",
+                          maxWidth: "430px",
+                          padding: "20px",
+                          borderRadius: "15px",
+                          background: "#eafaf0",
+                          color: "#137333",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "30px",
+                            fontWeight: "800",
+                          }}
+                        >
+                          🎯 {score} / {mcqs.length}
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: "20px",
+                            marginTop: "6px",
+                          }}
+                        >
+                          आपका स्कोर: {percentage}%
+                        </div>
+                      </div>
+
+                      {/* QUICK STATS */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: "12px",
+                          flexWrap: "wrap",
+                          marginTop: "18px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "12px 18px",
+                            borderRadius: "12px",
+                            background: "#dcfce7",
+                            color: "#15803d",
+                            fontWeight: "700",
+                          }}
+                        >
+                          ✅ सही: {score}
+                        </div>
+
+                        <div
+                          style={{
+                            padding: "12px 18px",
+                            borderRadius: "12px",
+                            background: "#fee2e2",
+                            color: "#b91c1c",
+                            fontWeight: "700",
+                          }}
+                        >
+                          ❌ गलत: {wrong}
+                        </div>
+
+                        <div
+                          style={{
+                            padding: "12px 18px",
+                            borderRadius: "12px",
+                            background: "#e0e7ff",
+                            color: "#3730a3",
+                            fontWeight: "700",
+                          }}
+                        >
+                          📝 कुल: {mcqs.length}
+                        </div>
+                      </div>
+
+                      <p style={{ fontSize: "18px", marginTop: "20px" }}>
+                        {message}
+                      </p>
+                    </div>
+
+                    {/* QUESTION-WISE RESULT */}
+                    <div style={{ marginTop: "25px" }}>
+                      <h3
+                        style={{
+                          fontSize: "23px",
+                          marginBottom: "18px",
+                        }}
+                      >
+                        📋 प्रश्नवार परिणाम
+                      </h3>
+
+                      {mcqs.map((mcq, index) => {
+                        const result = userAnswers.find(
+                          (item) => item.questionIndex === index
+                        );
+
+                        const isCorrect = result?.correct === true;
+                        const selected = result?.selectedOption || "उत्तर नहीं दिया";
+
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              marginBottom: "15px",
+                              padding: "17px",
+                              borderRadius: "14px",
+                              background: isCorrect ? "#f0fdf4" : "#fff7f7",
+                              border: isCorrect
+                                ? "1px solid #bbf7d0"
+                                : "1px solid #fecaca",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: "700",
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              {isCorrect ? "✅" : "❌"} प्रश्न {index + 1}:{" "}
+                              {mcq.question}
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop: "8px",
+                                fontSize: "16px",
+                              }}
+                            >
+                              आपका उत्तर: <strong>{selected}</strong>
+                              {result?.selectedOption && mcq.options?.[result.selectedOption] && (
+                                <span> — {mcq.options[result.selectedOption]}</span>
+                              )}
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop: "5px",
+                                fontSize: "16px",
+                                color: "#137333",
+                              }}
+                            >
+                              सही उत्तर:{" "}
+                              <strong>{mcq.answer}</strong>
+                              {(() => {
+                                const answerKey = normalizeAnswer(mcq.answer).charAt(0);
+                                const correctText = mcq.options?.[answerKey];
+                                return correctText ? (
+                                  <span> — {correctText}</span>
+                                ) : null;
+                              })()}
+                            </div>
+
+                            {mcq.explanation && (
+                              <div
+                                style={{
+                                  marginTop: "9px",
+                                  padding: "10px",
+                                  borderRadius: "9px",
+                                  background: "#fff8e5",
+                                  lineHeight: 1.5,
+                                }}
+                              >
+                                💡 {mcq.explanation}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* ACTION */}
+                    <div
+                      style={{
+                        textAlign: "center",
+                        marginTop: "25px",
+                      }}
+                    >
+                      <button className="ai-button" onClick={restartQuiz}>
+                        🔄 Quiz फिर से शुरू करें
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
+
         </div>
       </main>
     </div>
