@@ -16,7 +16,6 @@ const PORT = process.env.PORT || 5000;
 
 // ================= GEMINI API =================
 
-// API key check
 if (!process.env.GEMINI_API_KEY) {
   console.error("❌ GEMINI_API_KEY नहीं मिली!");
 } else {
@@ -39,24 +38,125 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
+// ================= WAIT FUNCTION =================
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ================= GEMINI REQUEST =================
+
+async function askGemini(prompt) {
+
+  // पहले मुख्य model
+  const models = [
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-2.5-flash"
+  ];
+
+  let lastError = null;
+
+  for (const model of models) {
+
+    // हर model पर अधिकतम 2 प्रयास
+    for (let attempt = 1; attempt <= 2; attempt++) {
+
+      try {
+
+        console.log(
+          `🤖 Gemini Model: ${model} | Attempt: ${attempt}`
+        );
+
+        const response = await ai.models.generateContent({
+          model: model,
+          contents: prompt
+        });
+
+        console.log(
+          `✅ Gemini उत्तर मिला: ${model}`
+        );
+
+        return response.text;
+
+      } catch (error) {
+
+        lastError = error;
+
+        const errorText =
+          error?.message ||
+          JSON.stringify(error);
+
+        console.error(
+          `❌ ${model} ERROR:`,
+          errorText
+        );
+
+        // 503 / UNAVAILABLE / high demand
+        const isTemporaryError =
+          errorText.includes("503") ||
+          errorText.includes("UNAVAILABLE") ||
+          errorText.includes("high demand") ||
+          errorText.includes("overloaded") ||
+          errorText.includes("temporarily");
+
+        if (isTemporaryError) {
+
+          if (attempt === 1) {
+
+            console.log(
+              `⏳ ${model} busy है। 3 सेकंड बाद retry...`
+            );
+
+            await wait(3000);
+
+          } else {
+
+            console.log(
+              `➡️ ${model} उपलब्ध नहीं है। अगले model पर जा रहे हैं...`
+            );
+
+          }
+
+        } else {
+
+          // API key / permission / bad request आदि
+          // पर बार-बार retry नहीं करेंगे
+          throw error;
+        }
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 // ================= AI ASSISTANT =================
 
 app.post("/api/ask", async (req, res) => {
+
   try {
+
     const { question } = req.body;
 
-    // प्रश्न check
+    // ================= QUESTION CHECK =================
+
     if (!question || !question.trim()) {
+
       return res.status(400).json({
         error: "कृपया प्रश्न लिखिए।"
       });
+
     }
 
-    // API key check
+    // ================= API KEY CHECK =================
+
     if (!process.env.GEMINI_API_KEY) {
+
       return res.status(500).json({
         error: "Gemini API Key सेट नहीं है।"
       });
+
     }
 
     console.log("📩 प्रश्न:", question);
@@ -88,6 +188,7 @@ app.post("/api/ask", async (req, res) => {
 • एक लाइन में याद रखने योग्य जानकारी
 
 नियम:
+
 1. हिंदी में उत्तर दें।
 2. छोटे और स्पष्ट वाक्यों का प्रयोग करें।
 3. headings बिल्कुल इसी तरह रखें।
@@ -97,21 +198,17 @@ app.post("/api/ask", async (req, res) => {
 7. यदि प्रश्न में टाइपिंग की छोटी गलती हो तो उसका सही अर्थ समझकर उत्तर दें।
 8. उत्तर विद्यार्थियों और प्रतियोगी परीक्षा की तैयारी के लिए उपयोगी रखें।
 9. यदि किसी तथ्य को लेकर निश्चित जानकारी उपलब्ध न हो तो गलत जानकारी न दें।
+10. उत्तर तथ्यात्मक, स्पष्ट और परीक्षा उपयोगी रखें।
 
 विद्यार्थी का प्रश्न:
 ${question}
 `;
 
-    // ================= GEMINI =================
+    // ================= ASK GEMINI =================
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
-      contents: prompt
-    });
+    const answer = await askGemini(prompt);
 
-    const answer = response.text;
-
-    console.log("✅ Gemini AI उत्तर प्राप्त हुआ");
+    // ================= RESPONSE =================
 
     res.json({
       answer: answer || "AI से उत्तर नहीं मिला।"
@@ -119,19 +216,51 @@ ${question}
 
   } catch (error) {
 
-    console.error("❌ GEMINI AI ERROR:");
+    console.error("❌ GEMINI AI FINAL ERROR:");
     console.error(error);
+
+    const errorText =
+      error?.message ||
+      JSON.stringify(error);
+
+    // ================= USER FRIENDLY ERROR =================
+
+    if (
+      errorText.includes("503") ||
+      errorText.includes("UNAVAILABLE") ||
+      errorText.includes("high demand")
+    ) {
+
+      return res.status(503).json({
+        error:
+          "Gemini AI पर इस समय बहुत अधिक लोड है। कृपया कुछ सेकंड बाद फिर प्रयास करें।"
+      });
+
+    }
+
+    if (
+      errorText.includes("API key") ||
+      errorText.includes("API_KEY") ||
+      errorText.includes("authentication")
+    ) {
+
+      return res.status(500).json({
+        error:
+          "Gemini API Key में समस्या है। Render Environment में GEMINI_API_KEY जाँचें।"
+      });
+
+    }
 
     res.status(500).json({
       error:
         "AI से उत्तर नहीं मिल सका। कृपया कुछ समय बाद पुनः प्रयास करें।"
     });
+
   }
 });
 
 // ================= SPA FALLBACK =================
 
-// React के दूसरे pages के लिए
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
