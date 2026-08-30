@@ -18,20 +18,19 @@ function App() {
     setAiAnswer("");
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/ask",
-        {
-          method: "POST",
+      // IMPORTANT:
+      // Production में localhost की जगह same server का API इस्तेमाल करें
+      const response = await fetch("/api/ask", {
+        method: "POST",
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-          body: JSON.stringify({
-            question: aiQuestion,
-          }),
-        }
-      );
+        body: JSON.stringify({
+          question: aiQuestion.trim(),
+        }),
+      });
 
       const data = await response.json();
 
@@ -46,14 +45,22 @@ function App() {
       );
 
     } catch (error) {
-      console.error("AI ERROR:", error);
+      console.error("❌ AI ERROR:", error);
 
       setAiAnswer(
-        "❌ AI से उत्तर नहीं मिल सका।\n\nकृपया जाँचें कि Ollama और Study With Power Server चालू हैं।"
+        "❌ AI से उत्तर नहीं मिल सका।\n\n" +
+        "कृपया कुछ समय बाद पुनः प्रयास करें।"
       );
 
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  // Enter + Ctrl key से भी पूछ सकते हैं
+  const handleKeyDown = (e) => {
+    if (e.ctrlKey && e.key === "Enter") {
+      askAI();
     }
   };
 
@@ -92,33 +99,33 @@ function App() {
         <nav className="site-nav">
 
           <button
-            onClick={() =>
-              window.location.href = "/"
-            }
+            onClick={() => {
+              window.location.href = "/";
+            }}
           >
             🏠 Home
           </button>
 
           <button
-            onClick={() =>
-              window.location.href = "/notes"
-            }
+            onClick={() => {
+              window.location.href = "/notes";
+            }}
           >
             📄 Notes
           </button>
 
           <button
-            onClick={() =>
-              window.location.href = "/books"
-            }
+            onClick={() => {
+              window.location.href = "/books";
+            }}
           >
             📚 Books
           </button>
 
           <button
-            onClick={() =>
-              window.location.href = "/questions"
-            }
+            onClick={() => {
+              window.location.href = "/questions";
+            }}
           >
             ❓ Questions
           </button>
@@ -150,9 +157,10 @@ function App() {
           <textarea
             className="ai-question"
             value={aiQuestion}
-            onChange={(e) =>
-              setAiQuestion(e.target.value)
-            }
+            onChange={(e) => {
+              setAiQuestion(e.target.value);
+            }}
+            onKeyDown={handleKeyDown}
             placeholder="✍️ अपना प्रश्न यहाँ लिखें..."
             disabled={aiLoading}
           />
@@ -168,6 +176,7 @@ function App() {
               !aiQuestion.trim()
             }
           >
+
             {aiLoading ? (
               <>
                 ⏳ उत्तर तैयार हो रहा है...
@@ -177,6 +186,7 @@ function App() {
                 👨‍🏫 Ashish से पूछें
               </>
             )}
+
           </button>
 
 
@@ -215,7 +225,6 @@ function App() {
 
             <div className="ai-answer">
 
-
               {/* ================= ANSWER HEADER ================= */}
 
               <div className="answer-header">
@@ -231,7 +240,7 @@ function App() {
                   </h2>
 
                   <span>
-                    Study With Power • Gemma 3
+                    Study With Power • Gemini AI
                   </span>
 
                 </div>
@@ -247,8 +256,7 @@ function App() {
                   .split("\n")
                   .map((line, index) => {
 
-                    const text =
-                      line.trim();
+                    const text = line.trim();
 
 
                     {/* EMPTY LINE */}
@@ -268,9 +276,7 @@ function App() {
                     {/* ================= उत्तर ================= */}
 
                     if (
-                      text.startsWith(
-                        "📚 उत्तर:"
-                      )
+                      text.startsWith("📚 उत्तर:")
                     ) {
 
                       return (
@@ -448,7 +454,7 @@ function App() {
 
               <div className="ai-footer">
 
-                💡 परीक्षा की तैयारी के लिए AI द्वारा तैयार उत्तर
+                💡 परीक्षा की तैयारी के लिए Gemini AI द्वारा तैयार उत्तर
 
               </div>
 
