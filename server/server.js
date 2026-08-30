@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
@@ -10,9 +11,14 @@ app.use(express.json());
 // Render अपना PORT देता है
 const PORT = process.env.PORT || 5000;
 
+// ================= GEMINI AI =================
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY
+});
+
 // ================= REACT FRONTEND =================
 
-// React की dist folder serve करें
 const distPath = path.join(__dirname, "..", "dist");
 
 app.use(express.static(distPath));
@@ -68,62 +74,48 @@ app.post("/api/ask", async (req, res) => {
 4. bullet points के लिए केवल • का प्रयोग करें।
 5. अनावश्यक लंबा उत्तर न दें।
 6. इतिहास, भूगोल, राजनीति, विज्ञान और अर्थव्यवस्था के प्रश्नों में परीक्षा उपयोगी तथ्य जरूर दें।
+7. यदि प्रश्न में टाइपिंग की छोटी गलती हो तो उसका सही अर्थ समझकर उत्तर दें।
+8. उत्तर विद्यार्थियों और प्रतियोगी परीक्षा की तैयारी के लिए उपयोगी रखें।
 
 विद्यार्थी का प्रश्न:
 ${question}
 `;
 
-    const response = await fetch(
-      "http://localhost:11434/api/generate",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "gemma3",
-          prompt: prompt,
-          stream: false
-        })
-      }
-    );
+    // Gemini से उत्तर
+    const response = await ai.models.generateContent({
+      model: "gemini-3.7-flash",
+      contents: prompt
+    });
 
-    if (!response.ok) {
-      throw new Error(
-        `Ollama Server Error: ${response.status}`
-      );
-    }
+    const answer = response.text;
 
-    const data = await response.json();
-
-    console.log("✅ AI उत्तर प्राप्त हुआ");
+    console.log("✅ Gemini AI उत्तर प्राप्त हुआ");
 
     res.json({
-      answer: data.response || "AI से उत्तर नहीं मिला।"
+      answer: answer || "AI से उत्तर नहीं मिला।"
     });
 
   } catch (error) {
-    console.error("❌ AI ERROR:", error.message);
+    console.error("❌ GEMINI AI ERROR:", error);
 
     res.status(500).json({
       error:
-        "Free AI Server से उत्तर नहीं मिल सका। कृपया Ollama चालू है या नहीं जाँचें।"
+        "AI से उत्तर नहीं मिल सका। कृपया कुछ समय बाद पुनः प्रयास करें।"
     });
   }
 });
 
 // ================= SPA FALLBACK =================
 
-// React के दूसरे pages के लिए
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
 // ================= SERVER =================
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log("==============================");
-  console.log("✅ Study With Power Free AI Server");
+  console.log("✅ Study With Power AI Server");
   console.log(`🌐 Server running on port ${PORT}`);
   console.log("==============================");
 });
