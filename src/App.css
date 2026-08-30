@@ -1,0 +1,715 @@
+/* =====================================================
+   STUDY WITH POWER
+   AI STUDY ASSISTANT - COMPLETE CSS
+===================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "Noto Sans Devanagari",
+    "Mangal",
+    Arial,
+    sans-serif;
+
+  background: #f5f7fb;
+  color: #172033;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.site-header {
+  width: 100%;
+  text-align: center;
+  padding: 25px 15px 18px;
+
+  background: #ffffff;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+
+/* Logo + Website Name */
+
+.site-brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  gap: 14px;
+}
+
+.site-logo {
+  font-size: 58px;
+  line-height: 1;
+}
+
+.site-brand h1 {
+  margin: 0;
+
+  font-size: 42px;
+  font-weight: 800;
+
+  color: #111827;
+}
+
+
+/* Author */
+
+.site-author {
+  margin-top: 5px;
+
+  font-size: 18px;
+  font-weight: 600;
+
+  color: #475569;
+}
+
+
+/* Navigation */
+
+.site-nav {
+  display: flex;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  margin-top: 18px;
+
+  flex-wrap: wrap;
+}
+
+.site-nav button {
+  padding: 9px 17px;
+
+  border: 1px solid #cbd5e1;
+
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  color: #1e293b;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.site-nav button:hover {
+  background: #eef4ff;
+
+  border-color: #2563eb;
+
+  color: #1d4ed8;
+
+  transform: translateY(-2px);
+}
+
+
+/* =====================================================
+   AI CONTAINER
+===================================================== */
+
+.ai-container {
+  width: 100%;
+
+  padding: 35px 15px 60px;
+}
+
+
+/* =====================================================
+   AI CARD
+===================================================== */
+
+.ai-card {
+  width: 100%;
+  max-width: 1050px;
+
+  margin: 0 auto;
+
+  padding: 32px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 24px;
+
+  box-shadow:
+    0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+
+/* =====================================================
+   AI TITLE
+===================================================== */
+
+.ai-title {
+  text-align: center;
+
+  font-size: 32px;
+
+  font-weight: 800;
+
+  color: #111827;
+
+  margin-bottom: 8px;
+}
+
+.ai-subtitle {
+  text-align: center;
+
+  font-size: 18px;
+
+  color: #64748b;
+
+  margin-bottom: 25px;
+}
+
+
+/* =====================================================
+   QUESTION BOX
+===================================================== */
+
+.ai-question {
+  display: block;
+
+  width: 100%;
+
+  min-height: 145px;
+
+  padding: 18px;
+
+  border: 2px solid #d6dce5;
+
+  border-radius: 16px;
+
+  outline: none;
+
+  resize: vertical;
+
+  background: #ffffff;
+
+  color: #172033;
+
+  font-family: inherit;
+
+  font-size: 19px;
+
+  line-height: 1.7;
+
+  transition: all 0.2s ease;
+}
+
+.ai-question::placeholder {
+  color: #94a3b8;
+}
+
+.ai-question:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 4px rgba(37, 99, 235, 0.10);
+}
+
+
+/* =====================================================
+   ASK BUTTON
+===================================================== */
+
+.ai-button {
+  display: block;
+
+  margin: 22px auto 10px;
+
+  padding: 14px 32px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background: #222222;
+
+  color: #ffffff;
+
+  font-size: 18px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.ai-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.ai-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+}
+
+
+/* =====================================================
+   LOADING
+===================================================== */
+
+.ai-loading {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  margin-top: 20px;
+
+  padding: 18px;
+
+  border-radius: 14px;
+
+  background: #f1f5ff;
+
+  color: #475569;
+
+  font-size: 16px;
+
+  text-align: center;
+}
+
+.loading-icon {
+  font-size: 28px;
+}
+
+
+/* =====================================================
+   AI ANSWER
+===================================================== */
+
+.ai-answer {
+  margin-top: 32px;
+
+  padding: 28px;
+
+  background: #ffffff;
+
+  border: 1px solid #dfe5ec;
+
+  border-radius: 20px;
+
+  box-shadow:
+    0 8px 28px rgba(15, 23, 42, 0.07);
+}
+
+
+/* =====================================================
+   ANSWER HEADER
+===================================================== */
+
+.answer-header {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  margin-bottom: 25px;
+
+  text-align: left;
+}
+
+.answer-icon {
+  font-size: 38px;
+}
+
+.answer-header h2 {
+  margin: 0;
+
+  font-size: 28px;
+
+  font-weight: 800;
+
+  color: #111827;
+}
+
+.answer-header span {
+  display: block;
+
+  margin-top: 4px;
+
+  font-size: 14px;
+
+  color: #64748b;
+}
+
+
+/* =====================================================
+   ANSWER CONTENT
+===================================================== */
+
+.answer-content {
+  width: 100%;
+}
+
+
+/* =====================================================
+   MAIN ANSWER
+===================================================== */
+
+.answer-section {
+  margin: 20px 0;
+
+  padding: 20px;
+
+  border-radius: 15px;
+}
+
+.answer-section h3 {
+  margin: 0 0 12px;
+
+  font-size: 22px;
+
+  font-weight: 800;
+}
+
+.answer-section p {
+  margin: 0;
+
+  font-size: 18px;
+
+  line-height: 1.85;
+}
+
+
+/* GREEN - उत्तर */
+
+.answer-green {
+  background: #effdf5;
+
+  border-left: 6px solid #16a34a;
+}
+
+.answer-green h3 {
+  color: #15803d;
+}
+
+.answer-green p {
+  color: #263746;
+}
+
+
+/* =====================================================
+   BLUE - मुख्य बिंदु
+===================================================== */
+
+.answer-blue {
+  background: #eff6ff;
+
+  border-left: 6px solid #2563eb;
+}
+
+.answer-blue h3 {
+  color: #1d4ed8;
+}
+
+
+/* =====================================================
+   RED - परीक्षा
+===================================================== */
+
+.answer-red {
+  background: #fff1f2;
+
+  border-left: 6px solid #dc2626;
+}
+
+.answer-red h3 {
+  color: #b91c1c;
+}
+
+
+/* =====================================================
+   YELLOW - याद रखने योग्य
+===================================================== */
+
+.answer-yellow {
+  background: #fffbeb;
+
+  border-left: 6px solid #f59e0b;
+}
+
+.answer-yellow h3 {
+  color: #b45309;
+}
+
+
+/* =====================================================
+   BULLET POINT
+===================================================== */
+
+.answer-bullet {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  margin: 11px 0;
+
+  padding: 12px 15px;
+
+  background: #f8fafc;
+
+  border-radius: 10px;
+}
+
+.answer-bullet span {
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 26px;
+  height: 26px;
+
+  margin-top: 2px;
+
+  border-radius: 50%;
+
+  background: #16a34a;
+
+  color: #ffffff;
+
+  font-size: 14px;
+
+  font-weight: 800;
+}
+
+.answer-bullet p {
+  margin: 0;
+
+  font-size: 18px;
+
+  line-height: 1.7;
+
+  color: #263238;
+}
+
+
+/* =====================================================
+   NUMBER POINT
+===================================================== */
+
+.answer-number {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  margin: 10px 0;
+
+  padding: 10px 5px;
+}
+
+.answer-number span {
+  color: #2563eb;
+
+  font-size: 17px;
+}
+
+.answer-number p {
+  margin: 0;
+
+  font-size: 18px;
+
+  line-height: 1.7;
+}
+
+
+/* =====================================================
+   NORMAL PARAGRAPH
+===================================================== */
+
+.answer-paragraph {
+  margin: 13px 0;
+
+  font-size: 18px;
+
+  line-height: 1.85;
+
+  color: #344054;
+}
+
+
+/* =====================================================
+   EMPTY SPACE
+===================================================== */
+
+.answer-space {
+  height: 8px;
+}
+
+
+/* =====================================================
+   FOOTER
+===================================================== */
+
+.ai-footer {
+  margin-top: 25px;
+
+  padding-top: 16px;
+
+  border-top: 1px solid #e5e7eb;
+
+  text-align: center;
+
+  color: #64748b;
+
+  font-size: 14px;
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 700px) {
+
+  .site-header {
+    padding: 18px 10px;
+  }
+
+  .site-brand {
+    flex-direction: column;
+
+    gap: 5px;
+  }
+
+  .site-logo {
+    font-size: 45px;
+  }
+
+  .site-brand h1 {
+    font-size: 32px;
+  }
+
+  .site-author {
+    font-size: 16px;
+  }
+
+  .site-nav {
+    gap: 6px;
+
+    margin-top: 14px;
+  }
+
+  .site-nav button {
+    padding: 7px 11px;
+
+    font-size: 13px;
+  }
+
+  .ai-container {
+    padding: 18px 10px 40px;
+  }
+
+  .ai-card {
+    padding: 20px 15px;
+
+    border-radius: 18px;
+  }
+
+  .ai-title {
+    font-size: 25px;
+  }
+
+  .ai-subtitle {
+    font-size: 16px;
+  }
+
+  .ai-question {
+    min-height: 125px;
+
+    font-size: 17px;
+  }
+
+  .ai-answer {
+    padding: 18px 14px;
+
+    border-radius: 16px;
+  }
+
+  .answer-header {
+    flex-direction: column;
+
+    text-align: center;
+  }
+
+  .answer-header h2 {
+    font-size: 24px;
+  }
+
+  .answer-section {
+    padding: 16px;
+  }
+
+  .answer-section h3 {
+    font-size: 19px;
+  }
+
+  .answer-section p,
+  .answer-bullet p,
+  .answer-number p,
+  .answer-paragraph {
+    font-size: 16px;
+
+    line-height: 1.75;
+  }
+
+}
+
+
+/* =====================================================
+   SMALL MOBILE
+===================================================== */
+
+@media (max-width: 400px) {
+
+  .site-brand h1 {
+    font-size: 27px;
+  }
+
+  .ai-title {
+    font-size: 23px;
+  }
+
+  .ai-button {
+    width: 100%;
+  }
+
+}
