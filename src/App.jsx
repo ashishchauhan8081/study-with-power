@@ -1331,6 +1331,179 @@ function App() {
 
   return (
     <div>
+
+      <style>{`
+        * { box-sizing: border-box; }
+        html, body, #root { max-width: 100%; overflow-x: hidden; }
+        img { max-width: 100%; height: auto; }
+
+        .site-header {
+          width: 100%;
+        }
+        .site-nav {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .site-nav button {
+          min-height: 42px;
+          cursor: pointer;
+          touch-action: manipulation;
+        }
+
+        .ai-container {
+          width: 100%;
+          max-width: 1100px;
+          margin: 0 auto;
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+        .ai-card {
+          width: 100%;
+        }
+        button, input, select, textarea {
+          max-width: 100%;
+          font: inherit;
+        }
+        .ai-button {
+          min-height: 44px;
+          touch-action: manipulation;
+        }
+
+        @media (max-width: 768px) {
+          .site-header {
+            padding: 12px !important;
+          }
+          .site-brand {
+            gap: 10px !important;
+          }
+          .site-logo {
+            font-size: 34px !important;
+          }
+          .site-brand h1 {
+            font-size: 22px !important;
+            line-height: 1.2 !important;
+            margin: 0 !important;
+          }
+          .site-author {
+            font-size: 13px !important;
+          }
+
+          .site-nav {
+            width: 100%;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px !important;
+            margin-top: 12px !important;
+          }
+          .site-nav button {
+            width: 100%;
+            padding: 10px 6px !important;
+            font-size: 14px !important;
+            white-space: nowrap;
+          }
+
+          .ai-container {
+            padding: 10px !important;
+            margin: 0 !important;
+          }
+          .ai-card {
+            padding: 14px !important;
+            border-radius: 14px !important;
+          }
+          .ai-title {
+            font-size: 24px !important;
+            line-height: 1.3 !important;
+          }
+          .ai-subtitle {
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+          }
+
+          /* सभी inline grids को मोबाइल पर single column */
+          .ai-card [style*="grid-template-columns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* बड़े inline headings mobile पर */
+          .ai-card h1 {
+            font-size: 26px !important;
+            line-height: 1.35 !important;
+            overflow-wrap: anywhere;
+          }
+          .ai-card h2 {
+            font-size: 23px !important;
+            line-height: 1.4 !important;
+            overflow-wrap: anywhere;
+          }
+          .ai-card h3 {
+            font-size: 19px !important;
+            line-height: 1.45 !important;
+          }
+          .ai-card p,
+          .ai-card li {
+            font-size: 16px !important;
+            line-height: 1.7 !important;
+            overflow-wrap: anywhere;
+          }
+
+          /* Book/Chapter cards */
+          .ai-card button {
+            min-height: 46px;
+          }
+          .ai-card article {
+            padding: 16px !important;
+          }
+
+          /* Quiz options */
+          .quiz-option {
+            min-height: 48px !important;
+            padding: 12px !important;
+            font-size: 16px !important;
+          }
+
+          /* Form controls */
+          .ai-card input,
+          .ai-card select,
+          .ai-card textarea {
+            width: 100% !important;
+            min-height: 46px;
+          }
+
+          /* Long content never pushes the screen sideways */
+          .ai-card pre,
+          .ai-card code {
+            white-space: pre-wrap !important;
+            overflow-wrap: anywhere !important;
+          }
+
+          /* Floating/right aligned elements */
+          .ai-card [style*="float: right"] {
+            float: none !important;
+            display: block !important;
+            margin-top: 6px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .site-nav {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .site-nav button {
+            font-size: 13px !important;
+          }
+          .ai-container {
+            padding: 7px !important;
+          }
+          .ai-card {
+            padding: 11px !important;
+          }
+          .ai-title {
+            font-size: 21px !important;
+          }
+        }
+      `}</style>
+
       {/* ================= HEADER ================= */}
 
       <header className="site-header">
