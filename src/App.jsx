@@ -32,6 +32,40 @@ function App() {
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [selectedNote, setSelectedNote] = useState(null);
 
+  // ================= PAID TEST SERIES =================
+  const [selectedTestSeries, setSelectedTestSeries] = useState(null);
+
+  const testSeries = [
+    {
+      id: "uppet",
+      title: "UPPET Test Series",
+      icon: "🎯",
+      description: "UPPET परीक्षा के लिए विषयवार और पूर्ण अभ्यास टेस्ट।",
+      price: "Paid",
+      tests: [
+        "UPPET Test 1 — सामान्य अध्ययन",
+        "UPPET Test 2 — हिंदी",
+        "UPPET Test 3 — सामान्य ज्ञान",
+        "UPPET Test 4 — सामान्य विज्ञान",
+        "UPPET Test 5 — पूर्ण Mock Test",
+      ],
+    },
+    {
+      id: "uppcs",
+      title: "UPPCS Test Series",
+      icon: "🏛️",
+      description: "UPPCS Prelims के लिए परीक्षा स्तर के अभ्यास टेस्ट।",
+      price: "Paid",
+      tests: [
+        "UPPCS Test 1 — इतिहास",
+        "UPPCS Test 2 — भूगोल",
+        "UPPCS Test 3 — भारतीय संविधान",
+        "UPPCS Test 4 — अर्थव्यवस्था",
+        "UPPCS Test 5 — Full Prelims Mock Test",
+      ],
+    },
+  ];
+
   // ================= LOCAL DAILY CURRENT AFFAIRS =================
   // Current Affairs के लिए कोई Live API / Google Search नहीं।
   const currentAffairsQuestions = [
@@ -810,6 +844,136 @@ function App() {
   };
 
 
+  // ================= TEST SERIES PAGE =================
+  const renderTestSeriesPage = () => (
+    <main className="ai-container">
+      <div className="ai-card">
+        <div className="ai-title">🎯 Paid Test Series</div>
+        <div className="ai-subtitle">UPPET और UPPCS दोनों की अलग Test Series</div>
+
+        {!selectedTestSeries ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "20px",
+              marginTop: "25px",
+            }}
+          >
+            {testSeries.map((series) => (
+              <div
+                key={series.id}
+                style={{
+                  padding: "25px",
+                  borderRadius: "18px",
+                  border: "1px solid #dce3ed",
+                  background: "#fff",
+                  boxShadow: "0 5px 18px rgba(0,0,0,0.06)",
+                }}
+              >
+                <div style={{ fontSize: "50px" }}>{series.icon}</div>
+                <h2>{series.title}</h2>
+                <p style={{ color: "#64748b", lineHeight: 1.6 }}>
+                  {series.description}
+                </p>
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "7px 12px",
+                    borderRadius: "20px",
+                    background: "#fee2e2",
+                    color: "#b91c1c",
+                    fontWeight: 800,
+                  }}
+                >
+                  🔒 PAID TEST SERIES
+                </div>
+                <br />
+                <button
+                  type="button"
+                  className="ai-button"
+                  onClick={() => {
+                    setSelectedTestSeries(series);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  style={{ marginTop: "18px" }}
+                >
+                  📋 Test देखें
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ marginTop: "25px" }}>
+            <button
+              type="button"
+              className="ai-button"
+              onClick={() => setSelectedTestSeries(null)}
+            >
+              ⬅️ सभी Test Series
+            </button>
+
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "25px",
+                borderRadius: "18px",
+                background: "#f8fafc",
+                border: "1px solid #dce3ed",
+              }}
+            >
+              <div style={{ fontSize: "45px" }}>{selectedTestSeries.icon}</div>
+              <h2>{selectedTestSeries.title}</h2>
+              <p>{selectedTestSeries.description}</p>
+
+              {selectedTestSeries.tests.map((test, index) => (
+                <div
+                  key={test}
+                  style={{
+                    marginTop: "12px",
+                    padding: "16px",
+                    borderRadius: "12px",
+                    background: "#fff",
+                    border: "1px solid #dce3ed",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <strong>{index + 1}. {test}</strong>
+                  <button
+                    type="button"
+                    className="ai-button"
+                    onClick={() =>
+                      alert("यह Test Paid है। Payment जोड़ने के बाद Test unlock होगा।")
+                    }
+                  >
+                    🔒 Unlock करें
+                  </button>
+                </div>
+              ))}
+
+              <div
+                style={{
+                  marginTop: "22px",
+                  padding: "18px",
+                  borderRadius: "14px",
+                  background: "#fff8e5",
+                  border: "1px solid #f1d58a",
+                }}
+              >
+                💳 यह Test Series Paid रखी गई है। अभी Test locked है।
+                Payment Gateway जोड़ने के बाद payment सफल होने पर Test unlock किया जा सकता है।
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+
   // ================= PAGE HELPERS =================
 
   const renderBooksPage = () => (
@@ -1567,6 +1731,17 @@ function App() {
           >
             ❓ Questions
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActivePage("testseries");
+              setSelectedTestSeries(null);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            🎯 Test Series
+          </button>
         </nav>
       </header>
 
@@ -1576,6 +1751,8 @@ function App() {
         ? renderNotesPage()
         : activePage === "questions"
         ? renderQuestionsPage()
+        : activePage === "testseries"
+        ? renderTestSeriesPage()
         : (
           <>
       {/* ================================================= */}
@@ -1658,6 +1835,50 @@ function App() {
           )}
         </div>
 
+
+        {/* ================================================= */}
+        {/*                 PAID TEST SERIES                 */}
+        {/* ================================================= */}
+
+        <div className="ai-card" style={{ marginTop: "30px" }}>
+          <div className="ai-title" style={{ fontSize: "30px" }}>
+            🎯 UPPET + UPPCS Test Series
+          </div>
+          <div className="ai-subtitle">
+            🔒 दोनों Test Series Paid रहेंगी
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: "15px",
+              marginTop: "20px",
+            }}
+          >
+            <button
+              type="button"
+              className="ai-button"
+              onClick={() => {
+                setActivePage("testseries");
+                setSelectedTestSeries(testSeries[0]);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              🎯 UPPET Test Series 🔒 PAID
+            </button>
+            <button
+              type="button"
+              className="ai-button"
+              onClick={() => {
+                setActivePage("testseries");
+                setSelectedTestSeries(testSeries[1]);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              🏛️ UPPCS Test Series 🔒 PAID
+            </button>
+          </div>
+        </div>
 
         {/* ================================================= */}
         {/*             DAILY CURRENT AFFAIRS                */}

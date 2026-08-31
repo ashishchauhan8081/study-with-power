@@ -1,7 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-require("dotenv").config();
+
+// ==================================================
+// ENVIRONMENT
+// ==================================================
+
+require("dotenv").config({
+  path: path.join(__dirname, "..", ".env")
+});
 
 const { GoogleGenAI } = require("@google/genai");
 
@@ -17,33 +24,58 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 
 // ==================================================
-// GEMINI API
+// GEMINI API KEY CHECK
 // ==================================================
 
-if (!process.env.GEMINI_API_KEY) {
-  console.error("❌ GEMINI_API_KEY नहीं मिली!");
+const GEMINI_API_KEY =
+  process.env.GEMINI_API_KEY?.trim();
+
+if (!GEMINI_API_KEY) {
+
+  console.error(
+    "❌ GEMINI_API_KEY नहीं मिली!"
+  );
+
 } else {
-  console.log("✅ Gemini API Key मिल गई");
+
+  console.log(
+    "✅ Gemini API Key मिल गई"
+  );
+
 }
 
+// ==================================================
+// GEMINI AI
+// ==================================================
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
+  apiKey: GEMINI_API_KEY
 });
 
 // ==================================================
 // REACT FRONTEND
 // ==================================================
 
-const distPath = path.join(__dirname, "..", "dist");
+const distPath =
+  path.join(__dirname, "..", "dist");
 
-app.use(express.static(distPath));
+app.use(
+  express.static(distPath)
+);
 
 // ==================================================
 // HOME
 // ==================================================
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(distPath, "index.html"));
+
+  res.sendFile(
+    path.join(
+      distPath,
+      "index.html"
+    )
+  );
+
 });
 
 // ==================================================
@@ -51,16 +83,24 @@ app.get("/", (req, res) => {
 // ==================================================
 
 function wait(ms) {
+
   return new Promise((resolve) => {
+
     setTimeout(resolve, ms);
+
   });
+
 }
 
 // ==================================================
-// GEMINI REQUEST WITH RETRY + FALLBACK
+// GEMINI REQUEST
+// RETRY + FALLBACK
 // ==================================================
 
-async function askGemini(prompt, config = {}) {
+async function askGemini(
+  prompt,
+  config = {}
+) {
 
   const models = [
     "gemini-3.7-flash",
@@ -72,7 +112,11 @@ async function askGemini(prompt, config = {}) {
 
   for (const model of models) {
 
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (
+      let attempt = 1;
+      attempt <= 2;
+      attempt++
+    ) {
 
       try {
 
@@ -80,11 +124,16 @@ async function askGemini(prompt, config = {}) {
           `🤖 Gemini Model: ${model} | Attempt: ${attempt}`
         );
 
-        const response = await ai.models.generateContent({
-          model: model,
-          contents: prompt,
-          config: config
-        });
+        const response =
+          await ai.models.generateContent({
+
+            model: model,
+
+            contents: prompt,
+
+            config: config
+
+          });
 
         console.log(
           `✅ Gemini उत्तर मिला: ${model}`
@@ -135,57 +184,62 @@ async function askGemini(prompt, config = {}) {
           throw error;
 
         }
+
       }
+
     }
+
   }
 
   throw lastError;
+
 }
 
 // ==================================================
 // AI STUDY ASSISTANT
 // ==================================================
 
-app.post("/api/ask", async (req, res) => {
+app.post(
+  "/api/ask",
+  async (req, res) => {
 
-  try {
+    try {
 
-    const { question } = req.body;
+      const { question } =
+        req.body;
 
-    // ------------------------------
-    // Question Check
-    // ------------------------------
+      if (
+        !question ||
+        !question.trim()
+      ) {
 
-    if (!question || !question.trim()) {
+        return res.status(400).json({
 
-      return res.status(400).json({
-        error: "कृपया अपना प्रश्न लिखिए।"
-      });
+          error:
+            "कृपया अपना प्रश्न लिखिए।"
 
-    }
+        });
 
-    // ------------------------------
-    // API Key Check
-    // ------------------------------
+      }
 
-    if (!process.env.GEMINI_API_KEY) {
+      if (!GEMINI_API_KEY) {
 
-      return res.status(500).json({
-        error: "Gemini API Key सेट नहीं है।"
-      });
+        return res.status(500).json({
 
-    }
+          error:
+            "Gemini API Key सेट नहीं है।"
 
-    console.log(
-      "📩 AI प्रश्न:",
-      question
-    );
+        });
 
-    // ==================================================
-    // AI PROMPT
-    // ==================================================
+      }
 
-    const prompt = `
+      console.log(
+        "📩 AI प्रश्न:",
+        question
+      );
+
+      const prompt = `
+
 आप "Study With Power" के AI Study Assistant हैं।
 
 विद्यार्थी के प्रश्न का उत्तर सरल, स्पष्ट और आकर्षक हिंदी में दें।
@@ -225,148 +279,141 @@ app.post("/api/ask", async (req, res) => {
 विद्यार्थी का प्रश्न:
 
 ${question}
+
 `;
 
-    // ==================================================
-    // GEMINI
-    // ==================================================
+      const response =
+        await askGemini(prompt);
 
-    const response = await askGemini(prompt);
+      const answer =
+        response?.text;
 
-    const answer = response?.text;
+      console.log(
+        "✅ AI Study Assistant उत्तर प्राप्त हुआ"
+      );
 
-    console.log(
-      "✅ AI Study Assistant उत्तर प्राप्त हुआ"
-    );
+      res.json({
 
-    res.json({
-      answer:
-        answer ||
-        "AI से उत्तर नहीं मिला।"
-    });
+        answer:
+          answer ||
+          "AI से उत्तर नहीं मिला।"
 
-  } catch (error) {
+      });
 
-    console.error(
-      "❌ GEMINI AI FINAL ERROR:"
-    );
+    } catch (error) {
 
-    console.error(error);
+      console.error(
+        "❌ GEMINI AI FINAL ERROR:"
+      );
 
-    const errorText =
-      error?.message ||
-      JSON.stringify(error);
+      console.error(error);
 
-    // ------------------------------
-    // 503 Error
-    // ------------------------------
+      const errorText =
+        error?.message ||
+        JSON.stringify(error);
 
-    if (
-      errorText.includes("503") ||
-      errorText.includes("UNAVAILABLE") ||
-      errorText.includes("high demand")
-    ) {
+      if (
+        errorText.includes("503") ||
+        errorText.includes("UNAVAILABLE") ||
+        errorText.includes("high demand")
+      ) {
 
-      return res.status(503).json({
+        return res.status(503).json({
+
+          error:
+            "Gemini AI पर इस समय बहुत अधिक लोड है। कृपया कुछ सेकंड बाद फिर प्रयास करें।"
+
+        });
+
+      }
+
+      if (
+        errorText.includes("API key") ||
+        errorText.includes("API_KEY") ||
+        errorText.includes("authentication")
+      ) {
+
+        return res.status(500).json({
+
+          error:
+            "Gemini API Key में समस्या है। Render Environment में GEMINI_API_KEY जाँचें।"
+
+        });
+
+      }
+
+      res.status(500).json({
+
         error:
-          "Gemini AI पर इस समय बहुत अधिक लोड है। कृपया कुछ सेकंड बाद फिर प्रयास करें।"
+          "AI से उत्तर नहीं मिल सका। कृपया कुछ समय बाद फिर प्रयास करें।"
+
       });
 
     }
-
-    // ------------------------------
-    // API Key Error
-    // ------------------------------
-
-    if (
-      errorText.includes("API key") ||
-      errorText.includes("API_KEY") ||
-      errorText.includes("authentication")
-    ) {
-
-      return res.status(500).json({
-        error:
-          "Gemini API Key में समस्या है। Render Environment में GEMINI_API_KEY जाँचें।"
-      });
-
-    }
-
-    // ------------------------------
-    // Other Error
-    // ------------------------------
-
-    res.status(500).json({
-      error:
-        "AI से उत्तर नहीं मिल सका। कृपया कुछ समय बाद पुनः प्रयास करें।"
-    });
 
   }
-});
+);
 
 // ==================================================
 // MCQ GENERATOR
 // ==================================================
 
-app.post("/api/mcq", async (req, res) => {
+app.post(
+  "/api/mcq",
+  async (req, res) => {
 
-  try {
+    try {
 
-    const {
-      topic,
-      count,
-      exam
-    } = req.body;
+      const {
+        topic,
+        count,
+        exam
+      } = req.body;
 
-    // ------------------------------
-    // Topic Check
-    // ------------------------------
+      if (
+        !topic ||
+        !topic.trim()
+      ) {
 
-    if (!topic || !topic.trim()) {
+        return res.status(400).json({
 
-      return res.status(400).json({
-        error:
-          "कृपया MCQ का Topic लिखिए।"
-      });
+          error:
+            "कृपया MCQ का Topic लिखिए।"
 
-    }
+        });
 
-    // ------------------------------
-    // API Key Check
-    // ------------------------------
+      }
 
-    if (!process.env.GEMINI_API_KEY) {
+      if (!GEMINI_API_KEY) {
 
-      return res.status(500).json({
-        error:
-          "Gemini API Key सेट नहीं है।"
-      });
+        return res.status(500).json({
 
-    }
+          error:
+            "Gemini API Key सेट नहीं है।"
 
-    // ------------------------------
-    // Question Count
-    // ------------------------------
+        });
 
-    const questionCount = Math.min(
-      Math.max(
-        Number(count) || 5,
-        1
-      ),
-      20
-    );
+      }
 
-    const examName =
-      exam || "सामान्य परीक्षा";
+      const questionCount =
+        Math.min(
+          Math.max(
+            Number(count) || 5,
+            1
+          ),
+          20
+        );
 
-    console.log(
-      `📝 MCQ Request: ${topic} | ${questionCount} | ${examName}`
-    );
+      const examName =
+        exam ||
+        "सामान्य परीक्षा";
 
-    // ==================================================
-    // MCQ PROMPT
-    // ==================================================
+      console.log(
+        `📝 MCQ Request: ${topic} | ${questionCount} | ${examName}`
+      );
 
-    const prompt = `
+      const prompt = `
+
 आप "Study With Power" के AI MCQ Generator हैं।
 
 Topic:
@@ -419,234 +466,586 @@ JSON FORMAT:
 Topic:
 
 ${topic}
+
 `;
 
-    // ==================================================
-    // GEMINI MCQ
-    // ==================================================
+      const response =
+        await askGemini(
+          prompt,
+          {
 
-    const response = await askGemini(
-      prompt,
-      {
-        responseMimeType: "application/json",
+            responseMimeType:
+              "application/json",
 
-        responseSchema: {
+            responseSchema: {
 
-          type: "object",
+              type: "object",
 
-          properties: {
+              properties: {
 
-            questions: {
+                questions: {
 
-              type: "array",
+                  type: "array",
 
-              items: {
-
-                type: "object",
-
-                properties: {
-
-                  question: {
-                    type: "string"
-                  },
-
-                  options: {
+                  items: {
 
                     type: "object",
 
                     properties: {
 
-                      A: {
+                      question: {
                         type: "string"
                       },
 
-                      B: {
-                        type: "string"
+                      options: {
+
+                        type: "object",
+
+                        properties: {
+
+                          A: {
+                            type: "string"
+                          },
+
+                          B: {
+                            type: "string"
+                          },
+
+                          C: {
+                            type: "string"
+                          },
+
+                          D: {
+                            type: "string"
+                          }
+
+                        },
+
+                        required: [
+                          "A",
+                          "B",
+                          "C",
+                          "D"
+                        ]
+
                       },
 
-                      C: {
-                        type: "string"
+                      answer: {
+
+                        type: "string",
+
+                        enum: [
+                          "A",
+                          "B",
+                          "C",
+                          "D"
+                        ]
+
                       },
 
-                      D: {
+                      explanation: {
                         type: "string"
                       }
 
                     },
 
                     required: [
-                      "A",
-                      "B",
-                      "C",
-                      "D"
-                    ]
-                  },
-
-                  answer: {
-
-                    type: "string",
-
-                    enum: [
-                      "A",
-                      "B",
-                      "C",
-                      "D"
+                      "question",
+                      "options",
+                      "answer",
+                      "explanation"
                     ]
 
-                  },
-
-                  explanation: {
-                    type: "string"
                   }
 
-                },
+                }
 
-                required: [
-                  "question",
-                  "options",
-                  "answer",
-                  "explanation"
-                ]
+              },
 
-              }
+              required: [
+                "questions"
+              ]
 
             }
 
-          },
+          }
+        );
 
-          required: [
-            "questions"
-          ]
+      const text =
+        response?.text;
 
-        }
+      if (!text) {
+
+        return res.status(500).json({
+
+          error:
+            "Gemini ने MCQ उत्तर नहीं दिया।"
+
+        });
+
       }
-    );
 
-    // ==================================================
-    // RESPONSE TEXT
-    // ==================================================
+      let result;
 
-    const text =
-      response?.text;
+      try {
 
-    if (!text) {
+        result =
+          JSON.parse(text);
 
-      return res.status(500).json({
+      } catch (jsonError) {
+
+        console.error(
+          "❌ MCQ JSON Parse Error:",
+          jsonError
+        );
+
+        return res.status(500).json({
+
+          error:
+            "Gemini ने सही MCQ format नहीं भेजा। कृपया फिर प्रयास करें।"
+
+        });
+
+      }
+
+      console.log(
+        `✅ ${result.questions?.length || 0} MCQ तैयार`
+      );
+
+      res.json({
+
+        questions:
+          result.questions || []
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "❌ MCQ FINAL ERROR:"
+      );
+
+      console.error(error);
+
+      const errorText =
+        error?.message ||
+        JSON.stringify(error);
+
+      if (
+        errorText.includes("503") ||
+        errorText.includes("UNAVAILABLE") ||
+        errorText.includes("high demand")
+      ) {
+
+        return res.status(503).json({
+
+          error:
+            "Gemini AI पर अभी बहुत अधिक लोड है। कृपया कुछ सेकंड बाद फिर प्रयास करें।"
+
+        });
+
+      }
+
+      if (
+        errorText.includes("API key") ||
+        errorText.includes("API_KEY") ||
+        errorText.includes("authentication")
+      ) {
+
+        return res.status(500).json({
+
+          error:
+            "Gemini API Key में समस्या है। Render Environment में GEMINI_API_KEY जाँचें।"
+
+        });
+
+      }
+
+      res.status(500).json({
+
         error:
-          "Gemini ने MCQ उत्तर नहीं दिया।"
+          "MCQ बनाने में समस्या हुई। कृपया कुछ समय बाद फिर प्रयास करें।"
+
       });
 
     }
 
-    // ==================================================
-    // JSON PARSE
-    // ==================================================
+  }
+);
 
-    let result;
+// ==================================================
+// DAILY CURRENT AFFAIRS QUIZ
+// ==================================================
+
+app.post(
+  "/api/current-affairs",
+  async (req, res) => {
 
     try {
 
-      result = JSON.parse(text);
+      if (!GEMINI_API_KEY) {
 
-    } catch (jsonError) {
+        return res.status(500).json({
 
-      console.error(
-        "❌ MCQ JSON Parse Error:",
-        jsonError
+          error:
+            "Gemini API Key सेट नहीं है।"
+
+        });
+
+      }
+
+      const requestedCount =
+        Number(
+          req.body?.count
+        ) || 10;
+
+      const questionCount =
+        Math.min(
+          Math.max(
+            requestedCount,
+            5
+          ),
+          20
+        );
+
+      // भारत के समय के अनुसार आज की तारीख
+
+      const today =
+        new Intl.DateTimeFormat(
+          "en-CA",
+          {
+
+            timeZone:
+              "Asia/Kolkata",
+
+            year: "numeric",
+
+            month: "2-digit",
+
+            day: "2-digit"
+
+          }
+        ).format(
+          new Date()
+        );
+
+      console.log(
+        `📰 Daily Current Affairs Request: ${today} | ${questionCount} Questions`
       );
 
-      return res.status(500).json({
+      const prompt = `
+
+आप "Study With Power" के Daily Current Affairs Quiz Generator हैं।
+
+आज की तारीख (IST):
+${today}
+
+${questionCount} Current Affairs MCQ तैयार करें।
+
+मुख्य लक्ष्य:
+
+• UPPCS, UPPSC, SSC, Banking और अन्य प्रतियोगी परीक्षाओं के लिए उपयोगी प्रश्न।
+• भारत और उत्तर प्रदेश को प्राथमिकता दें।
+• विश्व, अर्थव्यवस्था, विज्ञान-तकनीक, सरकारी योजनाएँ, नियुक्तियाँ, पुरस्कार, खेल, रक्षा और महत्वपूर्ण राष्ट्रीय/अंतरराष्ट्रीय घटनाएँ शामिल करें।
+• केवल हाल के और विश्वसनीय समाचारों पर आधारित प्रश्न बनाएं।
+• Google Search का उपयोग करके महत्वपूर्ण तथ्यों को ताज़ा web information से जाँचें।
+• केवल वास्तविक और सत्यापित घटनाएँ लें।
+• पुरानी या अनुमानित जानकारी को "आज का Current Affairs" बनाकर न दें।
+• यदि किसी खबर की पुष्टि विश्वसनीय स्रोतों से नहीं हो रही है, उसे प्रश्न में शामिल न करें।
+• एक ही घटना पर दो समान प्रश्न न बनाएं।
+• प्रश्न आसान, मध्यम और कठिन स्तर के मिश्रण में हों।
+• सभी प्रश्न हिंदी में हों।
+
+हर प्रश्न में:
+
+1. प्रश्न
+2. चार विकल्प A, B, C, D
+3. सही उत्तर केवल A/B/C/D
+4. छोटी, स्पष्ट और तथ्यात्मक व्याख्या
+
+महत्वपूर्ण:
+
+• तारीखों, नामों, पदों, पुरस्कारों, योजनाओं, स्थानों और आँकड़ों को Search से verify करें।
+• "आज" या "हाल ही में" तभी लिखें जब Search results इसका समर्थन करें।
+• गलत जानकारी या hallucination न करें।
+
+केवल JSON format में उत्तर दें:
+
+{
+  "questions": [
+    {
+      "question": "प्रश्न",
+      "options": {
+        "A": "विकल्प A",
+        "B": "विकल्प B",
+        "C": "विकल्प C",
+        "D": "विकल्प D"
+      },
+      "answer": "A",
+      "explanation": "सही उत्तर की छोटी और तथ्यात्मक व्याख्या"
+    }
+  ]
+}
+
+`;
+
+      const response =
+        await askGemini(
+          prompt,
+          {
+
+            tools: [
+
+              {
+                googleSearch: {}
+              }
+
+            ],
+
+            responseMimeType:
+              "application/json",
+
+            responseSchema: {
+
+              type: "object",
+
+              properties: {
+
+                questions: {
+
+                  type: "array",
+
+                  minItems:
+                    questionCount,
+
+                  maxItems:
+                    questionCount,
+
+                  items: {
+
+                    type: "object",
+
+                    properties: {
+
+                      question: {
+                        type: "string"
+                      },
+
+                      options: {
+
+                        type: "object",
+
+                        properties: {
+
+                          A: {
+                            type: "string"
+                          },
+
+                          B: {
+                            type: "string"
+                          },
+
+                          C: {
+                            type: "string"
+                          },
+
+                          D: {
+                            type: "string"
+                          }
+
+                        },
+
+                        required: [
+                          "A",
+                          "B",
+                          "C",
+                          "D"
+                        ]
+
+                      },
+
+                      answer: {
+
+                        type: "string",
+
+                        enum: [
+                          "A",
+                          "B",
+                          "C",
+                          "D"
+                        ]
+
+                      },
+
+                      explanation: {
+                        type: "string"
+                      }
+
+                    },
+
+                    required: [
+                      "question",
+                      "options",
+                      "answer",
+                      "explanation"
+                    ]
+
+                  }
+
+                }
+
+              },
+
+              required: [
+                "questions"
+              ]
+
+            }
+
+          }
+        );
+
+      const text =
+        response?.text;
+
+      if (!text) {
+
+        return res.status(500).json({
+
+          error:
+            "Gemini ने Current Affairs Quiz नहीं दिया।"
+
+        });
+
+      }
+
+      let result;
+
+      try {
+
+        result =
+          JSON.parse(text);
+
+      } catch (jsonError) {
+
+        console.error(
+          "❌ Current Affairs JSON Parse Error:",
+          jsonError
+        );
+
+        return res.status(500).json({
+
+          error:
+            "Current Affairs Quiz का सही format नहीं मिला। कृपया फिर प्रयास करें।"
+
+        });
+
+      }
+
+      if (
+        !result.questions ||
+        !Array.isArray(
+          result.questions
+        ) ||
+        result.questions.length === 0
+      ) {
+
+        return res.status(500).json({
+
+          error:
+            "Current Affairs के प्रश्न नहीं मिले।"
+
+        });
+
+      }
+
+      console.log(
+        `✅ Daily Current Affairs Quiz तैयार: ${result.questions.length} Questions`
+      );
+
+      res.json({
+
+        date:
+          today,
+
+        questions:
+          result.questions
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "❌ DAILY CURRENT AFFAIRS ERROR:"
+      );
+
+      console.error(error);
+
+      const errorText =
+        error?.message ||
+        JSON.stringify(error);
+
+      if (
+        errorText.includes("503") ||
+        errorText.includes("UNAVAILABLE") ||
+        errorText.includes("high demand") ||
+        errorText.includes("overloaded") ||
+        errorText.includes("temporarily")
+      ) {
+
+        return res.status(503).json({
+
+          error:
+            "Current Affairs AI पर इस समय अधिक लोड है। कृपया कुछ सेकंड बाद फिर प्रयास करें।"
+
+        });
+
+      }
+
+      if (
+        errorText.includes("API key") ||
+        errorText.includes("API_KEY") ||
+        errorText.includes("authentication")
+      ) {
+
+        return res.status(500).json({
+
+          error:
+            "Gemini API Key में समस्या है। Render Environment में GEMINI_API_KEY जाँचें।"
+
+        });
+
+      }
+
+      res.status(500).json({
+
         error:
-          "Gemini ने सही MCQ format नहीं भेजा। कृपया फिर प्रयास करें।"
+          "Daily Current Affairs Quiz बनाने में समस्या हुई। कृपया कुछ समय बाद फिर प्रयास करें।"
+
       });
 
     }
-
-    // ==================================================
-    // FINAL MCQ RESPONSE
-    // ==================================================
-
-    console.log(
-      `✅ ${result.questions?.length || 0} MCQ तैयार`
-    );
-
-    res.json({
-      questions:
-        result.questions || []
-    });
-
-  } catch (error) {
-
-    console.error(
-      "❌ MCQ FINAL ERROR:"
-    );
-
-    console.error(error);
-
-    const errorText =
-      error?.message ||
-      JSON.stringify(error);
-
-    // ------------------------------
-    // 503
-    // ------------------------------
-
-    if (
-      errorText.includes("503") ||
-      errorText.includes("UNAVAILABLE") ||
-      errorText.includes("high demand")
-    ) {
-
-      return res.status(503).json({
-        error:
-          "Gemini AI पर अभी बहुत अधिक लोड है। कृपया कुछ सेकंड बाद फिर प्रयास करें।"
-      });
-
-    }
-
-    // ------------------------------
-    // API Key
-    // ------------------------------
-
-    if (
-      errorText.includes("API key") ||
-      errorText.includes("API_KEY") ||
-      errorText.includes("authentication")
-    ) {
-
-      return res.status(500).json({
-        error:
-          "Gemini API Key में समस्या है। Render Environment में GEMINI_API_KEY जाँचें।"
-      });
-
-    }
-
-    // ------------------------------
-    // General
-    // ------------------------------
-
-    res.status(500).json({
-      error:
-        "MCQ बनाने में समस्या हुई। कृपया कुछ समय बाद पुनः प्रयास करें।"
-    });
 
   }
-});
+);
 
 // ==================================================
 // SPA FALLBACK
 // ==================================================
 
-app.get(/.*/, (req, res) => {
+app.get(
+  /.*/,
+  (req, res) => {
 
-  res.sendFile(
-    path.join(
-      distPath,
-      "index.html"
-    )
-  );
+    res.sendFile(
+      path.join(
+        distPath,
+        "index.html"
+      )
+    );
 
-});
+  }
+);
 
 // ==================================================
 // SERVER
