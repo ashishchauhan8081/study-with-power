@@ -1,7 +1,11 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
-import "./App.css";
+﻿import { auth, googleProvider } from "./firebase";
+import React, { useEffect, useMemo, useState } from "react";
 
-import { initializeApp } from "firebase/app";
+import {
+  initializeApp,
+  getApps,
+} from "firebase/app";
+
 import {
   getAuth,
   GoogleAuthProvider,
@@ -18,22 +22,12 @@ import {
   remove,
 } from "firebase/database";
 
-import firebaseConfig from "./firebase-config.json";
 
 // ======================================================
 // FIREBASE
 // ======================================================
 
-const firebaseApp = initializeApp({
-  ...firebaseConfig,
-  databaseURL:
-    firebaseConfig.databaseURL ||
-    "https://study-with-power-f6914-default-rtdb.asia-southeast1.firebasedatabase.app",
-});
 
-const auth = getAuth(firebaseApp);
-const googleProvider = new GoogleAuthProvider();
-const db = getDatabase(firebaseApp);
 
 const ADMIN_EMAIL =
   "cciashish@gmail.com";
@@ -189,64 +183,22 @@ function normalizeQuestions(questions) {
   }
 
   return questions.map((q, index) => ({
-    id: q?.id ?? index + 1,
-    question: q?.question ?? q?.questionText ?? q?.text ?? "",
-    options: Array.isArray(q?.options) ? q.options.slice(0, 4) : ["", "", "", ""],
-    // answer को raw रूप में रखें। Firebase में यह 0/1/2/3, A/B/C/D,
-    // option text, या "भाग I/भाग II..." हो सकता है।
-    answer: q?.answer,
-    explanation: q?.explanation ?? "",
+    id: q.id ?? index + 1,
+    question:
+      q.question ??
+      q.questionText ??
+      q.text ??
+      "",
+    options: Array.isArray(q.options)
+      ? q.options
+      : ["", "", "", ""],
+    answer:
+      typeof q.answer === "number"
+        ? q.answer
+        : Number(q.answer ?? 0),
+    explanation:
+      q.explanation ?? "",
   }));
-}
-
-// Firebase के अलग-अलग answer formats को option index (0-3) में बदलता है।
-function getCorrectIndex(question) {
-  const options = Array.isArray(question?.options) ? question.options : [];
-  const answer = question?.answer;
-
-  if (!options.length || answer === undefined || answer === null) return -1;
-
-  if (typeof answer === "number" && Number.isInteger(answer)) {
-    if (answer >= 0 && answer < options.length) return answer;
-    if (answer >= 1 && answer <= options.length) return answer - 1;
-  }
-
-  const raw = String(answer).trim();
-  if (!raw) return -1;
-
-  // "0", "1", "2", "3" या "1", "2", "3", "4"
-  if (/^\d+$/.test(raw)) {
-    const n = Number(raw);
-    if (n >= 0 && n < options.length) return n;
-    if (n >= 1 && n <= options.length) return n - 1;
-  }
-
-  // "A", "A.", "A) Option text" आदि
-  const letterMatch = raw.match(/^([ABCD])(?:\s*[.\):-]|\s*$)/i);
-  if (letterMatch) {
-    const idx = "ABCD".indexOf(letterMatch[1].toUpperCase());
-    if (idx >= 0 && idx < options.length) return idx;
-  }
-
-  // "भाग I", "भाग II", "भाग III", "भाग IV"
-  const partMatch = raw.match(/भाग\s*(I{1,3}|IV|V|1|2|3|4)\b/i);
-  if (partMatch) {
-    const part = partMatch[1].toUpperCase();
-    const map = { I: 0, II: 1, III: 2, IV: 3, V: 4, "1": 0, "2": 1, "3": 2, "4": 3 };
-    const idx = map[part];
-    if (idx !== undefined && idx < options.length) return idx;
-  }
-
-  // "A. option" से prefix हटाकर option text match करें।
-  const cleaned = raw.replace(/^[ABCD]\s*[.\):-]\s*/i, "").trim();
-  const exact = options.findIndex((option) => String(option ?? "").trim() === raw || String(option ?? "").trim() === cleaned);
-  if (exact >= 0) return exact;
-
-  // Case/space insensitive text match
-  const compact = (v) => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
-  const compactAnswer = compact(cleaned);
-  const loose = options.findIndex((option) => compact(option) === compactAnswer);
-  return loose >= 0 ? loose : -1;
 }
 
 
@@ -367,12 +319,10 @@ export default function App() {
 
     try {
 
-      const result = await signInWithPopup(
+      await signInWithPopup(
         auth,
         googleProvider
       );
-
-      return result.user;
 
     } catch (error) {
 
@@ -382,8 +332,6 @@ export default function App() {
         "Login नहीं हुआ:\n" +
         error.message
       );
-
-      return null;
 
     }
 
@@ -444,17 +392,7 @@ export default function App() {
   };
 
 
-  const openTest = async (test) => {
-
-    // Test शुरू करने से पहले Login अनिवार्य है।
-    // Login नहीं है तो Google Login खुलेगा और सफल Login के बाद ही Test खुलेगा।
-    if (!user) {
-      const loggedInUser = await login();
-
-      if (!loggedInUser) {
-        return;
-      }
-    }
+  const openTest = (test) => {
 
     setSelectedTest(test);
     setPage("test");
@@ -500,27 +438,6 @@ export default function App() {
     page === "test" &&
     selectedTest
   ) {
-
-    // Extra security: Login के बिना Test Page कभी render नहीं होगा।
-    if (!user) {
-      return (
-        <div className="app">
-          <style>{styles}</style>
-          <div className="container">
-            <div className="empty-box">
-              <h2>🔐 Test शुरू करने के लिए Login जरूरी है</h2>
-              <p>कृपया पहले Google से Login करें।</p>
-              <button className="open-btn" onClick={login}>
-                🔐 Login करें
-              </button>
-              <button className="back" onClick={() => setPage("tests")}>
-                ← वापस जाएँ
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
 
     return (
       <div className="app">
@@ -1310,109 +1227,70 @@ export default function App() {
 // TEST RUNNER
 // ========================================================
 
-function TestRunner({
-  test,
-  onBack,
-}) {
-  // अधिकतम 150 प्रश्न
-  const questions = normalizeQuestions(
-    test?.questions || []
-  ).slice(0, 150);
+function TestRunner({ test, onBack }) {
+  const questions = normalizeQuestions(test?.questions);
 
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
-
-  const buttonBase = {
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    boxSizing: "border-box",
-  };
-
-  const calculateResult = () => {
-    let correct = 0;
-    questions.forEach((q, index) => {
-      const correctIndex = getCorrectIndex(q);
-      if (correctIndex >= 0 && answers[index] === correctIndex) correct++;
-    });
-    const wrong = questions.length - correct;
-    const percentage = questions.length
-      ? Math.round((correct / questions.length) * 100)
-      : 0;
-    return { correct, wrong, percentage };
-  };
+  const [revealed, setRevealed] = useState(false);
 
   if (!questions.length) {
     return (
-      <div style={{ width: "100%", maxWidth: "1000px", margin: "0 auto", padding: "20px", boxSizing: "border-box" }}>
-        <button
-          type="button"
-          onClick={onBack}
-          style={{ ...buttonBase, padding: "12px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700", marginBottom: "20px" }}
-        >
-          ← Test List
-        </button>
-        <div style={{ background: "#fff", border: "1px solid #dbe3ee", borderRadius: "16px", padding: "50px 20px", textAlign: "center" }}>
+      <div className="container">
+        <button className="back" onClick={onBack}>← Test List</button>
+        <div className="empty-box">
           <h2>इस Test में Questions नहीं हैं।</h2>
         </div>
       </div>
     );
   }
 
-  // =============================
-  // RESULT SCREEN
-  // =============================
+  const calculateScore = () =>
+    questions.reduce(
+      (total, q, index) =>
+        total + (answers[index] === Number(q.answer) ? 1 : 0),
+      0
+    );
+
   if (submitted) {
-    const { correct, wrong, percentage } = calculateResult();
+    const score = calculateScore();
+    const wrong = Object.keys(answers).filter(
+      (key) => answers[key] !== Number(questions[Number(key)].answer)
+    ).length;
+    const unanswered = Math.max(0, questions.length - Object.keys(answers).length);
+    const percentage = Math.round((score / questions.length) * 100);
 
     return (
-      <div style={{ width: "100%", maxWidth: "1000px", margin: "0 auto", padding: "20px", boxSizing: "border-box" }}>
-        <div style={{ maxWidth: "760px", margin: "30px auto", background: "#fff", borderRadius: "18px", padding: "35px", textAlign: "center", boxSizing: "border-box", boxShadow: "0 10px 35px rgba(0,0,0,.10)" }}>
-          <div style={{ fontSize: "52px" }}>🎉</div>
-          <h1 style={{ color: "#1d4ed8", marginBottom: "8px" }}>Test Complete</h1>
-          <h2 style={{ marginTop: 0 }}>{test?.title || "Test"}</h2>
+      <div className="container">
+        <div className="result-box">
+          <div className="result-icon">🎉</div>
+          <h1>Test Complete</h1>
+          <h2>{test?.title || "Test"}</h2>
 
-          <div style={{ fontSize: "42px", fontWeight: "800", color: "#1d4ed8", margin: "20px 0 10px" }}>
-            {correct} / {questions.length}
-          </div>
+          <div className="score">{score} / {questions.length}</div>
+          <p>सही उत्तर: <strong>{score}</strong></p>
+          <p>गलत उत्तर: <strong>{wrong}</strong></p>
+          <p>छोड़े गए प्रश्न: <strong>{unanswered}</strong></p>
+          <p>आपका Score: <strong>{percentage}%</strong></p>
 
-          <p style={{ fontSize: "20px", margin: "8px 0" }}>
-            प्रतिशत: <strong>{percentage}%</strong>
-          </p>
-
-          <div style={{ display: "flex", justifyContent: "center", gap: "15px", flexWrap: "wrap", margin: "25px 0" }}>
-            <div style={{ padding: "15px 25px", borderRadius: "12px", background: "#dcfce7", color: "#166534", fontWeight: "800", fontSize: "20px" }}>
-              ✓ सही: {correct}
-            </div>
-            <div style={{ padding: "15px 25px", borderRadius: "12px", background: "#fee2e2", color: "#991b1b", fontWeight: "800", fontSize: "20px" }}>
-              ✗ गलत: {wrong}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap", marginTop: "25px" }}>
+          <div className="result-actions">
             <button
-              type="button"
+              className="primary"
               onClick={() => {
                 setCurrent(0);
                 setAnswers({});
                 setSubmitted(false);
                 setReviewMode(true);
-                setShowExplanation(false);
+                setRevealed(false);
+                window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              style={{ ...buttonBase, padding: "13px 20px", background: "#1264d8", color: "#fff", fontSize: "17px", fontWeight: "700" }}
             >
-              🔄 Questions Retest / व्याख्या देखें
+              🔄 Test दोबारा दें + व्याख्या देखें
             </button>
 
-            <button
-              type="button"
-              onClick={onBack}
-              style={{ ...buttonBase, padding: "13px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700" }}
-            >
+            <button className="back" onClick={onBack}>
               ← Test List
             </button>
           </div>
@@ -1423,175 +1301,157 @@ function TestRunner({
 
   const question = questions[current];
   const selected = answers[current];
-  const hasSelected = selected !== undefined;
-  const correctAnswer = getCorrectIndex(question);
+  const correctAnswer = Number(question.answer);
+  const hasSelected = selected !== undefined && selected !== null;
 
-  const goPrevious = () => {
-    setCurrent((value) => Math.max(0, value - 1));
-    setShowExplanation(false);
+  const selectOption = (index) => {
+    setAnswers((prev) => ({ ...prev, [current]: index }));
+
+    if (reviewMode) {
+      setRevealed(true);
+      return;
+    }
+
+    // पहली बार Test देने पर option चुनते ही अगला प्रश्न।
+    if (current === questions.length - 1) {
+      setSubmitted(true);
+      return;
+    }
+
+    setTimeout(() => {
+      setCurrent((value) => Math.min(questions.length - 1, value + 1));
+      setRevealed(false);
+    }, 180);
   };
 
   const goNext = () => {
-    if (current < questions.length - 1) {
-      setCurrent((value) => value + 1);
-      setShowExplanation(false);
-    } else {
+    if (current === questions.length - 1) {
       setSubmitted(true);
+      return;
     }
-  };
-
-  const selectOption = (index) => {
-    if (reviewMode && hasSelected) return;
-
-    setAnswers((prev) => ({
-      ...prev,
-      [current]: index,
-    }));
-
-    if (reviewMode) {
-      setShowExplanation(true);
-    } else {
-      // सामान्य Test में option चुनते ही अगला प्रश्न
-      window.setTimeout(() => {
-        if (current < questions.length - 1) {
-          setCurrent((value) => value + 1);
-        } else {
-          setSubmitted(true);
-        }
-      }, 180);
-    }
+    setCurrent((value) => Math.min(questions.length - 1, value + 1));
+    setRevealed(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "1000px", margin: "0 auto", padding: "20px", boxSizing: "border-box" }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{ ...buttonBase, padding: "12px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700", marginBottom: "20px" }}
-      >
-        ← Test List
-      </button>
+    <div className="container">
+      <button className="back" onClick={onBack}>← Test List</button>
 
-      <div style={{ width: "100%", background: "#fff", border: "1px solid #dbe3ee", borderRadius: "18px", padding: "30px", boxSizing: "border-box", overflow: "visible", display: "block" }}>
-        {/* TEST HEADER */}
-        <div style={{ width: "100%", display: "block", borderBottom: "1px solid #e2e8f0", paddingBottom: "18px", marginBottom: "28px" }}>
-          <div style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", lineHeight: "1.3" }}>
-            {test?.exam || "UPPCS"}
-          </div>
-          <div style={{ fontSize: "20px", fontWeight: "700", color: "#0f172a", lineHeight: "1.4", marginTop: "4px" }}>
-            {test?.title || "Test"} / {questions.length}
-          </div>
-          <div style={{ fontSize: "18px", fontWeight: "700", color: "#334155", marginTop: "6px" }}>
-            प्रश्न {current + 1} / {questions.length}
-            {reviewMode && <span style={{ marginLeft: "10px", color: "#7c3aed" }}>• Review Mode</span>}
-          </div>
+      <div className="question-box">
+        <div className="question-header">
+          <strong>{test?.title || "Test"}</strong>
+          <span>प्रश्न {current + 1} / {questions.length}</span>
         </div>
 
-        {/* QUESTION */}
-        <div style={{ width: "100%", display: "block", marginBottom: "28px" }}>
-          <h2 style={{ width: "100%", margin: 0, padding: 0, color: "#111827", textAlign: "left", fontSize: "28px", fontWeight: "600", lineHeight: "1.6", wordBreak: "break-word", overflowWrap: "anywhere" }}>
-            {current + 1}. {question.question}
-          </h2>
-        </div>
+        <h2>{current + 1}. {question.question}</h2>
 
-        {/* OPTIONS */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: "14px", width: "100%", clear: "both" }}>
+        <div className="options-list">
           {(question.options || []).slice(0, 4).map((option, index) => {
-            const isSelected = selected === index;
             const isCorrect = index === correctAnswer;
-            const isWrong = reviewMode && isSelected && !isCorrect;
-
+            const isSelected = selected === index;
             let background = "#1264d8";
-            if (reviewMode && hasSelected) {
-              if (isCorrect) background = "#16a34a";
-              else if (isWrong) background = "#dc2626";
-            } else if (isSelected) {
-              background = "#2563eb";
+            let border = "2px solid transparent";
+
+            if (reviewMode && revealed) {
+              if (isCorrect) {
+                background = "#16a34a";
+                border = "2px solid #15803d";
+              } else if (isSelected) {
+                background = "#dc2626";
+                border = "2px solid #b91c1c";
+              }
             }
 
             return (
               <button
                 key={index}
                 type="button"
-                disabled={reviewMode && hasSelected}
                 onClick={() => selectOption(index)}
                 style={{
-                  ...buttonBase,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "flex-start",
                   width: "100%",
-                  minHeight: "64px",
-                  margin: 0,
+                  boxSizing: "border-box",
                   padding: "16px 20px",
+                  margin: "0 0 12px 0",
+                  border,
+                  borderRadius: "12px",
                   background,
-                  color: "#fff",
+                  color: "white",
                   textAlign: "left",
                   fontSize: "20px",
-                  fontWeight: "700",
+                  fontWeight: "600",
                   lineHeight: "1.4",
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                  overflowWrap: "anywhere",
-                  opacity: reviewMode && hasSelected && !isSelected && !isCorrect ? 0.85 : 1,
-                  cursor: reviewMode && hasSelected ? "default" : "pointer",
-                  boxShadow: "0 5px 15px rgba(18,100,216,.20)",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(18,100,216,.18)",
                 }}
               >
-                <span style={{ flex: "0 0 45px", width: "45px", fontSize: "21px", fontWeight: "800" }}>
+                <strong style={{ width: "45px", flexShrink: 0 }}>
                   {String.fromCharCode(65 + index)}.
-                </span>
-                <span style={{ flex: "1 1 auto", minWidth: 0, lineHeight: "1.4" }}>
-                  {option}
-                </span>
+                </strong>
+                <span style={{ flex: 1 }}>{option}</span>
               </button>
             );
           })}
         </div>
 
-        {/* EXPLANATION - केवल RETEST/REVIEW MODE में */}
-        {reviewMode && showExplanation && hasSelected && (
-          <div style={{ width: "100%", marginTop: "20px", padding: "18px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", boxSizing: "border-box" }}>
-            <div style={{ fontSize: "19px", fontWeight: "800", marginBottom: "8px", color: selected === correctAnswer ? "#166534" : "#991b1b" }}>
-              {selected === correctAnswer
-                ? "✓ सही उत्तर"
-                : correctAnswer >= 0
-                ? `✗ गलत उत्तर — सही उत्तर: ${String.fromCharCode(65 + correctAnswer)}`
-                : "✗ उत्तर जाँचने के लिए सही उत्तर उपलब्ध नहीं है"}
+        {reviewMode && revealed && (
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "18px",
+              borderRadius: "12px",
+              background: selected === correctAnswer ? "#ecfdf5" : "#fef2f2",
+              border: selected === correctAnswer
+                ? "1px solid #86efac"
+                : "1px solid #fecaca",
+              color: "#172033",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "22px",
+                fontWeight: "700",
+                color: selected === correctAnswer ? "#15803d" : "#b91c1c",
+                marginBottom: "8px",
+              }}
+            >
+              {selected === correctAnswer ? "✓ सही उत्तर" : "✗ गलत उत्तर"}
             </div>
-            <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", color: "#1e3a8a" }}>
-              व्याख्या
+
+            <div style={{ fontSize: "18px", marginBottom: "8px" }}>
+              <strong>सही उत्तर:</strong> {String.fromCharCode(65 + correctAnswer)}. {question.options[correctAnswer]}
             </div>
-            <div style={{ fontSize: "17px", lineHeight: "1.6", color: "#334155", whiteSpace: "pre-wrap" }}>
-              {question.explanation || "इस प्रश्न की व्याख्या Admin Panel में उपलब्ध नहीं है।"}
-            </div>
+
+            {question.explanation && (
+              <div style={{ fontSize: "17px", lineHeight: "1.6" }}>
+                <strong>व्याख्या:</strong> {question.explanation}
+              </div>
+            )}
           </div>
         )}
 
-        {/* NAVIGATION */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "15px", marginTop: "30px" }}>
+        <div className="test-navigation">
           <button
-            type="button"
+            className="back"
             disabled={current === 0}
-            onClick={goPrevious}
-            style={{ ...buttonBase, padding: "13px 22px", background: current === 0 ? "#bfdbfe" : "#1264d8", color: "#fff", fontSize: "17px", fontWeight: "700", opacity: current === 0 ? 0.75 : 1 }}
+            onClick={() => {
+              setCurrent((value) => Math.max(0, value - 1));
+              setRevealed(false);
+            }}
           >
             ← Previous
           </button>
 
           {reviewMode ? (
-            <button
-              type="button"
-              disabled={!hasSelected}
-              onClick={goNext}
-              style={{ ...buttonBase, padding: "13px 22px", background: hasSelected ? (current === questions.length - 1 ? "#16a34a" : "#1264d8") : "#94a3b8", color: "#fff", fontSize: "17px", fontWeight: "700" }}
-            >
-              {current === questions.length - 1 ? "✓ Review Complete" : "Next →"}
+            <button className="primary" onClick={goNext} disabled={!hasSelected}>
+              {current === questions.length - 1 ? "✓ Submit Test" : "Next →"}
             </button>
           ) : (
-            <div style={{ fontSize: "16px", color: "#64748b", fontWeight: "600" }}>
-              विकल्प चुनते ही अगला प्रश्न खुलेगा
-            </div>
+            <span style={{ color: "#64748b", fontSize: "14px" }}>
+              Option चुनते ही अगला प्रश्न आएगा
+            </span>
           )}
         </div>
       </div>
@@ -1604,32 +1464,21 @@ function TestRunner({
 // ADMIN PANEL
 // ========================================================
 
-function createEmptyQuestion(id = 1) {
-  return {
-    id,
-    question: "",
-    options: ["", "", "", ""],
-    answer: 0,
-    explanation: "",
-  };
-}
-
-function AdminPanel({
-  user,
-  tests,
-  onClose,
-}) {
+function AdminPanel({ user, tests, onClose }) {
   const [exam, setExam] = useState("uppcs");
   const [testNumber, setTestNumber] = useState(1);
   const [title, setTitle] = useState("UPPCS Test 01");
   const [status, setStatus] = useState("draft");
 
-  // अब JSON नहीं — सीधे Question Form
-  const [questions, setQuestions] = useState([
-    createEmptyQuestion(1),
-  ]);
+  const emptyQuestion = (id = 1) => ({
+    id,
+    question: "",
+    options: ["", "", "", ""],
+    answer: 0,
+    explanation: "",
+  });
 
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [questions, setQuestions] = useState([emptyQuestion(1)]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -1642,26 +1491,46 @@ function AdminPanel({
           <div className="result-icon">🔐</div>
           <h1>Admin Access Denied</h1>
           <p>केवल Admin account इस panel को खोल सकता है।</p>
-          <button className="primary" onClick={onClose}>
-            ← Website पर जाएँ
-          </button>
+          <button className="primary" onClick={onClose}>← Website पर जाएँ</button>
         </div>
       </div>
     );
   }
 
-  const updateQuestion = (index, field, value) => {
+  const loadTest = (id, data) => {
+    setExam(data.exam || "uppcs");
+    setTestNumber(data.testNumber || 1);
+    setTitle(data.title || "");
+    setStatus(data.status || "draft");
+
+    const loaded = normalizeQuestions(data.questions || []);
+    setQuestions(loaded.length ? loaded : [emptyQuestion(1)]);
+    setMessage(`✏️ ${data.title || id} edit mode में खुल गया।`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const newTest = () => {
+    setExam("uppcs");
+    setTestNumber(1);
+    setTitle("UPPCS Test 01");
+    setStatus("draft");
+    setQuestions([emptyQuestion(1)]);
+    setMessage("📝 नया Test तैयार है।");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const updateQuestion = (qIndex, field, value) => {
     setQuestions((prev) =>
-      prev.map((q, i) =>
-        i === index ? { ...q, [field]: value } : q
+      prev.map((q, index) =>
+        index === qIndex ? { ...q, [field]: value } : q
       )
     );
   };
 
-  const updateOption = (questionIndex, optionIndex, value) => {
+  const updateOption = (qIndex, optionIndex, value) => {
     setQuestions((prev) =>
-      prev.map((q, i) => {
-        if (i !== questionIndex) return q;
+      prev.map((q, index) => {
+        if (index !== qIndex) return q;
         const options = [...(q.options || ["", "", "", ""])];
         options[optionIndex] = value;
         return { ...q, options };
@@ -1674,110 +1543,20 @@ function AdminPanel({
       alert("अधिकतम 150 Questions ही जोड़े जा सकते हैं।");
       return;
     }
-
-    const nextIndex = questions.length;
-    setQuestions((prev) => [
-      ...prev,
-      createEmptyQuestion(nextIndex + 1),
-    ]);
-    setCurrentQuestion(nextIndex);
-    setMessage(`➕ प्रश्न ${nextIndex + 1} जोड़ दिया गया।`);
-
-    setTimeout(() => {
-      document.getElementById("question-editor")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 50);
+    setQuestions((prev) => [...prev, emptyQuestion(prev.length + 1)]);
+    setMessage(`➕ Question ${questions.length + 1} जोड़ा गया।`);
   };
 
-  const deleteQuestion = (index) => {
+  const removeQuestion = (qIndex) => {
     if (questions.length === 1) {
       alert("कम से कम 1 Question होना चाहिए।");
       return;
     }
-
-    if (!window.confirm(`प्रश्न ${index + 1} delete करना है?`)) {
-      return;
-    }
-
-    const updated = questions
-      .filter((_, i) => i !== index)
-      .map((q, i) => ({ ...q, id: i + 1 }));
-
-    setQuestions(updated);
-    setCurrentQuestion(Math.min(index, updated.length - 1));
-    setMessage("🗑️ प्रश्न delete हो गया।");
-  };
-
-  const loadTest = (id, data) => {
-    setExam(data.exam || "uppcs");
-    setTestNumber(Number(data.testNumber || 1));
-    setTitle(data.title || "");
-    setStatus(data.status || "draft");
-
-    const loaded = Array.isArray(data.questions) ? data.questions : [];
-    const formatted = loaded.slice(0, 150).map((q, index) => ({
-      id: index + 1,
-      question: q?.question ?? q?.questionText ?? q?.text ?? "",
-      options: [
-        q?.options?.[0] ?? "",
-        q?.options?.[1] ?? "",
-        q?.options?.[2] ?? "",
-        q?.options?.[3] ?? "",
-      ],
-      answer: Number.isFinite(Number(q?.answer)) ? Number(q.answer) : 0,
-      explanation: q?.explanation ?? "",
-    }));
-
-    setQuestions(formatted.length ? formatted : [createEmptyQuestion(1)]);
-    setCurrentQuestion(0);
-    setMessage(`✏️ ${data.title || id} edit mode में खुल गया।`);
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const newTest = () => {
-    setExam("uppcs");
-    setTestNumber(1);
-    setTitle("UPPCS Test 01");
-    setStatus("draft");
-    setQuestions([createEmptyQuestion(1)]);
-    setCurrentQuestion(0);
-    setMessage("📝 नया Test तैयार है।");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const validateQuestions = () => {
-    if (!questions.length) {
-      alert("कम से कम 1 Question होना चाहिए।");
-      return false;
-    }
-
-    if (questions.length > 150) {
-      alert("अधिकतम 150 Questions ही save किए जा सकते हैं।");
-      return false;
-    }
-
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-
-      if (!q.question.trim()) {
-        alert(`प्रश्न ${i + 1} खाली है।`);
-        setCurrentQuestion(i);
-        return false;
-      }
-
-      for (let j = 0; j < 4; j++) {
-        if (!q.options?.[j]?.trim()) {
-          alert(`प्रश्न ${i + 1} का विकल्प ${String.fromCharCode(65 + j)} खाली है।`);
-          setCurrentQuestion(i);
-          return false;
-        }
-      }
-    }
-
-    return true;
+    setQuestions((prev) =>
+      prev
+        .filter((_, index) => index !== qIndex)
+        .map((q, index) => ({ ...q, id: index + 1 }))
+    );
   };
 
   const saveTest = async () => {
@@ -1791,17 +1570,40 @@ function AdminPanel({
       return;
     }
 
-    if (!validateQuestions()) return;
+    if (!questions.length) {
+      alert("कम से कम 1 Question होना चाहिए।");
+      return;
+    }
 
-    const cleanQuestions = questions.map((q, index) => ({
-      id: index + 1,
-      question: q.question.trim(),
-      options: q.options.slice(0, 4).map((option) => option.trim()),
-      answer: Number(q.answer),
-      explanation: q.explanation?.trim() || "",
-    }));
+    if (questions.length > 150) {
+      alert("अधिकतम 150 Questions ही save किए जा सकते हैं।");
+      return;
+    }
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!String(q.question || "").trim()) {
+        alert(`Question ${i + 1} का प्रश्न खाली है।`);
+        return;
+      }
+      if (!Array.isArray(q.options) || q.options.length < 4 || q.options.some((x) => !String(x || "").trim())) {
+        alert(`Question ${i + 1} के A, B, C, D चारों options भरें।`);
+        return;
+      }
+      if (Number(q.answer) < 0 || Number(q.answer) > 3) {
+        alert(`Question ${i + 1} का सही उत्तर चुनें।`);
+        return;
+      }
+    }
 
     const id = testId(exam, testNumber);
+    const cleanQuestions = questions.map((q, index) => ({
+      id: index + 1,
+      question: String(q.question || "").trim(),
+      options: [0, 1, 2, 3].map((i) => String(q.options?.[i] || "").trim()),
+      answer: Number(q.answer),
+      explanation: String(q.explanation || "").trim(),
+    }));
 
     const data = {
       id,
@@ -1815,10 +1617,9 @@ function AdminPanel({
     };
 
     setSaving(true);
-
     try {
       await set(ref(db, `tests/${id}`), data);
-
+      setQuestions(cleanQuestions);
       setMessage(
         status === "public"
           ? "🌐 Test PUBLIC हो गया। Website पर दिखाई देगा।"
@@ -1836,7 +1637,6 @@ function AdminPanel({
 
   const deleteTest = async (id) => {
     if (!window.confirm("क्या आप यह Test delete करना चाहते हैं?")) return;
-
     try {
       await remove(ref(db, `tests/${id}`));
       setMessage("🗑️ Test delete हो गया।");
@@ -1846,11 +1646,8 @@ function AdminPanel({
   };
 
   const testList = Object.entries(tests || {}).sort(
-    (a, b) =>
-      Number(a[1].testNumber || 0) - Number(b[1].testNumber || 0)
+    (a, b) => Number(a[1].testNumber || 0) - Number(b[1].testNumber || 0)
   );
-
-  const question = questions[currentQuestion] || createEmptyQuestion(1);
 
   return (
     <div className="admin-container">
@@ -1860,10 +1657,7 @@ function AdminPanel({
           <h1>Study With Power Admin Panel</h1>
           <p>Admin: {user.email}</p>
         </div>
-
-        <button className="admin-close" onClick={onClose}>
-          ← Website
-        </button>
+        <button className="admin-close" onClick={onClose}>← Website</button>
       </div>
 
       <div className="admin-card">
@@ -1872,10 +1666,7 @@ function AdminPanel({
             <h2>📝 Test Manager</h2>
             <p>Test बनाएँ, Questions जोड़ें और Public/Unlisted करें।</p>
           </div>
-
-          <button className="secondary-btn" onClick={newTest}>
-            ＋ New Test
-          </button>
+          <button className="secondary-btn" onClick={newTest}>＋ New Test</button>
         </div>
 
         <div className="admin-form">
@@ -1883,9 +1674,7 @@ function AdminPanel({
             <label>Exam</label>
             <select value={exam} onChange={(e) => setExam(e.target.value)}>
               {exams.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
+                <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
           </div>
@@ -1902,11 +1691,7 @@ function AdminPanel({
 
           <div className="full">
             <label>Test Title</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="UPPCS Test 01"
-            />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="UPPCS Test 01" />
           </div>
 
           <div className="full">
@@ -1916,7 +1701,6 @@ function AdminPanel({
               <option value="unlisted">🔗 Unlisted</option>
               <option value="public">🌐 Public</option>
             </select>
-
             <div className="status-help">
               <div>📝 <strong>Draft:</strong> काम चल रहा है।</div>
               <div>🔗 <strong>Unlisted:</strong> सामान्य Test List में नहीं दिखेगा।</div>
@@ -1925,253 +1709,92 @@ function AdminPanel({
           </div>
         </div>
 
-        {/* ==================================================
-            QUESTION FORM — JSON पूरी तरह हटाया गया
-        ================================================== */}
-        <div className="questions-editor" id="question-editor">
-          <div className="admin-title-row" style={{ marginBottom: 15 }}>
+        {/* QUESTION FORM — अब JSON नहीं */}
+        <div className="questions-form">
+          <div className="questions-form-header">
             <div>
-              <h2>📚 Question Form</h2>
+              <h2>📚 Questions</h2>
               <p className="small-text">
-                कुल {questions.length} / 150 प्रश्न
+                यहाँ सीधे Question, A/B/C/D, सही उत्तर और व्याख्या भरें। अधिकतम 150 Questions।
               </p>
             </div>
-
-            <button
-              className="secondary-btn"
-              onClick={addQuestion}
-              disabled={questions.length >= 150}
-            >
-              {questions.length >= 150
-                ? "✓ 150 Questions"
-                : "＋ Add Question"}
-            </button>
+            <strong>{questions.length} / 150</strong>
           </div>
 
-          {/* Question navigation */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 20,
-            }}
-          >
-            {questions.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setCurrentQuestion(index)}
-                style={{
-                  width: 40,
-                  height: 40,
-                  border: 0,
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  background:
-                    currentQuestion === index ? "#16a34a" : "#2563eb",
-                  color: "white",
-                  fontWeight: 800,
-                }}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-
-          <div
-            style={{
-              border: "1px solid #dbeafe",
-              borderRadius: 14,
-              padding: 20,
-              background: "#f8fafc",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <h3 style={{ margin: 0 }}>
-                प्रश्न {currentQuestion + 1}
-              </h3>
-
-              <button
-                type="button"
-                className="danger-btn"
-                onClick={() => deleteQuestion(currentQuestion)}
-              >
-                🗑️ Delete Question
-              </button>
-            </div>
-
-            <label style={{ display: "block", marginTop: 18 }}>
-              प्रश्न
-            </label>
-            <textarea
-              value={question.question}
-              onChange={(e) =>
-                updateQuestion(currentQuestion, "question", e.target.value)
-              }
-              placeholder="यहाँ प्रश्न लिखें..."
-              style={{
-                width: "100%",
-                minHeight: 110,
-                marginTop: 8,
-                padding: 12,
-                boxSizing: "border-box",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                fontSize: 17,
-                fontFamily: "inherit",
-              }}
-            />
-
-            <h3 style={{ marginTop: 22 }}>विकल्प</h3>
-
-            {question.options.map((option, index) => (
-              <div key={index} style={{ marginBottom: 12 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <strong
-                    style={{
-                      minWidth: 32,
-                      fontSize: 18,
-                    }}
-                  >
-                    {String.fromCharCode(65 + index)}.
-                  </strong>
-
-                  <input
-                    value={option}
-                    onChange={(e) =>
-                      updateOption(
-                        currentQuestion,
-                        index,
-                        e.target.value
-                      )
-                    }
-                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "1px solid #cbd5e1",
-                      fontSize: 16,
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateQuestion(currentQuestion, "answer", index)
-                    }
-                    style={{
-                      padding: "10px 12px",
-                      border: 0,
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      background:
-                        Number(question.answer) === index
-                          ? "#16a34a"
-                          : "#e2e8f0",
-                      color:
-                        Number(question.answer) === index
-                          ? "#fff"
-                          : "#334155",
-                      fontWeight: 700,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {Number(question.answer) === index
-                      ? "✓ सही उत्तर"
-                      : "सही चुनें"}
+          {questions.map((q, qIndex) => (
+            <div className="question-editor-card" key={q.id || qIndex}>
+              <div className="question-editor-title">
+                <h3>प्रश्न {qIndex + 1}</h3>
+                {questions.length > 1 && (
+                  <button className="danger-btn" type="button" onClick={() => removeQuestion(qIndex)}>
+                    🗑️ हटाएँ
                   </button>
+                )}
+              </div>
+
+              <label>Question</label>
+              <textarea
+                className="admin-question-input"
+                rows="3"
+                value={q.question || ""}
+                onChange={(e) => updateQuestion(qIndex, "question", e.target.value)}
+                placeholder={`प्रश्न ${qIndex + 1} यहाँ लिखें...`}
+              />
+
+              <div className="admin-options-grid">
+                {[0, 1, 2, 3].map((optionIndex) => (
+                  <div key={optionIndex}>
+                    <label>{String.fromCharCode(65 + optionIndex)}. Option</label>
+                    <input
+                      value={q.options?.[optionIndex] || ""}
+                      onChange={(e) => updateOption(qIndex, optionIndex, e.target.value)}
+                      placeholder={`${String.fromCharCode(65 + optionIndex)} option`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="admin-answer-row">
+                <div>
+                  <label>सही उत्तर</label>
+                  <select
+                    value={Number(q.answer ?? 0)}
+                    onChange={(e) => updateQuestion(qIndex, "answer", Number(e.target.value))}
+                  >
+                    <option value={0}>A. {q.options?.[0] || "Option A"}</option>
+                    <option value={1}>B. {q.options?.[1] || "Option B"}</option>
+                    <option value={2}>C. {q.options?.[2] || "Option C"}</option>
+                    <option value={3}>D. {q.options?.[3] || "Option D"}</option>
+                  </select>
                 </div>
               </div>
-            ))}
 
-            <label style={{ display: "block", marginTop: 22 }}>
-              व्याख्या
-            </label>
-            <textarea
-              value={question.explanation}
-              onChange={(e) =>
-                updateQuestion(
-                  currentQuestion,
-                  "explanation",
-                  e.target.value
-                )
-              }
-              placeholder="सही उत्तर की व्याख्या लिखें..."
-              style={{
-                width: "100%",
-                minHeight: 120,
-                marginTop: 8,
-                padding: 12,
-                boxSizing: "border-box",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                fontSize: 16,
-                fontFamily: "inherit",
-              }}
-            />
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-                marginTop: 20,
-              }}
-            >
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={currentQuestion === 0}
-                onClick={() =>
-                  setCurrentQuestion((value) => Math.max(0, value - 1))
-                }
-              >
-                ← पिछला
-              </button>
-
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() => {
-                  if (currentQuestion < questions.length - 1) {
-                    setCurrentQuestion((value) => value + 1);
-                  } else {
-                    addQuestion();
-                  }
-                }}
-              >
-                {currentQuestion < questions.length - 1
-                  ? "अगला →"
-                  : "＋ नया प्रश्न"}
-              </button>
+              <label>व्याख्या / Explanation</label>
+              <textarea
+                className="admin-question-input"
+                rows="3"
+                value={q.explanation || ""}
+                onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
+                placeholder="सही उत्तर की व्याख्या यहाँ लिखें..."
+              />
             </div>
-          </div>
+          ))}
+
+          <button
+            className="add-question-btn"
+            type="button"
+            onClick={addQuestion}
+            disabled={questions.length >= 150}
+          >
+            ＋ Question जोड़ें ({questions.length}/150)
+          </button>
         </div>
 
         <div className="admin-actions">
           <button className="save-btn" disabled={saving} onClick={saveTest}>
             {saving ? "⏳ Saving..." : "💾 Save Test"}
           </button>
-
-          <button className="secondary-btn" onClick={newTest}>
-            Clear / New
-          </button>
+          <button className="secondary-btn" onClick={newTest}>Clear / New</button>
         </div>
 
         {message && <div className="success-message">{message}</div>}
@@ -2179,9 +1802,7 @@ function AdminPanel({
 
       <div className="admin-card">
         <h2>📚 सभी Saved Tests</h2>
-        <p className="small-text">
-          यहाँ से किसी भी Test को Edit, Delete या उसका Status बदल सकते हैं।
-        </p>
+        <p className="small-text">यहाँ से किसी भी Test को Edit या Delete कर सकते हैं।</p>
 
         {testList.length === 0 ? (
           <div className="admin-empty">
@@ -2195,13 +1816,8 @@ function AdminPanel({
               <div className="admin-test-row" key={id}>
                 <div className="admin-test-info">
                   <div className="test-status">
-                    {data.status === "public"
-                      ? "🌐 PUBLIC"
-                      : data.status === "unlisted"
-                      ? "🔗 UNLISTED"
-                      : "📝 DRAFT"}
+                    {data.status === "public" ? "🌐 PUBLIC" : data.status === "unlisted" ? "🔗 UNLISTED" : "📝 DRAFT"}
                   </div>
-
                   <h3>{data.title}</h3>
                   <p>
                     {data.exam?.toUpperCase()} • Test {data.testNumber} • {data.questions?.length || 0} Questions
@@ -2211,9 +1827,7 @@ function AdminPanel({
 
                 <div className="admin-test-buttons">
                   <button onClick={() => loadTest(id, data)}>✏️ Edit</button>
-                  <button className="danger-btn" onClick={() => deleteTest(id)}>
-                    🗑️ Delete
-                  </button>
+                  <button className="danger-btn" onClick={() => deleteTest(id)}>🗑️ Delete</button>
                 </div>
               </div>
             ))}
@@ -2231,16 +1845,24 @@ function AdminPanel({
 
 const styles = `
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family:
     Arial,
     Helvetica,
@@ -2351,12 +1973,20 @@ button:disabled {
 
 .app {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .container {
+  width: 100%;
   max-width: 1200px;
-  margin: auto;
+  min-width: 0;
+  margin-left: auto;
+  margin-right: auto;
   padding: 20px;
+  overflow-x: hidden;
 }
 
 
@@ -2445,12 +2075,19 @@ button:disabled {
 
 .exam-grid {
   display: grid;
-  grid-template-columns:
-    repeat(4, 1fr);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+  overflow: hidden;
 }
 
 .exam-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   border:
     1px solid #d8e1ed;
   border-radius: 12px;
@@ -2485,6 +2122,17 @@ button:disabled {
   font-size: 11px;
   color: #64748b;
   min-height: 28px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.exam-card h3,
+.exam-card .paid,
+.exam-card .open-btn {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .paid {
@@ -2501,6 +2149,8 @@ button:disabled {
 .open-btn {
   margin-top: 10px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: none;
   background: #1264d8;
   color: white;
@@ -2704,45 +2354,16 @@ button:disabled {
   line-height: 1.6;
 }
 
-.options-list {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 12px;
-}
-
 .option {
-  display: flex !important;
-  position: static !important;
-  float: none !important;
-  align-items: flex-start;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box;
-  flex: 0 0 auto;
+  display: block;
+  width: 100%;
   text-align: left;
-  padding: 14px 16px;
-  margin: 0 !important;
-  border: 1px solid #cbd5e1;
+  padding: 13px;
+  margin: 10px 0;
+  border:
+    1px solid #cbd5e1;
   background: #f8fafc;
   border-radius: 8px;
-  font-size: 17px;
-  line-height: 1.5;
-  white-space: normal !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.option-label {
-  flex: 0 0 32px;
-}
-
-.option-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .option:hover {
@@ -2752,7 +2373,8 @@ button:disabled {
 
 .option.selected {
   background: #dbeafe;
-  border: 2px solid #2563eb;
+  border:
+    2px solid #2563eb;
 }
 
 .test-navigation {
@@ -3071,18 +2693,24 @@ button:disabled {
 
 /* MOBILE */
 
-@media(max-width: 900px) {
-
+@media(max-width: 1100px) {
   .exam-grid {
-    grid-template-columns:
-      repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .test-grid {
-    grid-template-columns:
-      repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media(max-width: 800px) {
+  .exam-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .test-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media(max-width: 650px) {
@@ -3096,8 +2724,7 @@ button:disabled {
   }
 
   .exam-grid {
-    grid-template-columns:
-      repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .resource-grid {
@@ -3105,8 +2732,7 @@ button:disabled {
   }
 
   .test-grid {
-    grid-template-columns:
-      repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .search {
@@ -3131,6 +2757,119 @@ button:disabled {
     align-items: flex-start;
   }
 
+}
+
+
+/* QUESTION FORM */
+.questions-form {
+  margin-top: 25px;
+}
+
+.questions-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.questions-form-header h2 {
+  margin: 0 0 5px;
+}
+
+.question-editor-card {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.question-editor-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.question-editor-title h3 {
+  margin: 0;
+  color: #1e3a8a;
+}
+
+.admin-question-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 12px;
+  font-size: 16px;
+  background: white;
+  margin-bottom: 14px;
+}
+
+.admin-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.admin-options-grid input,
+.admin-answer-row select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 15px;
+  background: white;
+}
+
+.admin-answer-row {
+  margin-bottom: 14px;
+}
+
+.admin-answer-row > div {
+  max-width: 500px;
+}
+
+.add-question-btn {
+  width: 100%;
+  border: 2px dashed #60a5fa;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.add-question-btn:disabled {
+  opacity: .55;
+}
+
+.danger-btn {
+  border: none;
+  background: #dc2626;
+  color: white;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+@media(max-width: 650px) {
+  .admin-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .questions-form-header,
+  .question-editor-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 `;
 
