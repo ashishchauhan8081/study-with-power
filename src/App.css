@@ -1,11 +1,13 @@
-/* ===== TEST SERIES RESPONSIVE FIX ===== */
+/* =========================================
+   TEST SERIES - COMPLETE RESPONSIVE FIX
+   ========================================= */
 
 .exam-grid {
+  display: grid;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 
-  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 
@@ -21,23 +23,109 @@
   overflow: hidden;
 }
 
-/* Laptop / smaller desktop */
+/* Card के अंदर कोई element बाहर न निकले */
+.exam-card * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   TEST SERIES GRID
+   ========================================= */
+
+.test-series-grid {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+
+  overflow: hidden;
+}
+
+.test-series-grid > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   LAPTOP
+   ========================================= */
+
 @media (max-width: 1100px) {
-  .exam-grid {
+  .exam-grid,
+  .test-series-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* Tablet */
+/* =========================================
+   TABLET
+   ========================================= */
+
 @media (max-width: 800px) {
-  .exam-grid {
+  .exam-grid,
+  .test-series-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* Mobile */
+/* =========================================
+   MOBILE
+   ========================================= */
+
 @media (max-width: 520px) {
-  .exam-grid {
+  .exam-grid,
+  .test-series-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   PAGE WIDTH SAFETY
+   ========================================= */
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* =========================================
+   PREVENT BUTTON / TEXT OVERFLOW
+   ========================================= */
+
+.exam-grid button,
+.test-series-grid button {
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* =========================================
+   EXTRA SMALL SCREEN
+   ========================================= */
+
+@media (max-width: 400px) {
+  .exam-grid,
+  .test-series-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .exam-card {
+    width: 100%;
   }
 }
