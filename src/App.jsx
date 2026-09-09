@@ -135,42 +135,48 @@ const exams = [
 // RESOURCES
 // ======================================================
 
-const resources = [
+const defaultResources = [
   {
     icon: "📚",
     title: "NCERT Books",
     text:
       "कक्षा 6 से 12 तक की NCERT पुस्तकों का अध्ययन करें।",
+    page: "resources", enabled: true,
   },
   {
     icon: "📰",
     title: "Current Affairs",
     text:
       "प्रतिदिन के महत्वपूर्ण Current Affairs पढ़ें।",
+    page: "current", enabled: true,
   },
   {
     icon: "📝",
     title: "MCQ Practice",
     text:
       "विषयवार महत्वपूर्ण MCQ का अभ्यास करें।",
+    page: "mcq", enabled: true,
   },
   {
     icon: "📖",
     title: "Previous Year Questions",
     text:
       "पिछली परीक्षाओं के प्रश्नों का अभ्यास करें।",
+    page: "resources", enabled: true,
   },
   {
     icon: "🎯",
     title: "Test Series",
     text:
       "सभी प्रमुख प्रतियोगी परीक्षाओं की Test Series।",
+    page: "tests", enabled: true,
   },
   {
     icon: "🤖",
     title: "AI MCQ Generator",
     text:
       "AI की सहायता से नए MCQ तैयार करें।",
+    page: "mcq", enabled: true,
   },
 ];
 
@@ -274,6 +280,8 @@ export default function App() {
   const [cloudTests, setCloudTests] =
     useState({});
 
+  const [siteResources, setSiteResources] = useState(defaultResources);
+
   const [adminOpen, setAdminOpen] =
     useState(false);
 
@@ -330,6 +338,26 @@ export default function App() {
     return () => unsubscribe();
 
   }, []);
+
+
+  // ====================================================
+  // SITE RESOURCES
+  // ====================================================
+  useEffect(() => {
+    const r = ref(db, "siteContent/resources");
+    const unsub = onValue(r, (snap) => {
+      const v = snap.val();
+      if (Array.isArray(v) && v.length) setSiteResources(v);
+      else if (v && typeof v === "object") setSiteResources(Object.values(v));
+      else setSiteResources(defaultResources);
+    }, () => setSiteResources(defaultResources));
+    return () => unsub();
+  }, []);
+
+  const visibleResources = useMemo(
+    () => siteResources.filter((x) => x?.enabled !== false),
+    [siteResources]
+  );
 
 
   // ====================================================
@@ -481,6 +509,7 @@ export default function App() {
         <AdminPanel
           user={user}
           tests={cloudTests}
+          resources={siteResources}
           onClose={() => {
             setAdminOpen(false);
           }}
@@ -780,7 +809,7 @@ export default function App() {
 
               <div className="resource-grid">
 
-                {resources.map(
+                {visibleResources.map(
                   (item, index) => (
 
                     <div
@@ -804,35 +833,10 @@ export default function App() {
                         className="open-btn"
                         onClick={() => {
 
-                          if (
-                            item.title ===
-                            "Test Series"
-                          ) {
-
+                          if (item.page === "tests") {
                             openExam(exams[0]);
-
-                          } else if (
-                            item.title ===
-                            "Current Affairs"
-                          ) {
-
-                            setPage(
-                              "current"
-                            );
-
-                          } else if (
-                            item.title ===
-                            "MCQ Practice"
-                          ) {
-
-                            setPage("mcq");
-
                           } else {
-
-                            setPage(
-                              "resources"
-                            );
-
+                            setPage(item.page || "resources");
                           }
 
                         }}
@@ -1057,7 +1061,7 @@ export default function App() {
 
               <div className="resource-grid">
 
-                {resources.map(
+                {visibleResources.map(
                   (item, index) => (
 
                     <div
@@ -1621,6 +1625,7 @@ function createEmptyQuestion(id = 1) {
 function AdminPanel({
   user,
   tests,
+  resources,
   onClose,
 }) {
   const [exam, setExam] = useState("uppcs");
@@ -1636,6 +1641,14 @@ function AdminPanel({
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [resourceDraft, setResourceDraft] = useState(
+    Array.isArray(resources) && resources.length ? resources : defaultResources
+  );
+
+  useEffect(() => {
+    if (Array.isArray(resources) && resources.length) setResourceDraft(resources);
+  }, [resources]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -1847,6 +1860,26 @@ function AdminPanel({
     } catch (error) {
       alert("Delete error:\n" + error.message);
     }
+  };
+
+  const updateResource = (index, field, value) => {
+    setResourceDraft((prev) => prev.map((x, i) => i === index ? { ...x, [field]: value } : x));
+  };
+
+  const saveResources = async () => {
+    if (!isAdmin) return alert("Admin access नहीं है।");
+    setSaving(true);
+    try {
+      const clean = resourceDraft.map((x, i) => ({
+        id: x.id || String(i + 1), icon: String(x.icon || "📚"),
+        title: String(x.title || "").trim(), text: String(x.text || "").trim(),
+        page: ["resources", "current", "mcq", "tests"].includes(x.page) ? x.page : "resources",
+        enabled: x.enabled !== false
+      }));
+      await set(ref(db, "siteContent/resources"), clean);
+      setResourceDraft(clean); setMessage("✅ Home Resource Cards save हो गए।");
+    } catch(e) { alert("Resources Save नहीं हुए:\n" + e.message); }
+    finally { setSaving(false); }
   };
 
   const testList = Object.entries(tests || {}).sort(
@@ -2181,7 +2214,28 @@ function AdminPanel({
         {message && <div className="success-message">{message}</div>}
       </div>
 
-      <div className="admin-card">
+      <div className="admin-card resource-admin-card">
+          <div className="admin-title-row">
+            <div><h2>🎛️ Home Resource Manager</h2><p>Home के 6 cards को Admin Panel से control करें।</p></div>
+            <button className="save-btn" disabled={saving} onClick={saveResources}>{saving ? "⏳ Saving..." : "💾 Save Resources"}</button>
+          </div>
+          <div className="resource-admin-list">
+            {resourceDraft.map((item, index) => (
+              <div className="resource-admin-row" key={item.id || index}>
+                <div className="resource-admin-number">{index + 1}</div>
+                <div className="resource-admin-fields">
+                  <div><label>Icon</label><input value={item.icon || ""} onChange={(e) => updateResource(index,"icon",e.target.value)} /></div>
+                  <div><label>Title</label><input value={item.title || ""} onChange={(e) => updateResource(index,"title",e.target.value)} /></div>
+                  <div className="full"><label>Description</label><input value={item.text || ""} onChange={(e) => updateResource(index,"text",e.target.value)} /></div>
+                  <div><label>Open Page</label><select value={item.page || "resources"} onChange={(e) => updateResource(index,"page",e.target.value)}><option value="resources">Study Resources</option><option value="current">Current Affairs</option><option value="mcq">MCQ / AI MCQ</option><option value="tests">Test Series</option></select></div>
+                  <label className="resource-admin-toggle"><input type="checkbox" checked={item.enabled !== false} onChange={(e) => updateResource(index,"enabled",e.target.checked)} /> Home पर दिखाएँ</label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="admin-card">
         <h2>📚 सभी Saved Tests</h2>
         <p className="small-text">
           यहाँ से किसी भी Test को Edit, Delete या उसका Status बदल सकते हैं।
@@ -3569,5 +3623,7 @@ body,
 .test-card button {
   width: 100%;
 }
+
+.resource-admin-list{display:flex;flex-direction:column;gap:14px}.resource-admin-row{display:flex;gap:14px;align-items:flex-start;border:1px solid #dbe3ee;border-radius:14px;padding:15px;background:#f8fafc}.resource-admin-number{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:#2563eb;color:#fff;font-weight:800}.resource-admin-fields{flex:1;min-width:0;display:grid;grid-template-columns:90px minmax(0,1fr) minmax(220px,260px);gap:12px;align-items:end}.resource-admin-fields .full{grid-column:1/-1}.resource-admin-fields input:not([type=checkbox]),.resource-admin-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.resource-admin-toggle{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.resource-admin-toggle input{width:18px;height:18px}@media(max-width:760px){.resource-admin-row{flex-direction:column}.resource-admin-fields{width:100%;grid-template-columns:1fr}.resource-admin-fields .full{grid-column:auto}.resource-admin-toggle{white-space:normal}}
 
 `;
