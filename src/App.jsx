@@ -643,7 +643,20 @@ export default function App() {
               </button>
 
 
-              {/* ADMIN */}
+              {
+.access-rule-note {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ADMIN */}
 
               {user?.email ===
                 ADMIN_EMAIL && (
@@ -1622,6 +1635,13 @@ function createEmptyQuestion(id = 1) {
   };
 }
 
+// Automatic Test Access Rule:
+// हर Exam का Test 1 = FREE
+// Test 2 और उसके बाद = PAID
+function getTestAccess(testNumber) {
+  return Number(testNumber) === 1 ? "free" : "paid";
+}
+
 function AdminPanel({
   user,
   tests,
@@ -1824,6 +1844,7 @@ function AdminPanel({
       id,
       exam,
       testNumber: Number(testNumber),
+      access: getTestAccess(testNumber),
       title: title.trim(),
       status,
       questions: cleanQuestions,
@@ -1907,6 +1928,7 @@ function AdminPanel({
         <div className="admin-title-row">
           <div>
             <h2>📝 Test Manager</h2>
+            <div className="access-rule-note">🆓 Test 01 = Free &nbsp; | &nbsp; 💰 Test 02 और आगे = Paid</div>
             <p>Test बनाएँ, Questions जोड़ें और Public/Unlisted करें।</p>
           </div>
 
@@ -2891,6 +2913,19 @@ button:disabled {
   font-size: 12px;
 }
 
+
+
+.access-rule-note {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 700;
+}
 
 /* ADMIN */
 
