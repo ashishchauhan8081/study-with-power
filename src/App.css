@@ -1,40 +1,180 @@
 /* =========================================================
-   TEST SERIES - COMPLETE RESPONSIVE FIX
+   GLOBAL RESPONSIVE FIX
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+
+/* =========================================================
+   TEST / EXAM GRID
    ========================================================= */
 
 .exam-grid,
 .test-series-grid {
+  display: grid;
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
+  min-width: 0;
 
-  display: grid;
-
-  /* Large desktop */
   grid-template-columns: repeat(4, minmax(0, 1fr));
 
   gap: 12px;
 
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
-/* Every card */
+
+/* =========================================================
+   CARD
+   ========================================================= */
+
 .exam-grid > *,
 .test-series-grid > *,
 .exam-card {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+
   box-sizing: border-box;
+
   overflow: hidden;
 }
 
+
 /* =========================================================
-   IMPORTANT:
-   Around 1200px screen -> 3 columns
-   This prevents BPSC / Teaching from getting cut.
+   CARD CONTENT
    ========================================================= */
 
+.exam-card *,
+.test-series-grid * {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   TEXT SAFETY
+   ========================================================= */
+
+.exam-card h1,
+.exam-card h2,
+.exam-card h3,
+.exam-card h4,
+.exam-card p,
+.exam-card span,
+.exam-card div {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+
+/* =========================================================
+   BUTTON SAFETY
+   ========================================================= */
+
+.exam-card button,
+.test-series-grid button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+
+/* =========================================================
+   DESKTOP
+   ========================================================= */
+
+@media (max-width: 1250px) {
+
+  .exam-grid,
+  .test-series-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 850px) {
+
+  .exam-grid,
+  .test-series-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .exam-grid,
+  .test-series-grid {
+    width: 100%;
+    max-width: 100%;
+
+    grid-template-columns: 1fr;
+
+    gap: 10px;
+  }
+
+  .exam-grid > *,
+  .test-series-grid > *,
+  .exam-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 400px) {
+
+  .exam-grid,
+  .test-series-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+}
 @media (max-width: 1250px) {
   .exam-grid,
   .test-series-grid {
