@@ -5,7 +5,9 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
+  RecaptchaVerifier,
   signInWithPopup,
+  signInWithPhoneNumber,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -37,6 +39,11 @@ const db = getDatabase(firebaseApp);
 
 const ADMIN_EMAIL =
   "cciashish@gmail.com";
+
+// Same-origin API: Render serves the React build and Express API together.
+const API_BASE = "";
+const SERIES_PRICE = 19;
+const COMBO_PRICE = 199;
 
 
 // ======================================================
@@ -285,6 +292,43 @@ export default function App() {
   const [adminOpen, setAdminOpen] =
     useState(false);
 
+  // ====================================================
+  // LOGIN / PAYMENT / AI
+  // ====================================================
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [pendingTest, setPendingTest] = useState(null);
+  const [pendingPurchase, setPendingPurchase] = useState(null);
+  const [unlockedSeries, setUnlockedSeries] = useState(() => {
+    try {
+      const saved = localStorage.getItem("swp_unlocked_test_series");
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [comboUnlocked, setComboUnlocked] = useState(() => {
+    try {
+      return localStorage.getItem("swp_combo_unlocked") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [aiTopic, setAiTopic] = useState("History");
+  const [aiExam, setAiExam] = useState("UPPCS");
+  const [aiCount, setAiCount] = useState(5);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiQuestions, setAiQuestions] = useState([]);
+  const [currentQuestions, setCurrentQuestions] = useState([]);
+  const [currentLoading, setCurrentLoading] = useState(false);
+  const [currentError, setCurrentError] = useState("");
+
 
   // ====================================================
   // AUTH
@@ -388,56 +432,249 @@ export default function App() {
 
 
   // ====================================================
+  // PAYMENT HELPERS
+  // ====================================================
+  const isSeriesUnlocked = (examId) => comboUnlocked || unlockedSeries.includes(examId);
+
+  const saveUnlockedSeries = (examId) => {
+    setUnlockedSeries((prev) => {
+      const next = prev.includes(examId) ? prev : [...prev, examId];
+      try { localStorage.setItem("swp_unlocked_test_series", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const saveComboUnlocked = () => {
+    setComboUnlocked(true);
+    try { localStorage.setItem("swp_combo_unlocked", "true"); } catch {}
+  };
+
+  const loadRazorpay = () => new Promise((resolve, reject) => {
+    if (window.Razorpay) { resolve(); return; }
+    const src = "https://checkout.razorpay.com/v1/checkout.js";
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", () => reject(new Error("Razorpay Checkout load नहीं हुआ।")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Razorpay Checkout load नहीं हुआ।"));
+    document.body.appendChild(script);
+  });
+
+  const verifyPayment = async (paymentResponse, successCallback) => {
+    const response = await fetch(`${API_BASE}/api/payment/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        razorpay_order_id: paymentResponse.razorpay_order_id,
+        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+        razorpay_signature: paymentResponse.razorpay_signature,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.success) throw new Error(data?.error || "Payment verification failed.");
+    successCallback();
+  };
+
+  const buyTestSeries = async (exam, loggedInUser = null) => {
+    if (!exam) return;
+    if (isSeriesUnlocked(exam.id)) {
+      setSelectedExam(exam); setSelectedTest(null); setPage("tests"); return;
+    }
+    const currentUser = loggedInUser || user || auth.currentUser;
+    if (!currentUser) {
+      setPendingPurchase(exam); setLoginOpen(true); return;
+    }
+    try {
+      setPaymentLoading(true);
+      await loadRazorpay();
+      const orderResponse = await fetch(`${API_BASE}/api/payment/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: SERIES_PRICE,
+          product: `${exam.name} Test Series`,
+          receipt: `swp_${exam.id}_${Date.now()}`.slice(0, 40),
+        }),
+      });
+      const orderData = await orderResponse.json().catch(() => ({}));
+      if (!orderResponse.ok || !orderData?.order_id) throw new Error(orderData?.error || "Razorpay order नहीं बन सका।");
+      const checkout = new window.Razorpay({
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "Study With Power",
+        description: `${exam.name} Test Series - 365 Days`,
+        order_id: orderData.order_id,
+        prefill: { name: currentUser.displayName || "", email: currentUser.email || "", contact: currentUser.phoneNumber || "" },
+        handler: async (paymentResponse) => {
+          try {
+            await verifyPayment(paymentResponse, () => {
+              saveUnlockedSeries(exam.id);
+              setSelectedExam(exam); setSelectedTest(null); setPage("tests");
+              alert(`🎉 Payment सफल हुआ!\n\n${exam.name} Test Series अब Unlock है।`);
+            });
+          } catch (error) {
+            alert(`❌ Payment verify नहीं हो सका।\n\n${error?.message || "कृपया फिर से प्रयास करें।"}`);
+          } finally { setPaymentLoading(false); }
+        },
+        modal: { ondismiss: () => setPaymentLoading(false) },
+      });
+      checkout.on("payment.failed", (response) => {
+        setPaymentLoading(false);
+        alert(`❌ Payment असफल हुआ।\n\n${response?.error?.description || "कृपया फिर से प्रयास करें।"}`);
+      });
+      checkout.open();
+    } catch (error) {
+      setPaymentLoading(false);
+      alert(`❌ Payment शुरू नहीं हो सका।\n\n${error?.message || "कृपया कुछ समय बाद फिर प्रयास करें।"}`);
+    }
+  };
+
+  const buyCombo = async (loggedInUser = null) => {
+    if (comboUnlocked) return;
+    const currentUser = loggedInUser || user || auth.currentUser;
+    if (!currentUser) { setPendingPurchase({ combo: true }); setLoginOpen(true); return; }
+    try {
+      setPaymentLoading(true);
+      await loadRazorpay();
+      const orderResponse = await fetch(`${API_BASE}/api/payment/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: COMBO_PRICE, product: "All Test Series Combo", receipt: `swp_combo_${Date.now()}`.slice(0, 40) }),
+      });
+      const orderData = await orderResponse.json().catch(() => ({}));
+      if (!orderResponse.ok || !orderData?.order_id) throw new Error(orderData?.error || "Razorpay order नहीं बन सका।");
+      const checkout = new window.Razorpay({
+        key: orderData.key_id, amount: orderData.amount, currency: orderData.currency || "INR",
+        name: "Study With Power", description: "All Test Series Combo - 365 Days", order_id: orderData.order_id,
+        prefill: { name: currentUser.displayName || "", email: currentUser.email || "", contact: currentUser.phoneNumber || "" },
+        handler: async (paymentResponse) => {
+          try {
+            await verifyPayment(paymentResponse, () => {
+              saveComboUnlocked();
+              alert("🎉 Combo Payment सफल हुआ!\n\nसभी Test Series 365 दिनों के लिए Unlock हैं।");
+            });
+          } catch (error) { alert(`❌ Payment verify नहीं हो सका।\n\n${error?.message || "कृपया फिर से प्रयास करें।"}`); }
+          finally { setPaymentLoading(false); }
+        },
+        modal: { ondismiss: () => setPaymentLoading(false) },
+      });
+      checkout.on("payment.failed", (response) => { setPaymentLoading(false); alert(`❌ Payment असफल हुआ।\n\n${response?.error?.description || "कृपया फिर से प्रयास करें।"}`); });
+      checkout.open();
+    } catch (error) { setPaymentLoading(false); alert(`❌ Payment शुरू नहीं हो सका।\n\n${error?.message || "कृपया कुछ समय बाद फिर प्रयास करें।"}`); }
+  };
+
+  // ====================================================
   // LOGIN
   // ====================================================
+  const finishPendingAction = async (loggedInUser) => {
+    if (pendingPurchase) {
+      const purchase = pendingPurchase;
+      setPendingPurchase(null);
+      if (purchase.combo) await buyCombo(loggedInUser);
+      else await buyTestSeries(purchase, loggedInUser);
+      return;
+    }
+    if (pendingTest) {
+      const testToOpen = pendingTest;
+      setPendingTest(null);
+      if (Number(testToOpen.testNumber) === 1 || (selectedExam && isSeriesUnlocked(selectedExam.id))) {
+        setSelectedTest(testToOpen); setPage("test"); window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (selectedExam) {
+        await buyTestSeries(selectedExam, loggedInUser);
+      }
+    }
+  };
 
   const login = async () => {
-
     try {
-
-      const result = await signInWithPopup(
-        auth,
-        googleProvider
-      );
-
+      const result = await signInWithPopup(auth, googleProvider);
+      setLoginOpen(false);
+      await finishPendingAction(result.user);
       return result.user;
-
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        "Login नहीं हुआ:\n" +
-        error.message
-      );
-
+      alert("Gmail Login नहीं हुआ:\n" + error.message);
       return null;
-
     }
-
   };
 
+  const sendPhoneOTP = async () => {
+    const raw = phoneNumber.trim();
+    if (!raw) { alert("Mobile Number डालें।"); return; }
+    const normalizedPhone = raw.startsWith("+") ? raw : "+91" + raw.replace(/\D/g, "");
+    try {
+      setPhoneLoading(true);
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "normal" });
+        await window.recaptchaVerifier.render();
+      }
+      const result = await signInWithPhoneNumber(auth, normalizedPhone, window.recaptchaVerifier);
+      setConfirmationResult(result);
+      alert("OTP आपके Mobile Number पर भेज दिया गया है।");
+    } catch (error) {
+      console.error(error);
+      alert("OTP नहीं भेजा गया:\n" + error.message);
+      if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
+    } finally { setPhoneLoading(false); }
+  };
+
+  const verifyPhoneOTP = async () => {
+    if (!confirmationResult) { alert("पहले OTP भेजें।"); return; }
+    if (!otp.trim()) { alert("OTP डालें।"); return; }
+    try {
+      setPhoneLoading(true);
+      const result = await confirmationResult.confirm(otp.trim());
+      setLoginOpen(false); setPhoneNumber(""); setOtp(""); setConfirmationResult(null);
+      if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
+      await finishPendingAction(result.user);
+    } catch (error) { console.error(error); alert("OTP गलत है या Login नहीं हुआ:\n" + error.message); }
+    finally { setPhoneLoading(false); }
+  };
+
+  // ====================================================
+  // AI MCQ GENERATOR
+  // ====================================================
+  const generateAIMCQ = async () => {
+    if (!aiTopic.trim()) { alert("विषय चुनें।"); return; }
+    try {
+      setAiLoading(true); setAiError(""); setAiQuestions([]);
+      const response = await fetch(`${API_BASE}/api/mcq`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: aiTopic, count: Number(aiCount) || 5, exam: aiExam }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Server error (${response.status})`);
+      const questions = Array.isArray(data.questions) ? data.questions : [];
+      if (!questions.length) throw new Error("Gemini ने कोई MCQ नहीं बनाया।");
+      setAiQuestions(questions);
+    } catch (error) { console.error(error); setAiError(error.message || "AI MCQ बनाने में समस्या हुई।"); }
+    finally { setAiLoading(false); }
+  };
+
+  const generateCurrentAffairs = async () => {
+    try {
+      setCurrentLoading(true); setCurrentError(""); setCurrentQuestions([]);
+      const response = await fetch(`${API_BASE}/api/current-affairs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count: 10 }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Server error (${response.status})`);
+      const questions = Array.isArray(data.questions) ? data.questions : [];
+      if (!questions.length) throw new Error("Current Affairs MCQ नहीं मिला।");
+      setCurrentQuestions(questions);
+    } catch (error) { console.error(error); setCurrentError(error.message || "Current Affairs बनाने में समस्या हुई।"); }
+    finally { setCurrentLoading(false); }
+  };
 
   const logout = async () => {
-
-    try {
-
-      await signOut(auth);
-
-      setAdminOpen(false);
-      setPage("home");
-
-    } catch (error) {
-
-      alert(
-        "Logout error: " +
-        error.message
-      );
-
-    }
-
+    try { await signOut(auth); setAdminOpen(false); setPage("home"); }
+    catch (error) { alert("Logout error: " + error.message); }
   };
-
 
   // ====================================================
   // NAVIGATION
@@ -472,26 +709,17 @@ export default function App() {
   };
 
 
-  const openTest = async (test) => {
-
-    // Test शुरू करने से पहले Login अनिवार्य है।
-    // Login नहीं है तो Google Login खुलेगा और सफल Login के बाद ही Test खुलेगा।
-    if (!user) {
-      const loggedInUser = await login();
-
-      if (!loggedInUser) {
-        return;
-      }
+  const openTest = (test) => {
+    if (!test) return;
+    if (Number(test.testNumber) === 1 || isSeriesUnlocked(test.exam)) {
+      setSelectedTest(test);
+      setPage("test");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
-
-    setSelectedTest(test);
-    setPage("test");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-
+    setPendingTest(test);
+    if (!user) setLoginOpen(true);
+    else buyTestSeries(exams.find((x) => x.id === test.exam) || selectedExam);
   };
 
 
@@ -674,7 +902,7 @@ export default function App() {
 
                 <button
                   className="login-btn"
-                  onClick={login}
+                  onClick={() => setLoginOpen(true)}
                 >
                   🔐 Login
                 </button>
@@ -682,6 +910,28 @@ export default function App() {
               )}
 
             </nav>
+
+            {loginOpen && (
+              <div className="login-modal-overlay" onClick={() => !phoneLoading && setLoginOpen(false)}>
+                <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+                  <button className="login-modal-close" onClick={() => !phoneLoading && setLoginOpen(false)}>✕</button>
+                  <h2>🔐 Login करें</h2>
+                  <p>Gmail या Mobile Number से Login करें</p>
+                  <button className="google-login-btn" onClick={login} disabled={phoneLoading}>📧 Gmail से Login</button>
+                  <div className="login-divider"><span>या</span></div>
+                  <input className="phone-login-input" type="tel" inputMode="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Mobile Number (10 digit)" disabled={phoneLoading || !!confirmationResult} />
+                  {!confirmationResult ? (
+                    <button className="phone-login-btn" onClick={sendPhoneOTP} disabled={phoneLoading}>{phoneLoading ? "⏳ OTP भेजा जा रहा है..." : "📱 Mobile पर OTP भेजें"}</button>
+                  ) : (
+                    <>
+                      <input className="phone-login-input" type="text" inputMode="numeric" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="6 digit OTP" disabled={phoneLoading} />
+                      <button className="phone-login-btn" onClick={verifyPhoneOTP} disabled={phoneLoading}>{phoneLoading ? "⏳ Login हो रहा है..." : "✅ OTP Verify करके Login"}</button>
+                    </>
+                  )}
+                  <div id="recaptcha-container" style={{ marginTop: 12, display: confirmationResult ? "none" : "block" }} />
+                </div>
+              </div>
+            )}
 
           </div>
 
@@ -772,7 +1022,7 @@ export default function App() {
                     </p>
 
                     <span className="paid">
-                      ₹99 • PAID
+                      Test 01 FREE • बाकी ₹19
                     </span>
 
                     <button
@@ -790,6 +1040,17 @@ export default function App() {
 
               </div>
 
+              {/* ALL TEST SERIES COMBO */}
+              <div className="combo-card">
+                <div className="combo-icon">🔥</div>
+                <h2>All Test Series Combo</h2>
+                <p>UPSC • UPPCS • UP PET • BPSC • MPPSC • SSC • Railway • Banking • UPSSSC • RO/ARO • Police • Teaching</p>
+                <div className="combo-price">₹199</div>
+                <div className="combo-access">✅ 365 दिन का Full Access</div>
+                <button className="open-btn combo-btn" onClick={() => buyCombo()} disabled={paymentLoading || comboUnlocked}>
+                  {comboUnlocked ? "✅ Combo Unlocked" : paymentLoading ? "⏳ Payment शुरू हो रहा है..." : "💳 ₹199 Combo खरीदें →"}
+                </button>
+              </div>
 
               <div className="section-title">
 
@@ -974,15 +1235,11 @@ export default function App() {
                         </p>
 
                         <div className="price">
-                          ₹99
+                          {Number(test.testNumber) === 1 ? "FREE" : isSeriesUnlocked(selectedExam.id) ? "UNLOCKED" : `₹${SERIES_PRICE}`}
                         </div>
 
-                        <button
-                          onClick={() =>
-                            openTest(test)
-                          }
-                        >
-                          Start Test
+                        <button onClick={() => openTest(test)}>
+                          {Number(test.testNumber) === 1 || isSeriesUnlocked(selectedExam.id) ? "Start Test" : "🔐 Unlock / Start"}
                         </button>
 
                       </div>
@@ -992,6 +1249,16 @@ export default function App() {
 
               </div>
 
+
+              {Object.entries(publicTests).some(([, test]) => test.exam === selectedExam.id && Number(test.testNumber) > 1) && !isSeriesUnlocked(selectedExam.id) && (
+                <div className="series-unlock-box">
+                  <strong>🔐 Test 2 और आगे के लिए Full Series Access</strong>
+                  <span>₹{SERIES_PRICE} में 365 दिन का Access</span>
+                  <button className="primary" onClick={() => buyTestSeries(selectedExam)} disabled={paymentLoading}>
+                    {paymentLoading ? "⏳ Payment..." : `💳 ₹${SERIES_PRICE} में Series Unlock करें`}
+                  </button>
+                </div>
+              )}
 
               {Object.entries(
                 publicTests
@@ -1181,6 +1448,14 @@ export default function App() {
 
               </div>
 
+              <div className="blue-box">
+                <h2>🤖 AI Current Affairs Quiz</h2>
+                <p>Gemini से आज के Current Affairs MCQ तैयार करें।</p>
+                <button className="primary" onClick={generateCurrentAffairs} disabled={currentLoading}>{currentLoading ? "⏳ तैयार हो रहा है..." : "Generate Current Affairs MCQ"}</button>
+                {currentError && <div className="notice">❌ {currentError}</div>}
+                {currentQuestions.length > 0 && <div className="ai-results">{currentQuestions.map((q,i)=><div className="ai-question-card" key={i}><h3>{i+1}. {q.question || q.questionText || q.text}</h3><div>{(q.options||[]).slice(0,4).map((o,j)=><div className="ai-option" key={j}><b>{String.fromCharCode(65+j)}.</b> {o}</div>)}</div></div>)}</div>}
+              </div>
+
             </>
 
           )}
@@ -1191,90 +1466,43 @@ export default function App() {
           ================================================= */}
 
           {page === "mcq" && (
-
             <>
-
-              <button
-                className="back"
-                onClick={goHome}
-              >
-                ← Home
-              </button>
-
+              <button className="back" onClick={goHome}>← Home</button>
               <div className="page-title">
-
-                <div className="big-icon">
-                  🤖
-                </div>
-
-                <h1>
-                  AI MCQ Generator
-                </h1>
-
-                <p>
-                  विषय और परीक्षा के अनुसार
-                  MCQ तैयार करें
-                </p>
-
+                <div className="big-icon">🤖</div>
+                <h1>AI MCQ Generator</h1>
+                <p>Gemini AI से परीक्षा और विषय के अनुसार MCQ तैयार करें</p>
               </div>
-
-
-              <div className="question-box">
-
-                <h3>
-                  विषय चुनें
-                </h3>
-
-                <select className="full-input">
-
-                  <option>
-                    History
-                  </option>
-
-                  <option>
-                    Geography
-                  </option>
-
-                  <option>
-                    Polity
-                  </option>
-
-                  <option>
-                    Economy
-                  </option>
-
-                  <option>
-                    Science
-                  </option>
-
-                  <option>
-                    Current Affairs
-                  </option>
-
+              <div className="question-box ai-generator-box">
+                <label>परीक्षा</label>
+                <select className="full-input" value={aiExam} onChange={(e) => setAiExam(e.target.value)}>
+                  {exams.map((exam) => <option key={exam.id} value={exam.name}>{exam.name}</option>)}
                 </select>
-
-
-                <button
-                  className="primary"
-                >
-                  🤖 MCQ Generate करें
+                <label>विषय</label>
+                <input className="full-input" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="जैसे: सिंधु घाटी सभ्यता" />
+                <label>Questions</label>
+                <select className="full-input" value={aiCount} onChange={(e) => setAiCount(Number(e.target.value))}>
+                  {[5,10,15,20].map((n) => <option key={n} value={n}>{n} Questions</option>)}
+                </select>
+                <button className="primary" onClick={generateAIMCQ} disabled={aiLoading}>
+                  {aiLoading ? "⏳ Gemini MCQ बना रहा है..." : "🤖 MCQ Generate करें"}
                 </button>
-
-
-                <div className="notice">
-
-                  Gemini API जोड़ने के बाद
-                  यहाँ AI से वास्तविक MCQ
-                  Generate होंगे।
-
-                </div>
-
+                {aiError && <div className="notice">❌ {aiError}</div>}
               </div>
-
+              {aiQuestions.length > 0 && (
+                <div className="ai-results">
+                  <h2>Generated MCQ</h2>
+                  {aiQuestions.map((q, i) => (
+                    <div className="ai-question-card" key={i}>
+                      <h3>{i + 1}. {q.question || q.questionText || q.text}</h3>
+                      <div>{(q.options || []).slice(0,4).map((o,j) => <div className="ai-option" key={j}><b>{String.fromCharCode(65+j)}.</b> {o}</div>)}</div>
+                      {(q.answer || q.explanation) && <div className="ai-answer"><b>उत्तर:</b> {q.answer ?? ""}<br/>{q.explanation && <><b>व्याख्या:</b> {q.explanation}</>}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
-
           )}
-
         </main>
 
 
@@ -3644,6 +3872,6 @@ body,
   width: 100%;
 }
 
-.resource-admin-list{display:flex;flex-direction:column;gap:14px}.resource-admin-row{display:flex;gap:14px;align-items:flex-start;border:1px solid #dbe3ee;border-radius:14px;padding:15px;background:#f8fafc}.resource-admin-number{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:#2563eb;color:#fff;font-weight:800}.resource-admin-fields{flex:1;min-width:0;display:grid;grid-template-columns:90px minmax(0,1fr) minmax(220px,260px);gap:12px;align-items:end}.resource-admin-fields .full{grid-column:1/-1}.resource-admin-fields input:not([type=checkbox]),.resource-admin-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.resource-admin-toggle{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.resource-admin-toggle input{width:18px;height:18px}@media(max-width:760px){.resource-admin-row{flex-direction:column}.resource-admin-fields{width:100%;grid-template-columns:1fr}.resource-admin-fields .full{grid-column:auto}.resource-admin-toggle{white-space:normal}}
+.resource-admin-list{display:flex;flex-direction:column;gap:14px}.resource-admin-row{display:flex;gap:14px;align-items:flex-start;border:1px solid #dbe3ee;border-radius:14px;padding:15px;background:#f8fafc}.resource-admin-number{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:#2563eb;color:#fff;font-weight:800}.resource-admin-fields{flex:1;min-width:0;display:grid;grid-template-columns:90px minmax(0,1fr) minmax(220px,260px);gap:12px;align-items:end}.resource-admin-fields .full{grid-column:1/-1}.resource-admin-fields input:not([type=checkbox]),.resource-admin-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.resource-admin-toggle{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.resource-admin-toggle input{width:18px;height:18px}@media(max-width:760px){.resource-admin-row{flex-direction:column}.resource-admin-fields{width:100%;grid-template-columns:1fr}.resource-admin-fields .full{grid-column:auto}.resource-admin-toggle{white-space:normal}}\n\n/* LOGIN MODAL */\n.login-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}\n.login-modal{width:min(440px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative;text-align:center}\n.login-modal-close{position:absolute;right:12px;top:10px;border:0;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:18px}\n.google-login-btn,.phone-login-btn{width:100%;border:0;border-radius:10px;padding:12px;margin-top:10px;font-weight:800;font-size:15px}\n.google-login-btn{background:#111827;color:#fff}.phone-login-btn{background:#1264d8;color:#fff}\n.phone-login-input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;margin-top:10px;font-size:16px;box-sizing:border-box}\n.login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:#64748b}.login-divider:before,.login-divider:after{content:"";height:1px;background:#e2e8f0;flex:1}\n.combo-card{margin:20px 0 28px;padding:22px;border-radius:16px;background:linear-gradient(135deg,#fff7ed,#fef3c7);border:2px solid #f59e0b;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.08)}\n.combo-icon{font-size:30px}.combo-card h2{margin:4px 0 8px;color:#b45309}.combo-card p{margin:5px auto 12px;max-width:900px;color:#92400e;font-size:13px;line-height:1.6}.combo-price{font-size:34px;font-weight:900;color:#dc2626}.combo-access{font-size:13px;font-weight:800;color:#166534;margin:6px 0 10px}.combo-btn{max-width:330px}.series-unlock-box{margin:18px 0;padding:18px;border-radius:14px;background:#eff6ff;border:1px solid #93c5fd;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}.series-unlock-box span{font-weight:800;color:#b91c1c}.ai-generator-box{display:grid;gap:10px}.ai-generator-box label{text-align:left;font-weight:800;margin-top:5px}.ai-results{max-width:900px;margin:20px auto}.ai-question-card{background:#fff;border:1px solid #dbe3ee;border-radius:14px;padding:18px;margin-bottom:14px}.ai-question-card h3{line-height:1.5;margin-top:0}.ai-option{padding:9px 10px;background:#f8fafc;border-radius:8px;margin:6px 0}.ai-answer{margin-top:12px;padding:12px;background:#eff6ff;border-radius:9px;line-height:1.6}\n@media(max-width:600px){.login-modal{padding:22px 16px}.combo-card{padding:18px 12px}.series-unlock-box{align-items:stretch;flex-direction:column}.series-unlock-box .primary{margin-top:0}.ai-question-card{padding:14px}}\n
 
 `;
