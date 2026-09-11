@@ -5,9 +5,7 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  RecaptchaVerifier,
   signInWithPopup,
-  signInWithPhoneNumber,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -39,11 +37,6 @@ const db = getDatabase(firebaseApp);
 
 const ADMIN_EMAIL =
   "cciashish@gmail.com";
-
-// Same-origin API: Render serves the React build and Express API together.
-const API_BASE = "";
-const SERIES_PRICE = 19;
-const COMBO_PRICE = 199;
 
 
 // ======================================================
@@ -292,43 +285,6 @@ export default function App() {
   const [adminOpen, setAdminOpen] =
     useState(false);
 
-  // ====================================================
-  // LOGIN / PAYMENT / AI
-  // ====================================================
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [otp, setOtp] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [phoneLoading, setPhoneLoading] = useState(false);
-  const [pendingTest, setPendingTest] = useState(null);
-  const [pendingPurchase, setPendingPurchase] = useState(null);
-  const [unlockedSeries, setUnlockedSeries] = useState(() => {
-    try {
-      const saved = localStorage.getItem("swp_unlocked_test_series");
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
-  const [comboUnlocked, setComboUnlocked] = useState(() => {
-    try {
-      return localStorage.getItem("swp_combo_unlocked") === "true";
-    } catch {
-      return false;
-    }
-  });
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [aiTopic, setAiTopic] = useState("History");
-  const [aiExam, setAiExam] = useState("UPPCS");
-  const [aiCount, setAiCount] = useState(5);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const [aiQuestions, setAiQuestions] = useState([]);
-  const [currentQuestions, setCurrentQuestions] = useState([]);
-  const [currentLoading, setCurrentLoading] = useState(false);
-  const [currentError, setCurrentError] = useState("");
-
 
   // ====================================================
   // AUTH
@@ -432,249 +388,56 @@ export default function App() {
 
 
   // ====================================================
-  // PAYMENT HELPERS
-  // ====================================================
-  const isSeriesUnlocked = (examId) => comboUnlocked || unlockedSeries.includes(examId);
-
-  const saveUnlockedSeries = (examId) => {
-    setUnlockedSeries((prev) => {
-      const next = prev.includes(examId) ? prev : [...prev, examId];
-      try { localStorage.setItem("swp_unlocked_test_series", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-
-  const saveComboUnlocked = () => {
-    setComboUnlocked(true);
-    try { localStorage.setItem("swp_combo_unlocked", "true"); } catch {}
-  };
-
-  const loadRazorpay = () => new Promise((resolve, reject) => {
-    if (window.Razorpay) { resolve(); return; }
-    const src = "https://checkout.razorpay.com/v1/checkout.js";
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error("Razorpay Checkout load नहीं हुआ।")), { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Razorpay Checkout load नहीं हुआ।"));
-    document.body.appendChild(script);
-  });
-
-  const verifyPayment = async (paymentResponse, successCallback) => {
-    const response = await fetch(`${API_BASE}/api/payment/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        razorpay_order_id: paymentResponse.razorpay_order_id,
-        razorpay_payment_id: paymentResponse.razorpay_payment_id,
-        razorpay_signature: paymentResponse.razorpay_signature,
-      }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data?.success) throw new Error(data?.error || "Payment verification failed.");
-    successCallback();
-  };
-
-  const buyTestSeries = async (exam, loggedInUser = null) => {
-    if (!exam) return;
-    if (isSeriesUnlocked(exam.id)) {
-      setSelectedExam(exam); setSelectedTest(null); setPage("tests"); return;
-    }
-    const currentUser = loggedInUser || user || auth.currentUser;
-    if (!currentUser) {
-      setPendingPurchase(exam); setLoginOpen(true); return;
-    }
-    try {
-      setPaymentLoading(true);
-      await loadRazorpay();
-      const orderResponse = await fetch(`${API_BASE}/api/payment/order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: SERIES_PRICE,
-          product: `${exam.name} Test Series`,
-          receipt: `swp_${exam.id}_${Date.now()}`.slice(0, 40),
-        }),
-      });
-      const orderData = await orderResponse.json().catch(() => ({}));
-      if (!orderResponse.ok || !orderData?.order_id) throw new Error(orderData?.error || "Razorpay order नहीं बन सका।");
-      const checkout = new window.Razorpay({
-        key: orderData.key_id,
-        amount: orderData.amount,
-        currency: orderData.currency || "INR",
-        name: "Study With Power",
-        description: `${exam.name} Test Series - 365 Days`,
-        order_id: orderData.order_id,
-        prefill: { name: currentUser.displayName || "", email: currentUser.email || "", contact: currentUser.phoneNumber || "" },
-        handler: async (paymentResponse) => {
-          try {
-            await verifyPayment(paymentResponse, () => {
-              saveUnlockedSeries(exam.id);
-              setSelectedExam(exam); setSelectedTest(null); setPage("tests");
-              alert(`🎉 Payment सफल हुआ!\n\n${exam.name} Test Series अब Unlock है।`);
-            });
-          } catch (error) {
-            alert(`❌ Payment verify नहीं हो सका।\n\n${error?.message || "कृपया फिर से प्रयास करें।"}`);
-          } finally { setPaymentLoading(false); }
-        },
-        modal: { ondismiss: () => setPaymentLoading(false) },
-      });
-      checkout.on("payment.failed", (response) => {
-        setPaymentLoading(false);
-        alert(`❌ Payment असफल हुआ।\n\n${response?.error?.description || "कृपया फिर से प्रयास करें।"}`);
-      });
-      checkout.open();
-    } catch (error) {
-      setPaymentLoading(false);
-      alert(`❌ Payment शुरू नहीं हो सका।\n\n${error?.message || "कृपया कुछ समय बाद फिर प्रयास करें।"}`);
-    }
-  };
-
-  const buyCombo = async (loggedInUser = null) => {
-    if (comboUnlocked) return;
-    const currentUser = loggedInUser || user || auth.currentUser;
-    if (!currentUser) { setPendingPurchase({ combo: true }); setLoginOpen(true); return; }
-    try {
-      setPaymentLoading(true);
-      await loadRazorpay();
-      const orderResponse = await fetch(`${API_BASE}/api/payment/order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: COMBO_PRICE, product: "All Test Series Combo", receipt: `swp_combo_${Date.now()}`.slice(0, 40) }),
-      });
-      const orderData = await orderResponse.json().catch(() => ({}));
-      if (!orderResponse.ok || !orderData?.order_id) throw new Error(orderData?.error || "Razorpay order नहीं बन सका।");
-      const checkout = new window.Razorpay({
-        key: orderData.key_id, amount: orderData.amount, currency: orderData.currency || "INR",
-        name: "Study With Power", description: "All Test Series Combo - 365 Days", order_id: orderData.order_id,
-        prefill: { name: currentUser.displayName || "", email: currentUser.email || "", contact: currentUser.phoneNumber || "" },
-        handler: async (paymentResponse) => {
-          try {
-            await verifyPayment(paymentResponse, () => {
-              saveComboUnlocked();
-              alert("🎉 Combo Payment सफल हुआ!\n\nसभी Test Series 365 दिनों के लिए Unlock हैं।");
-            });
-          } catch (error) { alert(`❌ Payment verify नहीं हो सका।\n\n${error?.message || "कृपया फिर से प्रयास करें।"}`); }
-          finally { setPaymentLoading(false); }
-        },
-        modal: { ondismiss: () => setPaymentLoading(false) },
-      });
-      checkout.on("payment.failed", (response) => { setPaymentLoading(false); alert(`❌ Payment असफल हुआ।\n\n${response?.error?.description || "कृपया फिर से प्रयास करें।"}`); });
-      checkout.open();
-    } catch (error) { setPaymentLoading(false); alert(`❌ Payment शुरू नहीं हो सका।\n\n${error?.message || "कृपया कुछ समय बाद फिर प्रयास करें।"}`); }
-  };
-
-  // ====================================================
   // LOGIN
   // ====================================================
-  const finishPendingAction = async (loggedInUser) => {
-    if (pendingPurchase) {
-      const purchase = pendingPurchase;
-      setPendingPurchase(null);
-      if (purchase.combo) await buyCombo(loggedInUser);
-      else await buyTestSeries(purchase, loggedInUser);
-      return;
-    }
-    if (pendingTest) {
-      const testToOpen = pendingTest;
-      setPendingTest(null);
-      if (Number(testToOpen.testNumber) === 1 || (selectedExam && isSeriesUnlocked(selectedExam.id))) {
-        setSelectedTest(testToOpen); setPage("test"); window.scrollTo({ top: 0, behavior: "smooth" });
-      } else if (selectedExam) {
-        await buyTestSeries(selectedExam, loggedInUser);
-      }
-    }
-  };
 
   const login = async () => {
+
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      setLoginOpen(false);
-      await finishPendingAction(result.user);
+
+      const result = await signInWithPopup(
+        auth,
+        googleProvider
+      );
+
       return result.user;
+
     } catch (error) {
+
       console.error(error);
-      alert("Gmail Login नहीं हुआ:\n" + error.message);
+
+      alert(
+        "Login नहीं हुआ:\n" +
+        error.message
+      );
+
       return null;
+
     }
+
   };
 
-  const sendPhoneOTP = async () => {
-    const raw = phoneNumber.trim();
-    if (!raw) { alert("Mobile Number डालें।"); return; }
-    const normalizedPhone = raw.startsWith("+") ? raw : "+91" + raw.replace(/\D/g, "");
-    try {
-      setPhoneLoading(true);
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "normal" });
-        await window.recaptchaVerifier.render();
-      }
-      const result = await signInWithPhoneNumber(auth, normalizedPhone, window.recaptchaVerifier);
-      setConfirmationResult(result);
-      alert("OTP आपके Mobile Number पर भेज दिया गया है।");
-    } catch (error) {
-      console.error(error);
-      alert("OTP नहीं भेजा गया:\n" + error.message);
-      if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
-    } finally { setPhoneLoading(false); }
-  };
-
-  const verifyPhoneOTP = async () => {
-    if (!confirmationResult) { alert("पहले OTP भेजें।"); return; }
-    if (!otp.trim()) { alert("OTP डालें।"); return; }
-    try {
-      setPhoneLoading(true);
-      const result = await confirmationResult.confirm(otp.trim());
-      setLoginOpen(false); setPhoneNumber(""); setOtp(""); setConfirmationResult(null);
-      if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
-      await finishPendingAction(result.user);
-    } catch (error) { console.error(error); alert("OTP गलत है या Login नहीं हुआ:\n" + error.message); }
-    finally { setPhoneLoading(false); }
-  };
-
-  // ====================================================
-  // AI MCQ GENERATOR
-  // ====================================================
-  const generateAIMCQ = async () => {
-    if (!aiTopic.trim()) { alert("विषय चुनें।"); return; }
-    try {
-      setAiLoading(true); setAiError(""); setAiQuestions([]);
-      const response = await fetch(`${API_BASE}/api/mcq`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: aiTopic, count: Number(aiCount) || 5, exam: aiExam }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || `Server error (${response.status})`);
-      const questions = Array.isArray(data.questions) ? data.questions : [];
-      if (!questions.length) throw new Error("Gemini ने कोई MCQ नहीं बनाया।");
-      setAiQuestions(questions);
-    } catch (error) { console.error(error); setAiError(error.message || "AI MCQ बनाने में समस्या हुई।"); }
-    finally { setAiLoading(false); }
-  };
-
-  const generateCurrentAffairs = async () => {
-    try {
-      setCurrentLoading(true); setCurrentError(""); setCurrentQuestions([]);
-      const response = await fetch(`${API_BASE}/api/current-affairs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count: 10 }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || `Server error (${response.status})`);
-      const questions = Array.isArray(data.questions) ? data.questions : [];
-      if (!questions.length) throw new Error("Current Affairs MCQ नहीं मिला।");
-      setCurrentQuestions(questions);
-    } catch (error) { console.error(error); setCurrentError(error.message || "Current Affairs बनाने में समस्या हुई।"); }
-    finally { setCurrentLoading(false); }
-  };
 
   const logout = async () => {
-    try { await signOut(auth); setAdminOpen(false); setPage("home"); }
-    catch (error) { alert("Logout error: " + error.message); }
+
+    try {
+
+      await signOut(auth);
+
+      setAdminOpen(false);
+      setPage("home");
+
+    } catch (error) {
+
+      alert(
+        "Logout error: " +
+        error.message
+      );
+
+    }
+
   };
+
 
   // ====================================================
   // NAVIGATION
@@ -709,17 +472,26 @@ export default function App() {
   };
 
 
-  const openTest = (test) => {
-    if (!test) return;
-    if (Number(test.testNumber) === 1 || isSeriesUnlocked(test.exam)) {
-      setSelectedTest(test);
-      setPage("test");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
+  const openTest = async (test) => {
+
+    // Test शुरू करने से पहले Login अनिवार्य है।
+    // Login नहीं है तो Google Login खुलेगा और सफल Login के बाद ही Test खुलेगा।
+    if (!user) {
+      const loggedInUser = await login();
+
+      if (!loggedInUser) {
+        return;
+      }
     }
-    setPendingTest(test);
-    if (!user) setLoginOpen(true);
-    else buyTestSeries(exams.find((x) => x.id === test.exam) || selectedExam);
+
+    setSelectedTest(test);
+    setPage("test");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
   };
 
 
@@ -902,7 +674,7 @@ export default function App() {
 
                 <button
                   className="login-btn"
-                  onClick={() => setLoginOpen(true)}
+                  onClick={login}
                 >
                   🔐 Login
                 </button>
@@ -910,28 +682,6 @@ export default function App() {
               )}
 
             </nav>
-
-            {loginOpen && (
-              <div className="login-modal-overlay" onClick={() => !phoneLoading && setLoginOpen(false)}>
-                <div className="login-modal" onClick={(e) => e.stopPropagation()}>
-                  <button className="login-modal-close" onClick={() => !phoneLoading && setLoginOpen(false)}>✕</button>
-                  <h2>🔐 Login करें</h2>
-                  <p>Gmail या Mobile Number से Login करें</p>
-                  <button className="google-login-btn" onClick={login} disabled={phoneLoading}>📧 Gmail से Login</button>
-                  <div className="login-divider"><span>या</span></div>
-                  <input className="phone-login-input" type="tel" inputMode="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Mobile Number (10 digit)" disabled={phoneLoading || !!confirmationResult} />
-                  {!confirmationResult ? (
-                    <button className="phone-login-btn" onClick={sendPhoneOTP} disabled={phoneLoading}>{phoneLoading ? "⏳ OTP भेजा जा रहा है..." : "📱 Mobile पर OTP भेजें"}</button>
-                  ) : (
-                    <>
-                      <input className="phone-login-input" type="text" inputMode="numeric" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="6 digit OTP" disabled={phoneLoading} />
-                      <button className="phone-login-btn" onClick={verifyPhoneOTP} disabled={phoneLoading}>{phoneLoading ? "⏳ Login हो रहा है..." : "✅ OTP Verify करके Login"}</button>
-                    </>
-                  )}
-                  <div id="recaptcha-container" style={{ marginTop: 12, display: confirmationResult ? "none" : "block" }} />
-                </div>
-              </div>
-            )}
 
           </div>
 
@@ -1022,7 +772,7 @@ export default function App() {
                     </p>
 
                     <span className="paid">
-                      Test 01 FREE • बाकी ₹19
+                      ₹99 • PAID
                     </span>
 
                     <button
@@ -1040,17 +790,6 @@ export default function App() {
 
               </div>
 
-              {/* ALL TEST SERIES COMBO */}
-              <div className="combo-card">
-                <div className="combo-icon">🔥</div>
-                <h2>All Test Series Combo</h2>
-                <p>UPSC • UPPCS • UP PET • BPSC • MPPSC • SSC • Railway • Banking • UPSSSC • RO/ARO • Police • Teaching</p>
-                <div className="combo-price">₹199</div>
-                <div className="combo-access">✅ 365 दिन का Full Access</div>
-                <button className="open-btn combo-btn" onClick={() => buyCombo()} disabled={paymentLoading || comboUnlocked}>
-                  {comboUnlocked ? "✅ Combo Unlocked" : paymentLoading ? "⏳ Payment शुरू हो रहा है..." : "💳 ₹199 Combo खरीदें →"}
-                </button>
-              </div>
 
               <div className="section-title">
 
@@ -1235,11 +974,15 @@ export default function App() {
                         </p>
 
                         <div className="price">
-                          {Number(test.testNumber) === 1 ? "FREE" : isSeriesUnlocked(selectedExam.id) ? "UNLOCKED" : `₹${SERIES_PRICE}`}
+                          ₹99
                         </div>
 
-                        <button onClick={() => openTest(test)}>
-                          {Number(test.testNumber) === 1 || isSeriesUnlocked(selectedExam.id) ? "Start Test" : "🔐 Unlock / Start"}
+                        <button
+                          onClick={() =>
+                            openTest(test)
+                          }
+                        >
+                          Start Test
                         </button>
 
                       </div>
@@ -1249,16 +992,6 @@ export default function App() {
 
               </div>
 
-
-              {Object.entries(publicTests).some(([, test]) => test.exam === selectedExam.id && Number(test.testNumber) > 1) && !isSeriesUnlocked(selectedExam.id) && (
-                <div className="series-unlock-box">
-                  <strong>🔐 Test 2 और आगे के लिए Full Series Access</strong>
-                  <span>₹{SERIES_PRICE} में 365 दिन का Access</span>
-                  <button className="primary" onClick={() => buyTestSeries(selectedExam)} disabled={paymentLoading}>
-                    {paymentLoading ? "⏳ Payment..." : `💳 ₹${SERIES_PRICE} में Series Unlock करें`}
-                  </button>
-                </div>
-              )}
 
               {Object.entries(
                 publicTests
@@ -1448,14 +1181,6 @@ export default function App() {
 
               </div>
 
-              <div className="blue-box">
-                <h2>🤖 AI Current Affairs Quiz</h2>
-                <p>Gemini से आज के Current Affairs MCQ तैयार करें।</p>
-                <button className="primary" onClick={generateCurrentAffairs} disabled={currentLoading}>{currentLoading ? "⏳ तैयार हो रहा है..." : "Generate Current Affairs MCQ"}</button>
-                {currentError && <div className="notice">❌ {currentError}</div>}
-                {currentQuestions.length > 0 && <div className="ai-results">{currentQuestions.map((q,i)=><div className="ai-question-card" key={i}><h3>{i+1}. {q.question || q.questionText || q.text}</h3><div>{(q.options||[]).slice(0,4).map((o,j)=><div className="ai-option" key={j}><b>{String.fromCharCode(65+j)}.</b> {o}</div>)}</div></div>)}</div>}
-              </div>
-
             </>
 
           )}
@@ -1466,43 +1191,90 @@ export default function App() {
           ================================================= */}
 
           {page === "mcq" && (
+
             <>
-              <button className="back" onClick={goHome}>← Home</button>
+
+              <button
+                className="back"
+                onClick={goHome}
+              >
+                ← Home
+              </button>
+
               <div className="page-title">
-                <div className="big-icon">🤖</div>
-                <h1>AI MCQ Generator</h1>
-                <p>Gemini AI से परीक्षा और विषय के अनुसार MCQ तैयार करें</p>
-              </div>
-              <div className="question-box ai-generator-box">
-                <label>परीक्षा</label>
-                <select className="full-input" value={aiExam} onChange={(e) => setAiExam(e.target.value)}>
-                  {exams.map((exam) => <option key={exam.id} value={exam.name}>{exam.name}</option>)}
-                </select>
-                <label>विषय</label>
-                <input className="full-input" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="जैसे: सिंधु घाटी सभ्यता" />
-                <label>Questions</label>
-                <select className="full-input" value={aiCount} onChange={(e) => setAiCount(Number(e.target.value))}>
-                  {[5,10,15,20].map((n) => <option key={n} value={n}>{n} Questions</option>)}
-                </select>
-                <button className="primary" onClick={generateAIMCQ} disabled={aiLoading}>
-                  {aiLoading ? "⏳ Gemini MCQ बना रहा है..." : "🤖 MCQ Generate करें"}
-                </button>
-                {aiError && <div className="notice">❌ {aiError}</div>}
-              </div>
-              {aiQuestions.length > 0 && (
-                <div className="ai-results">
-                  <h2>Generated MCQ</h2>
-                  {aiQuestions.map((q, i) => (
-                    <div className="ai-question-card" key={i}>
-                      <h3>{i + 1}. {q.question || q.questionText || q.text}</h3>
-                      <div>{(q.options || []).slice(0,4).map((o,j) => <div className="ai-option" key={j}><b>{String.fromCharCode(65+j)}.</b> {o}</div>)}</div>
-                      {(q.answer || q.explanation) && <div className="ai-answer"><b>उत्तर:</b> {q.answer ?? ""}<br/>{q.explanation && <><b>व्याख्या:</b> {q.explanation}</>}</div>}
-                    </div>
-                  ))}
+
+                <div className="big-icon">
+                  🤖
                 </div>
-              )}
+
+                <h1>
+                  AI MCQ Generator
+                </h1>
+
+                <p>
+                  विषय और परीक्षा के अनुसार
+                  MCQ तैयार करें
+                </p>
+
+              </div>
+
+
+              <div className="question-box">
+
+                <h3>
+                  विषय चुनें
+                </h3>
+
+                <select className="full-input">
+
+                  <option>
+                    History
+                  </option>
+
+                  <option>
+                    Geography
+                  </option>
+
+                  <option>
+                    Polity
+                  </option>
+
+                  <option>
+                    Economy
+                  </option>
+
+                  <option>
+                    Science
+                  </option>
+
+                  <option>
+                    Current Affairs
+                  </option>
+
+                </select>
+
+
+                <button
+                  className="primary"
+                >
+                  🤖 MCQ Generate करें
+                </button>
+
+
+                <div className="notice">
+
+                  Gemini API जोड़ने के बाद
+                  यहाँ AI से वास्तविक MCQ
+                  Generate होंगे।
+
+                </div>
+
+              </div>
+
             </>
+
           )}
+
         </main>
 
 
@@ -1866,15 +1638,16 @@ function AdminPanel({
   const [title, setTitle] = useState("UPPCS Test 01");
   const [status, setStatus] = useState("draft");
 
-  // Question Form + Question JSON — दोनों modes उपलब्ध
+  // Question Form + Question JSON दोनों उपलब्ध रहेंगे
   const [questions, setQuestions] = useState([
     createEmptyQuestion(1),
   ]);
-  const [questionEditorMode, setQuestionEditorMode] = useState("form");
-  const [questionJsonDraft, setQuestionJsonDraft] = useState(() =>
+
+  const [questionsJson, setQuestionsJson] = useState(
     JSON.stringify([createEmptyQuestion(1)], null, 2)
   );
 
+  const [questionEditorMode, setQuestionEditorMode] = useState("form");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1886,11 +1659,6 @@ function AdminPanel({
   useEffect(() => {
     if (Array.isArray(resources) && resources.length) setResourceDraft(resources);
   }, [resources]);
-
-  // Form में बदलाव होते ही JSON view को भी update रखें।
-  useEffect(() => {
-    setQuestionJsonDraft(JSON.stringify(questions, null, 2));
-  }, [questions]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -1910,76 +1678,93 @@ function AdminPanel({
   }
 
   const updateQuestion = (index, field, value) => {
-    setQuestions((prev) =>
-      prev.map((q, i) =>
+    setQuestions((prev) => {
+      const updated = prev.map((q, i) =>
         i === index ? { ...q, [field]: value } : q
-      )
-    );
+      );
+      setQuestionsJson(JSON.stringify(updated, null, 2));
+      return updated;
+    });
   };
 
   const updateOption = (questionIndex, optionIndex, value) => {
-    setQuestions((prev) =>
-      prev.map((q, i) => {
+    setQuestions((prev) => {
+      const updated = prev.map((q, i) => {
         if (i !== questionIndex) return q;
         const options = [...(q.options || ["", "", "", ""])];
         options[optionIndex] = value;
         return { ...q, options };
-      })
-    );
+      });
+      setQuestionsJson(JSON.stringify(updated, null, 2));
+      return updated;
+    });
   };
 
-  const normalizeEditorQuestion = (q, index) => {
-    let options = q?.options;
-    if (!Array.isArray(options) && options && typeof options === "object") {
-      options = [options.A, options.B, options.C, options.D];
-    }
-    options = Array.isArray(options) ? options.slice(0, 4) : ["", "", "", ""];
-    while (options.length < 4) options.push("");
-
-    return {
-      id: index + 1,
-      question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
-      options: options.map((x) => String(x ?? "")),
-      answer: q?.answer ?? 0,
-      explanation: String(q?.explanation ?? ""),
-    };
+  const syncQuestionsToJson = (items) => {
+    setQuestionsJson(JSON.stringify(items, null, 2));
   };
 
-  const applyQuestionJson = () => {
+  const applyQuestionsJson = () => {
     try {
-      const parsed = JSON.parse(questionJsonDraft);
-      const rawQuestions = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray(parsed?.questions)
-        ? parsed.questions
-        : null;
+      const parsed = JSON.parse(questionsJson);
 
-      if (!rawQuestions) {
-        throw new Error('JSON में array या {"questions": [...]} होना चाहिए।');
+      if (!Array.isArray(parsed)) {
+        alert("Question JSON में array होना चाहिए।");
+        return;
       }
 
-      if (!rawQuestions.length) {
-        throw new Error("कम से कम 1 Question होना चाहिए।");
+      if (parsed.length === 0) {
+        alert("कम से कम 1 Question होना चाहिए।");
+        return;
       }
 
-      if (rawQuestions.length > 150) {
-        throw new Error("अधिकतम 150 Questions ही जोड़े जा सकते हैं।");
+      if (parsed.length > 150) {
+        alert("अधिकतम 150 Questions ही रख सकते हैं।");
+        return;
       }
 
-      const formatted = rawQuestions.map(normalizeEditorQuestion);
+      const formatted = parsed.map((q, index) => {
+        const rawAnswer = q?.answer;
+
+        let answer = 0;
+        if (typeof rawAnswer === "string") {
+          const normalized = rawAnswer.trim().toUpperCase();
+          if (["A", "B", "C", "D"].includes(normalized)) {
+            answer = normalized.charCodeAt(0) - 65;
+          } else if (/^[0-3]$/.test(normalized)) {
+            answer = Number(normalized);
+          }
+        } else if (Number.isFinite(Number(rawAnswer))) {
+          answer = Number(rawAnswer);
+        }
+
+        return {
+          id: index + 1,
+          question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
+          options: [
+            String(q?.options?.[0] ?? ""),
+            String(q?.options?.[1] ?? ""),
+            String(q?.options?.[2] ?? ""),
+            String(q?.options?.[3] ?? ""),
+          ],
+          answer: Math.max(0, Math.min(3, answer)),
+          explanation: String(q?.explanation ?? ""),
+        };
+      });
+
       setQuestions(formatted);
       setCurrentQuestion(0);
-      setQuestionJsonDraft(JSON.stringify(formatted, null, 2));
-      setMessage(`✅ JSON से ${formatted.length} Questions load हो गए।`);
       setQuestionEditorMode("form");
+      setMessage(`✅ ${formatted.length} Questions JSON से Form में आ गए।`);
     } catch (error) {
-      alert("❌ Question JSON सही नहीं है।\n\n" + (error?.message || "JSON जाँचें।"));
+      alert("Question JSON सही नहीं है।\n\n" + error.message);
     }
   };
 
-  const showQuestionJson = () => {
-    setQuestionJsonDraft(JSON.stringify(questions, null, 2));
+  const loadQuestionsJsonFromForm = () => {
+    setQuestionsJson(JSON.stringify(questions, null, 2));
     setQuestionEditorMode("json");
+    setMessage("📋 Question Form का JSON तैयार है।");
   };
 
   const addQuestion = () => {
@@ -1989,10 +1774,11 @@ function AdminPanel({
     }
 
     const nextIndex = questions.length;
-    setQuestions((prev) => [
-      ...prev,
-      createEmptyQuestion(nextIndex + 1),
-    ]);
+    setQuestions((prev) => {
+      const updated = [...prev, createEmptyQuestion(nextIndex + 1)];
+      setQuestionsJson(JSON.stringify(updated, null, 2));
+      return updated;
+    });
     setCurrentQuestion(nextIndex);
     setMessage(`➕ प्रश्न ${nextIndex + 1} जोड़ दिया गया।`);
 
@@ -2019,6 +1805,7 @@ function AdminPanel({
       .map((q, i) => ({ ...q, id: i + 1 }));
 
     setQuestions(updated);
+    setQuestionsJson(JSON.stringify(updated, null, 2));
     setCurrentQuestion(Math.min(index, updated.length - 1));
     setMessage("🗑️ प्रश्न delete हो गया।");
   };
@@ -2030,12 +1817,22 @@ function AdminPanel({
     setStatus(data.status || "draft");
 
     const loaded = Array.isArray(data.questions) ? data.questions : [];
-    const formatted = loaded.slice(0, 150).map(normalizeEditorQuestion);
+    const formatted = loaded.slice(0, 150).map((q, index) => ({
+      id: index + 1,
+      question: q?.question ?? q?.questionText ?? q?.text ?? "",
+      options: [
+        q?.options?.[0] ?? "",
+        q?.options?.[1] ?? "",
+        q?.options?.[2] ?? "",
+        q?.options?.[3] ?? "",
+      ],
+      answer: Number.isFinite(Number(q?.answer)) ? Number(q.answer) : 0,
+      explanation: q?.explanation ?? "",
+    }));
 
     const finalQuestions = formatted.length ? formatted : [createEmptyQuestion(1)];
     setQuestions(finalQuestions);
-    setQuestionJsonDraft(JSON.stringify(finalQuestions, null, 2));
-    setQuestionEditorMode("form");
+    setQuestionsJson(JSON.stringify(finalQuestions, null, 2));
     setCurrentQuestion(0);
     setMessage(`✏️ ${data.title || id} edit mode में खुल गया।`);
 
@@ -2049,7 +1846,7 @@ function AdminPanel({
     setStatus("draft");
     const emptyQuestions = [createEmptyQuestion(1)];
     setQuestions(emptyQuestions);
-    setQuestionJsonDraft(JSON.stringify(emptyQuestions, null, 2));
+    setQuestionsJson(JSON.stringify(emptyQuestions, null, 2));
     setQuestionEditorMode("form");
     setCurrentQuestion(0);
     setMessage("📝 नया Test तैयार है।");
@@ -2099,13 +1896,88 @@ function AdminPanel({
       return;
     }
 
+    if (questionEditorMode === "json") {
+      try {
+        const parsed = JSON.parse(questionsJson);
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          alert("कम से कम 1 Question वाला JSON होना चाहिए।");
+          return;
+        }
+        if (parsed.length > 150) {
+          alert("अधिकतम 150 Questions ही save किए जा सकते हैं।");
+          return;
+        }
+
+        const normalized = parsed.map((q, index) => {
+          let answer = Number(q?.answer);
+          if (typeof q?.answer === "string") {
+            const a = q.answer.trim().toUpperCase();
+            answer = ["A", "B", "C", "D"].includes(a)
+              ? a.charCodeAt(0) - 65
+              : Number(a);
+          }
+
+          return {
+            id: index + 1,
+            question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
+            options: [
+              String(q?.options?.[0] ?? ""),
+              String(q?.options?.[1] ?? ""),
+              String(q?.options?.[2] ?? ""),
+              String(q?.options?.[3] ?? ""),
+            ],
+            answer: Math.max(0, Math.min(3, Number.isFinite(answer) ? answer : 0)),
+            explanation: String(q?.explanation ?? ""),
+          };
+        });
+
+        setQuestions(normalized);
+        setQuestionsJson(JSON.stringify(normalized, null, 2));
+      } catch (error) {
+        alert("Question JSON सही नहीं है।\n\n" + error.message);
+        return;
+      }
+    }
+
     if (!validateQuestions()) return;
 
-    const cleanQuestions = questions.map((q, index) => ({
+    let sourceQuestions = questions;
+
+    if (questionEditorMode === "json") {
+      try {
+        const parsed = JSON.parse(questionsJson);
+        sourceQuestions = parsed.map((q, index) => {
+          let answer = Number(q?.answer);
+          if (typeof q?.answer === "string") {
+            const a = q.answer.trim().toUpperCase();
+            answer = ["A", "B", "C", "D"].includes(a)
+              ? a.charCodeAt(0) - 65
+              : Number(a);
+          }
+          return {
+            id: index + 1,
+            question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
+            options: [
+              String(q?.options?.[0] ?? ""),
+              String(q?.options?.[1] ?? ""),
+              String(q?.options?.[2] ?? ""),
+              String(q?.options?.[3] ?? ""),
+            ],
+            answer: Math.max(0, Math.min(3, Number.isFinite(answer) ? answer : 0)),
+            explanation: String(q?.explanation ?? ""),
+          };
+        });
+      } catch (error) {
+        alert("Question JSON सही नहीं है।\n\n" + error.message);
+        return;
+      }
+    }
+
+    const cleanQuestions = sourceQuestions.map((q, index) => ({
       id: index + 1,
       question: q.question.trim(),
       options: q.options.slice(0, 4).map((option) => option.trim()),
-      answer: getCorrectIndex(q),
+      answer: Number(q.answer),
       explanation: q.explanation?.trim() || "",
     }));
 
@@ -2259,156 +2131,385 @@ function AdminPanel({
             QUESTION EDITOR — FORM + JSON दोनों
         ================================================== */}
         <div className="questions-editor" id="question-editor">
-          <div className="admin-title-row" style={{ marginBottom: 15 }}>
-            <div>
-              <h2>📚 Questions</h2>
-              <p className="small-text">
-                कुल {questions.length} / 150 प्रश्न — नीचे से Form या JSON दोनों में काम करें।
-              </p>
-            </div>
 
-            <div className="question-editor-tabs">
-              <button
-                type="button"
-                className={questionEditorMode === "form" ? "editor-tab active" : "editor-tab"}
-                onClick={() => setQuestionEditorMode("form")}
-              >
-                📝 Question Form
-              </button>
-              <button
-                type="button"
-                className={questionEditorMode === "json" ? "editor-tab active" : "editor-tab"}
-                onClick={showQuestionJson}
-              >
-                {"{ }"} Question JSON
-              </button>
-            </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              marginBottom: 18,
+              padding: 8,
+              borderRadius: 12,
+              background: "#eef2ff",
+              border: "1px solid #c7d2fe",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setQuestionEditorMode("form")}
+              style={{
+                border: 0,
+                borderRadius: 8,
+                padding: "11px 16px",
+                cursor: "pointer",
+                fontWeight: 800,
+                background: questionEditorMode === "form" ? "#2563eb" : "#fff",
+                color: questionEditorMode === "form" ? "#fff" : "#1e3a8a",
+              }}
+            >
+              📝 Question Form
+            </button>
+
+            <button
+              type="button"
+              onClick={loadQuestionsJsonFromForm}
+              style={{
+                border: 0,
+                borderRadius: 8,
+                padding: "11px 16px",
+                cursor: "pointer",
+                fontWeight: 800,
+                background: questionEditorMode === "json" ? "#7c3aed" : "#fff",
+                color: questionEditorMode === "json" ? "#fff" : "#5b21b6",
+              }}
+            >
+              {"{ }"} Question JSON
+            </button>
           </div>
 
           {questionEditorMode === "json" ? (
-            <div className="question-json-editor">
-              <div className="json-help">
-                <strong>Question JSON</strong> — आप पूरा JSON paste कर सकते हैं।
-                <br />
-                Format: <code>[&#123; question, options, answer, explanation &#125;]</code> या <code>&#123; questions: [...] &#125;</code>
-                <br />
-                <b>answer</b> में 0/1/2/3 या A/B/C/D दोनों चलेंगे।
+            <div
+              style={{
+                border: "1px solid #c4b5fd",
+                borderRadius: 14,
+                padding: 20,
+                background: "#faf5ff",
+              }}
+            >
+              <div className="admin-title-row" style={{ marginBottom: 12 }}>
+                <div>
+                  <h2 style={{ marginBottom: 4 }}>{"{ }"} Question JSON</h2>
+                  <p className="small-text">
+                    सीधे JSON paste करें। Answer में 0-3 या A-D दोनों मान्य हैं।
+                  </p>
+                </div>
               </div>
 
               <textarea
-                value={questionJsonDraft}
-                onChange={(e) => setQuestionJsonDraft(e.target.value)}
+                value={questionsJson}
+                onChange={(e) => setQuestionsJson(e.target.value)}
                 spellCheck={false}
-                placeholder='[{"question":"...","options":["A","B","C","D"],"answer":"A","explanation":"..."}]'
+                placeholder={`[
+  {
+    "question": "सिंधु घाटी सभ्यता का प्रमुख बंदरगाह कौन-सा था?",
+    "options": ["हड़प्पा", "लोथल", "कालीबंगा", "मोहनजोदड़ो"],
+    "answer": "B",
+    "explanation": "लोथल गुजरात में स्थित एक प्रमुख बंदरगाह था।"
+  }
+]`}
+                style={{
+                  width: "100%",
+                  minHeight: 420,
+                  padding: 14,
+                  boxSizing: "border-box",
+                  borderRadius: 10,
+                  border: "1px solid #c4b5fd",
+                  fontSize: 15,
+                  fontFamily: "Consolas, Monaco, monospace",
+                  lineHeight: 1.5,
+                  background: "#fff",
+                  resize: "vertical",
+                }}
               />
 
-              <div className="admin-actions">
-                <button type="button" className="save-btn" onClick={applyQuestionJson}>
-                  ✅ JSON Apply करें
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                  marginTop: 14,
+                }}
+              >
+                <button
+                  type="button"
+                  className="save-btn"
+                  onClick={applyQuestionsJson}
+                >
+                  ✅ JSON Apply करके Form में लाएँ
                 </button>
+
                 <button
                   type="button"
                   className="secondary-btn"
-                  onClick={() => setQuestionJsonDraft(JSON.stringify(questions, null, 2))}
+                  onClick={() => setQuestionsJson(JSON.stringify(questions, null, 2))}
                 >
-                  ↻ Current Questions से JSON भरें
+                  🔄 Form से JSON बनाएं
                 </button>
+
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setQuestionEditorMode("form")}
+                >
+                  📝 Question Form खोलें
+                </button>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: 12,
+                  borderRadius: 10,
+                  background: "#fff",
+                  border: "1px solid #ddd6fe",
+                  lineHeight: 1.6,
+                }}
+              >
+                <strong>JSON format:</strong>{" "}
+                <code>question</code>, <code>options</code>,{" "}
+                <code>answer</code>, <code>explanation</code>.
+                <br />
+                <strong>Answer:</strong> <code>"A"</code>, <code>"B"</code>,{" "}
+                <code>"C"</code>, <code>"D"</code> या <code>0</code>,{" "}
+                <code>1</code>, <code>2</code>, <code>3</code>.
               </div>
             </div>
           ) : (
-            <>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-                {questions.map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCurrentQuestion(index)}
+          <div className="admin-title-row" style={{ marginBottom: 15 }}>
+            <div>
+              <h2>📚 Question Form</h2>
+              <p className="small-text">
+                कुल {questions.length} / 150 प्रश्न
+              </p>
+            </div>
+
+            <button
+              className="secondary-btn"
+              onClick={addQuestion}
+              disabled={questions.length >= 150}
+            >
+              {questions.length >= 150
+                ? "✓ 150 Questions"
+                : "＋ Add Question"}
+            </button>
+          </div>
+
+          {/* Question navigation */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 20,
+            }}
+          >
+            {questions.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setCurrentQuestion(index)}
+                style={{
+                  width: 40,
+                  height: 40,
+                  border: 0,
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  background:
+                    currentQuestion === index ? "#16a34a" : "#2563eb",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #dbeafe",
+              borderRadius: 14,
+              padding: 20,
+              background: "#f8fafc",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ margin: 0 }}>
+                प्रश्न {currentQuestion + 1}
+              </h3>
+
+              <button
+                type="button"
+                className="danger-btn"
+                onClick={() => deleteQuestion(currentQuestion)}
+              >
+                🗑️ Delete Question
+              </button>
+            </div>
+
+            <label style={{ display: "block", marginTop: 18 }}>
+              प्रश्न
+            </label>
+            <textarea
+              value={question.question}
+              onChange={(e) =>
+                updateQuestion(currentQuestion, "question", e.target.value)
+              }
+              placeholder="यहाँ प्रश्न लिखें..."
+              style={{
+                width: "100%",
+                minHeight: 110,
+                marginTop: 8,
+                padding: 12,
+                boxSizing: "border-box",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                fontSize: 17,
+                fontFamily: "inherit",
+              }}
+            />
+
+            <h3 style={{ marginTop: 22 }}>विकल्प</h3>
+
+            {question.options.map((option, index) => (
+              <div key={index} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <strong
                     style={{
-                      width: 40,
-                      height: 40,
+                      minWidth: 32,
+                      fontSize: 18,
+                    }}
+                  >
+                    {String.fromCharCode(65 + index)}.
+                  </strong>
+
+                  <input
+                    value={option}
+                    onChange={(e) =>
+                      updateOption(
+                        currentQuestion,
+                        index,
+                        e.target.value
+                      )
+                    }
+                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 16,
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateQuestion(currentQuestion, "answer", index)
+                    }
+                    style={{
+                      padding: "10px 12px",
                       border: 0,
                       borderRadius: 8,
                       cursor: "pointer",
-                      background: currentQuestion === index ? "#16a34a" : "#2563eb",
-                      color: "white",
-                      fontWeight: 800,
+                      background:
+                        Number(question.answer) === index
+                          ? "#16a34a"
+                          : "#e2e8f0",
+                      color:
+                        Number(question.answer) === index
+                          ? "#fff"
+                          : "#334155",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ border: "1px solid #dbeafe", borderRadius: 14, padding: 20, background: "#f8fafc" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <h3 style={{ margin: 0 }}>प्रश्न {currentQuestion + 1}</h3>
-                  <button type="button" className="danger-btn" onClick={() => deleteQuestion(currentQuestion)}>
-                    🗑️ Delete Question
-                  </button>
-                </div>
-
-                <label style={{ display: "block", marginTop: 18 }}>प्रश्न</label>
-                <textarea
-                  value={question.question}
-                  onChange={(e) => updateQuestion(currentQuestion, "question", e.target.value)}
-                  placeholder="यहाँ प्रश्न लिखें..."
-                  style={{ width: "100%", minHeight: 110, marginTop: 8, padding: 12, boxSizing: "border-box", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 17, fontFamily: "inherit" }}
-                />
-
-                <h3 style={{ marginTop: 22 }}>विकल्प</h3>
-                {question.options.map((option, index) => (
-                  <div key={index} style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <strong style={{ minWidth: 32, fontSize: 18 }}>{String.fromCharCode(65 + index)}.</strong>
-                      <input
-                        value={option}
-                        onChange={(e) => updateOption(currentQuestion, index, e.target.value)}
-                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                        style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 16 }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateQuestion(currentQuestion, "answer", index)}
-                        style={{
-                          padding: "10px 12px", border: 0, borderRadius: 8, cursor: "pointer",
-                          background: getCorrectIndex(question) === index ? "#16a34a" : "#e2e8f0",
-                          color: getCorrectIndex(question) === index ? "#fff" : "#334155",
-                          fontWeight: 700, whiteSpace: "nowrap"
-                        }}
-                      >
-                        {getCorrectIndex(question) === index ? "✓ सही उत्तर" : "सही चुनें"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                <label style={{ display: "block", marginTop: 22 }}>व्याख्या</label>
-                <textarea
-                  value={question.explanation}
-                  onChange={(e) => updateQuestion(currentQuestion, "explanation", e.target.value)}
-                  placeholder="सही उत्तर की व्याख्या लिखें..."
-                  style={{ width: "100%", minHeight: 120, marginTop: 8, padding: 12, boxSizing: "border-box", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 16, fontFamily: "inherit" }}
-                />
-
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 20 }}>
-                  <button type="button" className="secondary-btn" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>
-                    ← पिछला
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => {
-                      if (currentQuestion < questions.length - 1) setCurrentQuestion((value) => value + 1);
-                      else addQuestion();
-                    }}
-                  >
-                    {currentQuestion < questions.length - 1 ? "अगला →" : "＋ नया प्रश्न"}
+                    {Number(question.answer) === index
+                      ? "✓ सही उत्तर"
+                      : "सही चुनें"}
                   </button>
                 </div>
               </div>
-            </>
-          )}
+            ))}
+
+            <label style={{ display: "block", marginTop: 22 }}>
+              व्याख्या
+            </label>
+            <textarea
+              value={question.explanation}
+              onChange={(e) =>
+                updateQuestion(
+                  currentQuestion,
+                  "explanation",
+                  e.target.value
+                )
+              }
+              placeholder="सही उत्तर की व्याख्या लिखें..."
+              style={{
+                width: "100%",
+                minHeight: 120,
+                marginTop: 8,
+                padding: 12,
+                boxSizing: "border-box",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                fontSize: 16,
+                fontFamily: "inherit",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={currentQuestion === 0}
+                onClick={() =>
+                  setCurrentQuestion((value) => Math.max(0, value - 1))
+                }
+              >
+                ← पिछला
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  if (currentQuestion < questions.length - 1) {
+                    setCurrentQuestion((value) => value + 1);
+                  } else {
+                    addQuestion();
+                  }
+                }}
+              >
+                {currentQuestion < questions.length - 1
+                  ? "अगला →"
+                  : "＋ नया प्रश्न"}
+              </button>
+            </div>
+          </div>
         </div>
+          )}
 
         <div className="admin-actions">
           <button className="save-btn" disabled={saving} onClick={saveTest}>
@@ -3251,58 +3352,6 @@ button:disabled {
   line-height: 1.5;
 }
 
-.question-editor-tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.editor-tab {
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #334155;
-  padding: 10px 14px;
-  border-radius: 9px;
-  font-weight: 800;
-}
-
-.editor-tab.active {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-
-.question-json-editor textarea {
-  width: 100%;
-  min-height: 500px;
-  resize: vertical;
-  padding: 15px;
-  border: 1px solid #94a3b8;
-  border-radius: 12px;
-  background: #0f172a;
-  color: #e2e8f0;
-  font-family: Consolas, monospace;
-  font-size: 14px;
-  line-height: 1.55;
-  box-sizing: border-box;
-}
-
-.json-help {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  color: #1e3a8a;
-  line-height: 1.7;
-}
-
-.json-help code {
-  background: #dbeafe;
-  padding: 2px 5px;
-  border-radius: 5px;
-}
-
 .admin-actions {
   display: flex;
   gap: 10px;
@@ -3418,14 +3467,6 @@ button:disabled {
 }
 
 @media(max-width: 650px) {
-
-  .question-editor-tabs {
-    width: 100%;
-  }
-
-  .editor-tab {
-    flex: 1 1 180px;
-  }
 
   .header-inner {
     flex-direction: column;
@@ -3906,6 +3947,6 @@ body,
   width: 100%;
 }
 
-.resource-admin-list{display:flex;flex-direction:column;gap:14px}.resource-admin-row{display:flex;gap:14px;align-items:flex-start;border:1px solid #dbe3ee;border-radius:14px;padding:15px;background:#f8fafc}.resource-admin-number{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:#2563eb;color:#fff;font-weight:800}.resource-admin-fields{flex:1;min-width:0;display:grid;grid-template-columns:90px minmax(0,1fr) minmax(220px,260px);gap:12px;align-items:end}.resource-admin-fields .full{grid-column:1/-1}.resource-admin-fields input:not([type=checkbox]),.resource-admin-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.resource-admin-toggle{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.resource-admin-toggle input{width:18px;height:18px}@media(max-width:760px){.resource-admin-row{flex-direction:column}.resource-admin-fields{width:100%;grid-template-columns:1fr}.resource-admin-fields .full{grid-column:auto}.resource-admin-toggle{white-space:normal}}\n\n/* LOGIN MODAL */\n.login-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}\n.login-modal{width:min(440px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative;text-align:center}\n.login-modal-close{position:absolute;right:12px;top:10px;border:0;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:18px}\n.google-login-btn,.phone-login-btn{width:100%;border:0;border-radius:10px;padding:12px;margin-top:10px;font-weight:800;font-size:15px}\n.google-login-btn{background:#111827;color:#fff}.phone-login-btn{background:#1264d8;color:#fff}\n.phone-login-input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;margin-top:10px;font-size:16px;box-sizing:border-box}\n.login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:#64748b}.login-divider:before,.login-divider:after{content:"";height:1px;background:#e2e8f0;flex:1}\n.combo-card{margin:20px 0 28px;padding:22px;border-radius:16px;background:linear-gradient(135deg,#fff7ed,#fef3c7);border:2px solid #f59e0b;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.08)}\n.combo-icon{font-size:30px}.combo-card h2{margin:4px 0 8px;color:#b45309}.combo-card p{margin:5px auto 12px;max-width:900px;color:#92400e;font-size:13px;line-height:1.6}.combo-price{font-size:34px;font-weight:900;color:#dc2626}.combo-access{font-size:13px;font-weight:800;color:#166534;margin:6px 0 10px}.combo-btn{max-width:330px}.series-unlock-box{margin:18px 0;padding:18px;border-radius:14px;background:#eff6ff;border:1px solid #93c5fd;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}.series-unlock-box span{font-weight:800;color:#b91c1c}.ai-generator-box{display:grid;gap:10px}.ai-generator-box label{text-align:left;font-weight:800;margin-top:5px}.ai-results{max-width:900px;margin:20px auto}.ai-question-card{background:#fff;border:1px solid #dbe3ee;border-radius:14px;padding:18px;margin-bottom:14px}.ai-question-card h3{line-height:1.5;margin-top:0}.ai-option{padding:9px 10px;background:#f8fafc;border-radius:8px;margin:6px 0}.ai-answer{margin-top:12px;padding:12px;background:#eff6ff;border-radius:9px;line-height:1.6}\n@media(max-width:600px){.login-modal{padding:22px 16px}.combo-card{padding:18px 12px}.series-unlock-box{align-items:stretch;flex-direction:column}.series-unlock-box .primary{margin-top:0}.ai-question-card{padding:14px}}\n
+.resource-admin-list{display:flex;flex-direction:column;gap:14px}.resource-admin-row{display:flex;gap:14px;align-items:flex-start;border:1px solid #dbe3ee;border-radius:14px;padding:15px;background:#f8fafc}.resource-admin-number{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:#2563eb;color:#fff;font-weight:800}.resource-admin-fields{flex:1;min-width:0;display:grid;grid-template-columns:90px minmax(0,1fr) minmax(220px,260px);gap:12px;align-items:end}.resource-admin-fields .full{grid-column:1/-1}.resource-admin-fields input:not([type=checkbox]),.resource-admin-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.resource-admin-toggle{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.resource-admin-toggle input{width:18px;height:18px}@media(max-width:760px){.resource-admin-row{flex-direction:column}.resource-admin-fields{width:100%;grid-template-columns:1fr}.resource-admin-fields .full{grid-column:auto}.resource-admin-toggle{white-space:normal}}
 
 `;
