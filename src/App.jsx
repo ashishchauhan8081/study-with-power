@@ -5,9 +5,7 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  RecaptchaVerifier,
   signInWithPopup,
-  signInWithPhoneNumber,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -191,32 +189,70 @@ function testId(examId, number) {
   return `${examId}_test_${number}`;
 }
 
-const MAX_TEST_QUESTIONS = 150;
-
 function normalizeQuestions(questions) {
   if (!Array.isArray(questions)) {
     return [];
   }
 
-  return questions
-    .slice(0, MAX_TEST_QUESTIONS)
-    .map((q, index) => ({
-      id: q.id ?? index + 1,
-      question:
-        q.question ??
-        q.questionText ??
-        q.text ??
-        "",
-      options: Array.isArray(q.options)
-        ? q.options.slice(0, 4)
-        : ["", "", "", ""],
-      answer:
-        typeof q.answer === "number"
-          ? q.answer
-          : Number(q.answer ?? 0),
-      explanation:
-        q.explanation ?? "",
-    }));
+  return questions.map((q, index) => ({
+    id: q?.id ?? index + 1,
+    question: q?.question ?? q?.questionText ?? q?.text ?? "",
+    options: Array.isArray(q?.options) ? q.options.slice(0, 4) : ["", "", "", ""],
+    // answer को raw रूप में रखें। Firebase में यह 0/1/2/3, A/B/C/D,
+    // option text, या "भाग I/भाग II..." हो सकता है।
+    answer: q?.answer,
+    explanation: q?.explanation ?? "",
+  }));
+}
+
+// Firebase के अलग-अलग answer formats को option index (0-3) में बदलता है।
+function getCorrectIndex(question) {
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const answer = question?.answer;
+
+  if (!options.length || answer === undefined || answer === null) return -1;
+
+  if (typeof answer === "number" && Number.isInteger(answer)) {
+    if (answer >= 0 && answer < options.length) return answer;
+    if (answer >= 1 && answer <= options.length) return answer - 1;
+  }
+
+  const raw = String(answer).trim();
+  if (!raw) return -1;
+
+  // "0", "1", "2", "3" या "1", "2", "3", "4"
+  if (/^\d+$/.test(raw)) {
+    const n = Number(raw);
+    if (n >= 0 && n < options.length) return n;
+    if (n >= 1 && n <= options.length) return n - 1;
+  }
+
+  // "A", "A.", "A) Option text" आदि
+  const letterMatch = raw.match(/^([ABCD])(?:\s*[.\):-]|\s*$)/i);
+  if (letterMatch) {
+    const idx = "ABCD".indexOf(letterMatch[1].toUpperCase());
+    if (idx >= 0 && idx < options.length) return idx;
+  }
+
+  // "भाग I", "भाग II", "भाग III", "भाग IV"
+  const partMatch = raw.match(/भाग\s*(I{1,3}|IV|V|1|2|3|4)\b/i);
+  if (partMatch) {
+    const part = partMatch[1].toUpperCase();
+    const map = { I: 0, II: 1, III: 2, IV: 3, V: 4, "1": 0, "2": 1, "3": 2, "4": 3 };
+    const idx = map[part];
+    if (idx !== undefined && idx < options.length) return idx;
+  }
+
+  // "A. option" से prefix हटाकर option text match करें।
+  const cleaned = raw.replace(/^[ABCD]\s*[.\):-]\s*/i, "").trim();
+  const exact = options.findIndex((option) => String(option ?? "").trim() === raw || String(option ?? "").trim() === cleaned);
+  if (exact >= 0) return exact;
+
+  // Case/space insensitive text match
+  const compact = (v) => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  const compactAnswer = compact(cleaned);
+  const loose = options.findIndex((option) => compact(option) === compactAnswer);
+  return loose >= 0 ? loose : -1;
 }
 
 
@@ -247,42 +283,6 @@ export default function App() {
   const [siteResources, setSiteResources] = useState(defaultResources);
 
   const [adminOpen, setAdminOpen] =
-    useState(false);
-
-  const [loginOpen, setLoginOpen] =
-    useState(false);
-
-  const [phoneNumber, setPhoneNumber] =
-    useState("");
-
-  const [otp, setOtp] =
-    useState("");
-
-  const [confirmationResult, setConfirmationResult] =
-    useState(null);
-
-  const [phoneLoading, setPhoneLoading] =
-    useState(false);
-
-  // जिस Test पर click किया गया है, उसे Login के बाद खोलेंगे
-  const [pendingTest, setPendingTest] =
-    useState(null);
-
-  const [pendingPurchase, setPendingPurchase] =
-    useState(null);
-
-  const [unlockedSeries, setUnlockedSeries] =
-    useState(() => {
-      try {
-        const saved = localStorage.getItem("swp_unlocked_test_series");
-        const parsed = saved ? JSON.parse(saved) : [];
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (error) {
-        return [];
-      }
-    });
-
-  const [paymentLoading, setPaymentLoading] =
     useState(false);
 
 
@@ -388,145 +388,6 @@ export default function App() {
 
 
   // ====================================================
-  // TEST SERIES PAYMENT - RAZORPAY
-  // ====================================================
-
-  const isSeriesUnlocked = (examId) =>
-    unlockedSeries.includes(examId);
-
-  const saveUnlockedSeries = (examId) => {
-    setUnlockedSeries((prev) => {
-      const next = prev.includes(examId) ? prev : [...prev, examId];
-      try {
-        localStorage.setItem(
-          "swp_unlocked_test_series",
-          JSON.stringify(next)
-        );
-      } catch (error) {
-        console.warn("Unlock save error:", error);
-      }
-      return next;
-    });
-  };
-
-  const loadRazorpay = () =>
-    new Promise((resolve, reject) => {
-      if (window.Razorpay) { resolve(); return; }
-      const src = "https://checkout.razorpay.com/v1/checkout.js";
-      const existing = document.querySelector(`script[src="${src}"]`);
-      if (existing) {
-        existing.addEventListener("load", resolve, { once: true });
-        existing.addEventListener("error", () => reject(new Error("Razorpay Checkout load नहीं हुआ।")), { once: true });
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = src;
-      script.async = true;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Razorpay Checkout load नहीं हुआ।"));
-      document.body.appendChild(script);
-    });
-
-  const buyTestSeries = async (exam, loggedInUser = null) => {
-    if (!exam) return;
-    if (isSeriesUnlocked(exam.id)) {
-      setSelectedExam(exam);
-      setSelectedTest(null);
-      setPage("tests");
-      return;
-    }
-
-    const currentUser = loggedInUser || user || auth.currentUser;
-    if (!currentUser) {
-      setPendingPurchase(exam);
-      setLoginOpen(true);
-      return;
-    }
-
-    try {
-      setPaymentLoading(true);
-      await loadRazorpay();
-
-      const orderResponse = await fetch(
-        "http://localhost:5000/api/payment/order",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: 49,
-            product: `${exam.name} Test Series`,
-            receipt: `swp_${exam.id}_${Date.now()}`.slice(0, 40),
-          }),
-        }
-      );
-
-      const orderData = await orderResponse.json();
-      if (!orderResponse.ok || !orderData?.order_id) {
-        throw new Error(orderData?.error || "Razorpay order नहीं बन सका।");
-      }
-
-      const checkout = new window.Razorpay({
-        key: orderData.key_id,
-        amount: orderData.amount,
-        currency: orderData.currency || "INR",
-        name: "Study With Power",
-        description: `${exam.name} Test Series`,
-        order_id: orderData.order_id,
-        prefill: {
-          name: currentUser.displayName || "",
-          email: currentUser.email || "",
-          contact: currentUser.phoneNumber || "",
-        },
-        theme: { color: "#2563eb" },
-        handler: async (paymentResponse) => {
-          try {
-            const verifyResponse = await fetch(
-              "http://localhost:5000/api/payment/verify",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  razorpay_order_id: paymentResponse.razorpay_order_id,
-                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                  razorpay_signature: paymentResponse.razorpay_signature,
-                }),
-              }
-            );
-
-            const verifyData = await verifyResponse.json();
-            if (!verifyResponse.ok || !verifyData?.success) {
-              throw new Error(verifyData?.error || "Payment verification failed.");
-            }
-
-            saveUnlockedSeries(exam.id);
-            setSelectedExam(exam);
-            setSelectedTest(null);
-            setPage("tests");
-            setPaymentLoading(false);
-            alert(`🎉 Payment सफल हुआ!\n\n${exam.name} Test Series अब Unlock है।`);
-          } catch (error) {
-            setPaymentLoading(false);
-            console.error("Payment Verify Error:", error);
-            alert(`❌ Payment verify नहीं हो सका।\n\n${error?.message || "कृपया फिर से प्रयास करें।"}`);
-          }
-        },
-        modal: { ondismiss: () => setPaymentLoading(false) },
-      });
-
-      checkout.on("payment.failed", (response) => {
-        setPaymentLoading(false);
-        alert(`❌ Payment असफल हुआ।\n\n${response?.error?.description || "कृपया फिर से प्रयास करें।"}`);
-      });
-      checkout.open();
-    } catch (error) {
-      setPaymentLoading(false);
-      console.error("Razorpay Payment Error:", error);
-      alert(`❌ Payment शुरू नहीं हो सका।\n\n${error?.message || "कृपया कुछ समय बाद फिर प्रयास करें।"}`);
-    }
-  };
-
-
-  // ====================================================
   // LOGIN
   // ====================================================
 
@@ -534,199 +395,23 @@ export default function App() {
 
     try {
 
-      await signInWithPopup(
+      const result = await signInWithPopup(
         auth,
         googleProvider
       );
 
-      setLoginOpen(false);
-
-      if (pendingPurchase) {
-        const examToBuy = pendingPurchase;
-        setPendingPurchase(null);
-        await buyTestSeries(examToBuy, auth.currentUser);
-        return;
-      }
-
-      if (pendingTest) {
-        const testToOpen = pendingTest;
-        setPendingTest(null);
-        if (Number(testToOpen.testNumber) === 1) {
-          setSelectedTest(testToOpen);
-          setPage("test");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else if (selectedExam && !isSeriesUnlocked(selectedExam.id)) {
-          await buyTestSeries(selectedExam, auth.currentUser);
-        } else {
-          setSelectedTest(testToOpen);
-          setPage("test");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-      }
+      return result.user;
 
     } catch (error) {
 
       console.error(error);
 
       alert(
-        "Gmail Login नहीं हुआ:\n" +
+        "Login नहीं हुआ:\n" +
         error.message
       );
 
-    }
-
-  };
-
-
-  const sendPhoneOTP = async () => {
-
-    if (!phoneNumber.trim()) {
-
-      alert("Mobile Number डालें।");
-      return;
-
-    }
-
-    const normalizedPhone =
-      phoneNumber.trim().startsWith("+")
-        ? phoneNumber.trim()
-        : "+91" + phoneNumber.trim();
-
-    try {
-
-      setPhoneLoading(true);
-
-      if (
-        !window.recaptchaVerifier
-      ) {
-
-        window.recaptchaVerifier =
-          new RecaptchaVerifier(
-            auth,
-            "recaptcha-container",
-            {
-              size: "normal",
-            }
-          );
-
-        await window.recaptchaVerifier.render();
-
-      }
-
-      const result =
-        await signInWithPhoneNumber(
-          auth,
-          normalizedPhone,
-          window.recaptchaVerifier
-        );
-
-      setConfirmationResult(result);
-      alert(
-        "OTP आपके Mobile Number पर भेज दिया गया है।"
-      );
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        "OTP नहीं भेजा गया:\n" +
-        error.message
-      );
-
-      if (
-        window.recaptchaVerifier
-      ) {
-
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier =
-          null;
-
-      }
-
-    } finally {
-
-      setPhoneLoading(false);
-
-    }
-
-  };
-
-
-  const verifyPhoneOTP = async () => {
-
-    if (!confirmationResult) {
-
-      alert("पहले OTP भेजें।");
-      return;
-
-    }
-
-    if (!otp.trim()) {
-
-      alert("OTP डालें।");
-      return;
-
-    }
-
-    try {
-
-      setPhoneLoading(true);
-
-      await confirmationResult.confirm(
-        otp.trim()
-      );
-
-      setLoginOpen(false);
-      setPhoneNumber("");
-      setOtp("");
-      setConfirmationResult(null);
-
-      if (
-        window.recaptchaVerifier
-      ) {
-
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier =
-          null;
-
-      }
-
-      if (pendingPurchase) {
-        const examToBuy = pendingPurchase;
-        setPendingPurchase(null);
-        await buyTestSeries(examToBuy, auth.currentUser);
-        return;
-      }
-
-      if (pendingTest) {
-        const testToOpen = pendingTest;
-        setPendingTest(null);
-        if (Number(testToOpen.testNumber) === 1) {
-          setSelectedTest(testToOpen);
-          setPage("test");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else if (selectedExam && !isSeriesUnlocked(selectedExam.id)) {
-          await buyTestSeries(selectedExam, auth.currentUser);
-        } else {
-          setSelectedTest(testToOpen);
-          setPage("test");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-      }
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        "OTP गलत है या Login नहीं हुआ:\n" +
-        error.message
-      );
-
-    } finally {
-
-      setPhoneLoading(false);
+      return null;
 
     }
 
@@ -787,13 +472,16 @@ export default function App() {
   };
 
 
-  const openTest = (test) => {
+  const openTest = async (test) => {
 
-    // Test शुरू करने के लिए पहले Login जरूरी है।
+    // Test शुरू करने से पहले Login अनिवार्य है।
+    // Login नहीं है तो Google Login खुलेगा और सफल Login के बाद ही Test खुलेगा।
     if (!user) {
-      setPendingTest(test);
-      setLoginOpen(true);
-      return;
+      const loggedInUser = await login();
+
+      if (!loggedInUser) {
+        return;
+      }
     }
 
     setSelectedTest(test);
@@ -842,12 +530,32 @@ export default function App() {
     selectedTest
   ) {
 
+    // Extra security: Login के बिना Test Page कभी render नहीं होगा।
+    if (!user) {
+      return (
+        <div className="app">
+          <style>{styles}</style>
+          <div className="container">
+            <div className="empty-box">
+              <h2>🔐 Test शुरू करने के लिए Login जरूरी है</h2>
+              <p>कृपया पहले Google से Login करें।</p>
+              <button className="open-btn" onClick={login}>
+                🔐 Login करें
+              </button>
+              <button className="back" onClick={() => setPage("tests")}>
+                ← वापस जाएँ
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="app test-page-app">
 
         <style>{styles}</style>
 
-<<<<<<< HEAD
         <main className="test-page-container">
           <TestRunner
             test={selectedTest}
@@ -856,15 +564,6 @@ export default function App() {
             }}
           />
         </main>
-=======
-        <TestRunner
-          test={selectedTest}
-          isRetest={false}
-          onBack={() => {
-            setPage("tests");
-          }}
-        />
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
 
       </div>
     );
@@ -944,21 +643,6 @@ export default function App() {
               </button>
 
 
-              {
-.access-rule-note {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #ecfdf5;
-  border: 1px solid #86efac;
-  color: #166534;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-/* ADMIN */}
-
               {user?.email ===
                 ADMIN_EMAIL && (
 
@@ -990,7 +674,7 @@ export default function App() {
 
                 <button
                   className="login-btn"
-                  onClick={() => setLoginOpen(true)}
+                  onClick={login}
                 >
                   🔐 Login
                 </button>
@@ -998,122 +682,6 @@ export default function App() {
               )}
 
             </nav>
-
-            {loginOpen && (
-
-              <div
-                className="login-modal-overlay"
-                onClick={() => {
-                  if (!phoneLoading) {
-                    setLoginOpen(false);
-                  }
-                }}
-              >
-
-                <div
-                  className="login-modal"
-                  onClick={(e) => e.stopPropagation()}
-                >
-
-                  <button
-                    className="login-modal-close"
-                    onClick={() => {
-                      if (!phoneLoading) {
-                        setLoginOpen(false);
-                      }
-                    }}
-                  >
-                    ✕
-                  </button>
-
-                  <h2>🔐 Login करें</h2>
-
-                  <p>
-                    Gmail या Mobile Number से Login करें
-                  </p>
-
-                  <button
-                    className="google-login-btn"
-                    onClick={login}
-                    disabled={phoneLoading}
-                  >
-                    📧 Gmail से Login
-                  </button>
-
-                  <div className="login-divider">
-                    <span>या</span>
-                  </div>
-
-                  <input
-                    className="phone-login-input"
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) =>
-                      setPhoneNumber(e.target.value)
-                    }
-                    placeholder="Mobile Number (10 digit)"
-                    disabled={
-                      phoneLoading ||
-                      !!confirmationResult
-                    }
-                  />
-
-                  {!confirmationResult ? (
-
-                    <button
-                      className="phone-login-btn"
-                      onClick={sendPhoneOTP}
-                      disabled={phoneLoading}
-                    >
-                      {phoneLoading
-                        ? "⏳ OTP भेजा जा रहा है..."
-                        : "📱 Mobile पर OTP भेजें"}
-                    </button>
-
-                  ) : (
-
-                    <>
-                      <input
-                        className="phone-login-input"
-                        type="text"
-                        inputMode="numeric"
-                        maxLength="6"
-                        value={otp}
-                        onChange={(e) =>
-                          setOtp(e.target.value)
-                        }
-                        placeholder="6 digit OTP"
-                        disabled={phoneLoading}
-                      />
-
-                      <button
-                        className="phone-login-btn"
-                        onClick={verifyPhoneOTP}
-                        disabled={phoneLoading}
-                      >
-                        {phoneLoading
-                          ? "⏳ Login हो रहा है..."
-                          : "✅ OTP Verify करके Login"}
-                      </button>
-                    </>
-
-                  )}
-
-                  <div
-                    id="recaptcha-container"
-                    style={{
-                      marginTop: "12px",
-                      display: confirmationResult
-                        ? "none"
-                        : "block",
-                    }}
-                  />
-
-                </div>
-
-              </div>
-
-            )}
 
           </div>
 
@@ -1204,7 +772,7 @@ export default function App() {
                     </p>
 
                     <span className="paid">
-                      ₹49 • PAID
+                      ₹99 • PAID
                     </span>
 
                     <button
@@ -1220,102 +788,6 @@ export default function App() {
 
                 ))}
 
-              </div>
-
-              {/* =================================================
-                  ALL TEST SERIES COMBO
-              ================================================= */}
-              <div
-                style={{
-                  margin: "18px 0 25px",
-                  padding: "20px",
-                  borderRadius: "14px",
-                  background:
-                    "linear-gradient(135deg, #fff7ed, #fef3c7)",
-                  border: "2px solid #f59e0b",
-                  textAlign: "center",
-                  boxShadow:
-                    "0 4px 12px rgba(0,0,0,0.08)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "28px",
-                    marginBottom: "5px",
-                  }}
-                >
-                  🔥
-                </div>
-
-                <h2
-                  style={{
-                    margin: "0 0 8px",
-                    color: "#b45309",
-                    fontSize: "22px",
-                  }}
-                >
-                  All Test Series Combo
-                </h2>
-
-                <p
-                  style={{
-                    margin: "5px 0",
-                    fontWeight: "700",
-                    color: "#92400e",
-                  }}
-                >
-                  सभी Test Series एक साथ
-                </p>
-
-                <p
-                  style={{
-                    margin: "5px 0 12px",
-                    fontSize: "14px",
-                    color: "#444",
-                  }}
-                >
-                  UPSC • UPPCS • UP PET • BPSC • MPPSC • SSC •
-                  Railway • Banking • UPSSSC • RO/ARO • Police • Teaching
-                </p>
-
-                <div
-                  style={{
-                    fontSize: "30px",
-                    fontWeight: "900",
-                    color: "#dc2626",
-                    margin: "8px 0",
-                  }}
-                >
-                  ₹599
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "700",
-                    color: "#166534",
-                    marginBottom: "12px",
-                  }}
-                >
-                  ✅ 365 दिन का Full Access
-                </div>
-
-                <button
-                  className="open-btn"
-                  style={{
-                    width: "min(320px, 90%)",
-                    fontSize: "15px",
-                    fontWeight: "800",
-                    padding: "11px 18px",
-                  }}
-                  onClick={() => {
-                    alert(
-                      "All Test Series Combo ₹599\n\n365 दिनों के लिए सभी Test Series का Access.\n\nPayment system अगले चरण में जोड़ा जाएगा।"
-                    );
-                  }}
-                >
-                  💳 ₹599 Combo खरीदें →
-                </button>
               </div>
 
 
@@ -1461,23 +933,6 @@ export default function App() {
                   {selectedExam.description}
                 </p>
 
-                {!isSeriesUnlocked(selectedExam.id) && (
-                  <button
-                    className="primary"
-                    style={{ marginTop: "12px" }}
-                    onClick={() => buyTestSeries(selectedExam)}
-                    disabled={paymentLoading}
-                  >
-                    {paymentLoading ? "⏳ Payment शुरू हो रहा है..." : "💳 ₹49 में Test Series Unlock करें"}
-                  </button>
-                )}
-
-                {isSeriesUnlocked(selectedExam.id) && (
-                  <div style={{ marginTop: "12px", color: "#15803d", fontWeight: "800" }}>
-                    ✅ यह Test Series Unlocked है
-                  </div>
-                )}
-
               </div>
 
 
@@ -1519,25 +974,15 @@ export default function App() {
                         </p>
 
                         <div className="price">
-                          {Number(test.testNumber) === 1 || isSeriesUnlocked(selectedExam.id)
-                            ? "FREE"
-                            : "₹49 • PAID"}
+                          ₹99
                         </div>
 
                         <button
-                          onClick={() => {
-                            if (Number(test.testNumber) === 1 || isSeriesUnlocked(selectedExam.id)) {
-                              openTest(test);
-                            } else {
-                              buyTestSeries(selectedExam);
-                            }
-                          }}
+                          onClick={() =>
+                            openTest(test)
+                          }
                         >
-                          {Number(test.testNumber) === 1
-                            ? "🆓 Start Free Test"
-                            : isSeriesUnlocked(selectedExam.id)
-                            ? "▶️ Start Test"
-                            : "🔒 Buy & Unlock"}
+                          Start Test
                         </button>
 
                       </div>
@@ -1873,186 +1318,164 @@ function TestRunner({
   test,
   onBack,
 }) {
+  // अधिकतम 150 प्रश्न
+  const questions = normalizeQuestions(
+    test?.questions || []
+  ).slice(0, 150);
 
-  const questions =
-    normalizeQuestions(
-      test.questions
-    );
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
 
-  const [current, setCurrent] =
-    useState(0);
+  const buttonBase = {
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    boxSizing: "border-box",
+  };
 
-  const [answers, setAnswers] =
-    useState({});
-
-  const [submitted, setSubmitted] =
-    useState(false);
-
-  // Retest mode: explanation is shown immediately after an option is selected.
-  const [isRetest, setIsRetest] =
-    useState(false);
-
+  const calculateResult = () => {
+    let correct = 0;
+    questions.forEach((q, index) => {
+      const correctIndex = getCorrectIndex(q);
+      if (correctIndex >= 0 && answers[index] === correctIndex) correct++;
+    });
+    const wrong = questions.length - correct;
+    const percentage = questions.length
+      ? Math.round((correct / questions.length) * 100)
+      : 0;
+    return { correct, wrong, percentage };
+  };
 
   if (!questions.length) {
-
     return (
-<<<<<<< HEAD
       <div className="test-runner-page">
-=======
-
-      <div className="container">
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
         <button
-          className="back"
+          type="button"
           onClick={onBack}
+          style={{ ...buttonBase, padding: "12px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700", marginBottom: "20px" }}
         >
-          ← वापस
+          ← Test List
         </button>
-<<<<<<< HEAD
         <div className="test-empty-card">
           <h2>इस Test में Questions नहीं हैं।</h2>
-=======
-
-        <div className="empty-box">
-
-          <h2>
-            इस Test में Questions नहीं हैं।
-          </h2>
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
         </div>
-
       </div>
-
     );
-
   }
 
-
+  // =============================
+  // RESULT SCREEN
+  // =============================
   if (submitted) {
-
-    let score = 0;
-
-    questions.forEach(
-      (q, index) => {
-
-        if (
-          answers[index] ===
-          Number(q.answer)
-        ) {
-          score++;
-        }
-
-      }
-    );
-
-
-    const percentage =
-      Math.round(
-        (score / questions.length) *
-          100
-      );
-
+    const { correct, wrong, percentage } = calculateResult();
 
     return (
-<<<<<<< HEAD
       <div className="test-runner-page">
         <div className="test-result-card">
           <div style={{ fontSize: "52px" }}>🎉</div>
           <h1 style={{ color: "#1d4ed8", marginBottom: "8px" }}>Test Complete</h1>
           <h2 style={{ marginTop: 0 }}>{test?.title || "Test"}</h2>
-=======
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
 
-      <div className="container">
-
-        <div className="result-box">
-
-          <div className="result-icon">
-            🎉
+          <div style={{ fontSize: "42px", fontWeight: "800", color: "#1d4ed8", margin: "20px 0 10px" }}>
+            {correct} / {questions.length}
           </div>
 
-          <h1>
-            Test Complete
-          </h1>
-
-          <h2>
-            {test.title}
-          </h2>
-
-          <div className="score">
-            {score} / {questions.length}
-          </div>
-
-          <p>
-            आपका Score:
-            {" "}
-            <strong>
-              {percentage}%
-            </strong>
+          <p style={{ fontSize: "20px", margin: "8px 0" }}>
+            प्रतिशत: <strong>{percentage}%</strong>
           </p>
 
+          <div style={{ display: "flex", justifyContent: "center", gap: "15px", flexWrap: "wrap", margin: "25px 0" }}>
+            <div style={{ padding: "15px 25px", borderRadius: "12px", background: "#dcfce7", color: "#166534", fontWeight: "800", fontSize: "20px" }}>
+              ✓ सही: {correct}
+            </div>
+            <div style={{ padding: "15px 25px", borderRadius: "12px", background: "#fee2e2", color: "#991b1b", fontWeight: "800", fontSize: "20px" }}>
+              ✗ गलत: {wrong}
+            </div>
+          </div>
 
-          <div className="result-actions">
-
+          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap", marginTop: "25px" }}>
             <button
-              className="primary"
+              type="button"
               onClick={() => {
-
                 setCurrent(0);
                 setAnswers({});
                 setSubmitted(false);
-                setIsRetest(true);
-
+                setReviewMode(true);
+                setShowExplanation(false);
               }}
+              style={{ ...buttonBase, padding: "13px 20px", background: "#1264d8", color: "#fff", fontSize: "17px", fontWeight: "700" }}
             >
-              🔄 Test दोबारा दें
+              🔄 Questions Retest / व्याख्या देखें
             </button>
 
-
             <button
-              className="back"
+              type="button"
               onClick={onBack}
+              style={{ ...buttonBase, padding: "13px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700" }}
             >
               ← Test List
             </button>
-
           </div>
-
         </div>
-
       </div>
-
     );
-
   }
 
+  const question = questions[current];
+  const selected = answers[current];
+  const hasSelected = selected !== undefined;
+  const correctAnswer = getCorrectIndex(question);
 
-  const question =
-    questions[current];
+  const goPrevious = () => {
+    setCurrent((value) => Math.max(0, value - 1));
+    setShowExplanation(false);
+  };
 
+  const goNext = () => {
+    if (current < questions.length - 1) {
+      setCurrent((value) => value + 1);
+      setShowExplanation(false);
+    } else {
+      setSubmitted(true);
+    }
+  };
 
-  const selected =
-    answers[current];
+  const selectOption = (index) => {
+    if (reviewMode && hasSelected) return;
 
+    setAnswers((prev) => ({
+      ...prev,
+      [current]: index,
+    }));
+
+    if (reviewMode) {
+      setShowExplanation(true);
+    } else {
+      // सामान्य Test में option चुनते ही अगला प्रश्न
+      window.setTimeout(() => {
+        if (current < questions.length - 1) {
+          setCurrent((value) => value + 1);
+        } else {
+          setSubmitted(true);
+        }
+      }, 180);
+    }
+  };
 
   return (
-<<<<<<< HEAD
     <div className="test-runner-page">
-=======
-
-    <div className="container">
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
       <button
-        className="back"
+        type="button"
         onClick={onBack}
+        style={{ ...buttonBase, padding: "12px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700", marginBottom: "20px" }}
       >
         ← Test List
       </button>
 
-<<<<<<< HEAD
       <div className="test-runner-shell">
         {/* TEST HEADER */}
         <div className="test-header-block">
@@ -2081,214 +1504,105 @@ function TestRunner({
             const isSelected = selected === index;
             const isCorrect = index === correctAnswer;
             const isWrong = reviewMode && isSelected && !isCorrect;
-=======
 
-      <div className="question-box">
+            let background = "#1264d8";
+            if (reviewMode && hasSelected) {
+              if (isCorrect) background = "#16a34a";
+              else if (isWrong) background = "#dc2626";
+            } else if (isSelected) {
+              background = "#2563eb";
+            }
 
-        <div className="question-header">
-
-          <strong>
-            {test.title}
-          </strong>
-
-          <span>
-            प्रश्न {current + 1}
-            {" / "}
-            {questions.length}
-          </span>
-
-        </div>
-
-
-        <h2>
-          {current + 1}.{" "}
-          {question.question}
-        </h2>
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
-
-
-        <div
-          className="test-options"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            width: "100%",
-            gap: "12px",
-            marginTop: "20px",
-          }}
-        >
-
-          {question.options.map(
-            (option, index) => (
-
+            return (
               <button
                 key={index}
-                className={
-                  selected === index
-                    ? "option selected"
-                    : "option"
-                }
-                onClick={() => {
-
-                  setAnswers(
-                    (prev) => ({
-                      ...prev,
-                      [current]:
-                        index,
-                    })
-                  );
-
-                }}
+                type="button"
+                disabled={reviewMode && hasSelected}
+                onClick={() => selectOption(index)}
                 style={{
-<<<<<<< HEAD
                   ...buttonBase,
                   minWidth: 0,
                   maxWidth: "100%",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "flex-start",
-=======
-                  display: "block",
-                  position: "static",
-                  float: "none",
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
                   width: "100%",
-                  boxSizing: "border-box",
-                  textAlign: "left",
-                  padding: "16px 18px",
+                  minHeight: "64px",
                   margin: 0,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  fontSize: "18px",
-                  lineHeight: 1.5,
+                  padding: "16px 20px",
+                  background,
+                  color: "#fff",
+                  textAlign: "left",
+                  fontSize: "20px",
+                  fontWeight: "700",
+                  lineHeight: "1.4",
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                  overflowWrap: "anywhere",
+                  opacity: reviewMode && hasSelected && !isSelected && !isCorrect ? 0.85 : 1,
+                  cursor: reviewMode && hasSelected ? "default" : "pointer",
+                  boxShadow: "0 5px 15px rgba(18,100,216,.20)",
                 }}
               >
-
-                <strong>
-                  {String.fromCharCode(
-                    65 + index
-                  )}
-                  .
-                </strong>{" "}
-
-                {option}
-
+                <span style={{ flex: "0 0 45px", width: "45px", fontSize: "21px", fontWeight: "800" }}>
+                  {String.fromCharCode(65 + index)}.
+                </span>
+                <span style={{ flex: "1 1 auto", minWidth: 0, lineHeight: "1.4" }}>
+                  {option}
+                </span>
               </button>
-
-            )
-          )}
-
+            );
+          })}
         </div>
 
-        {isRetest && selected !== undefined && (
-          <div
-            className="retest-explanation"
-            style={{
-              marginTop: "20px",
-              padding: "18px",
-              border: "1px solid #fed7aa",
-              borderLeft: "5px solid #f97316",
-              borderRadius: "12px",
-              background: "#fff7ed",
-              textAlign: "left",
-              lineHeight: 1.7,
-            }}
-          >
-            <div style={{ marginBottom: "10px" }}>
-              <strong style={{ color: "#ea580c" }}>
-                आपका जवाब: 
-              </strong>
-              <span>
-                {String.fromCharCode(65 + selected)}. {question.options[selected]}
-              </span>
+        {/* EXPLANATION - केवल RETEST/REVIEW MODE में */}
+        {reviewMode && showExplanation && hasSelected && (
+          <div style={{ width: "100%", marginTop: "20px", padding: "18px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", boxSizing: "border-box" }}>
+            <div style={{ fontSize: "19px", fontWeight: "800", marginBottom: "8px", color: selected === correctAnswer ? "#166534" : "#991b1b" }}>
+              {selected === correctAnswer
+                ? "✓ सही उत्तर"
+                : correctAnswer >= 0
+                ? `✗ गलत उत्तर — सही उत्तर: ${String.fromCharCode(65 + correctAnswer)}`
+                : "✗ उत्तर जाँचने के लिए सही उत्तर उपलब्ध नहीं है"}
             </div>
-
-            <div style={{ marginBottom: "10px" }}>
-              <strong style={{ color: "#ea580c" }}>
-                यह सही उत्तर: 
-              </strong>
-              <span>
-                {String.fromCharCode(65 + Number(question.answer))}. {question.options[Number(question.answer)]}
-              </span>
+            <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", color: "#1e3a8a" }}>
+              व्याख्या
             </div>
-
-            <div>
-              <strong style={{ color: "#ea580c" }}>
-                व्याख्या:
-              </strong>
-              <div style={{ marginTop: "4px", whiteSpace: "pre-wrap" }}>
-                {question.explanation || "इस प्रश्न की व्याख्या उपलब्ध नहीं है।"}
-              </div>
+            <div style={{ fontSize: "17px", lineHeight: "1.6", color: "#334155", whiteSpace: "pre-wrap" }}>
+              {question.explanation || "इस प्रश्न की व्याख्या Admin Panel में उपलब्ध नहीं है।"}
             </div>
           </div>
         )}
 
-<<<<<<< HEAD
         {/* NAVIGATION */}
         <div className="test-navigation">
-=======
-
-        <div className="test-navigation">
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
           <button
-            className="back"
-            disabled={
-              current === 0
-            }
-            onClick={() =>
-              setCurrent(
-                (value) =>
-                  Math.max(
-                    0,
-                    value - 1
-                  )
-              )
-            }
+            type="button"
+            disabled={current === 0}
+            onClick={goPrevious}
+            style={{ ...buttonBase, padding: "13px 22px", background: current === 0 ? "#bfdbfe" : "#1264d8", color: "#fff", fontSize: "17px", fontWeight: "700", opacity: current === 0 ? 0.75 : 1 }}
           >
             ← Previous
           </button>
 
-
-          {current ===
-          questions.length - 1 ? (
-
+          {reviewMode ? (
             <button
-              className="primary"
-              onClick={() =>
-                setSubmitted(true)
-              }
+              type="button"
+              disabled={!hasSelected}
+              onClick={goNext}
+              style={{ ...buttonBase, padding: "13px 22px", background: hasSelected ? (current === questions.length - 1 ? "#16a34a" : "#1264d8") : "#94a3b8", color: "#fff", fontSize: "17px", fontWeight: "700" }}
             >
-              ✓ Submit Test
+              {current === questions.length - 1 ? "✓ Review Complete" : "Next →"}
             </button>
-
           ) : (
-
-            <button
-              className="primary"
-              onClick={() =>
-                setCurrent(
-                  (value) =>
-                    Math.min(
-                      questions.length - 1,
-                      value + 1
-                    )
-                )
-              }
-            >
-              Next →
-            </button>
-
+            <div style={{ fontSize: "16px", color: "#64748b", fontWeight: "600" }}>
+              विकल्प चुनते ही अगला प्रश्न खुलेगा
+            </div>
           )}
-
         </div>
-
       </div>
-
     </div>
-
   );
-
 }
 
 
@@ -2296,7 +1610,6 @@ function TestRunner({
 // ADMIN PANEL
 // ========================================================
 
-<<<<<<< HEAD
 function createEmptyQuestion(id = 1) {
   return {
     id,
@@ -2314,22 +1627,26 @@ function getTestAccess(testNumber) {
   return Number(testNumber) === 1 ? "free" : "paid";
 }
 
-=======
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
 function AdminPanel({
   user,
   tests,
   resources,
   onClose,
 }) {
+  const [exam, setExam] = useState("uppcs");
+  const [testNumber, setTestNumber] = useState(1);
+  const [title, setTitle] = useState("UPPCS Test 01");
+  const [status, setStatus] = useState("draft");
 
-  const [exam, setExam] =
-    useState("uppcs");
+  // अब JSON नहीं — सीधे Question Form
+  const [questions, setQuestions] = useState([
+    createEmptyQuestion(1),
+  ]);
 
-  const [testNumber, setTestNumber] =
-    useState(1);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
-<<<<<<< HEAD
   const [resourceDraft, setResourceDraft] = useState(
     Array.isArray(resources) && resources.length ? resources : defaultResources
   );
@@ -2339,369 +1656,218 @@ function AdminPanel({
   }, [resources]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
-=======
-  const [title, setTitle] =
-    useState("UPPCS Test 01");
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
-
-  const [status, setStatus] =
-    useState("draft");
-
-  const [questionsText, setQuestionsText] =
-    useState(
-      JSON.stringify(
-        [
-          {
-            id: 1,
-            question: "",
-            options: [
-              "",
-              "",
-              "",
-            ],
-            answer: 0,
-            explanation: "",
-          },
-        ],
-        null,
-        2
-      )
-    );
-
-  const [message, setMessage] =
-    useState("");
-
-  const [saving, setSaving] =
-    useState(false);
-
-
-  const isAdmin =
-    user?.email === ADMIN_EMAIL;
-
-
-  // ======================================================
-  // ACCESS
-  // ======================================================
 
   if (!isAdmin) {
-
     return (
-
       <div className="container">
-
         <div className="result-box">
-
-          <div className="result-icon">
-            🔐
-          </div>
-
-          <h1>
-            Admin Access Denied
-          </h1>
-
-          <p>
-            केवल Admin account इस panel को
-            खोल सकता है।
-          </p>
-
-          <button
-            className="primary"
-            onClick={onClose}
-          >
+          <div className="result-icon">🔐</div>
+          <h1>Admin Access Denied</h1>
+          <p>केवल Admin account इस panel को खोल सकता है।</p>
+          <button className="primary" onClick={onClose}>
             ← Website पर जाएँ
           </button>
-
         </div>
-
       </div>
-
     );
-
   }
 
-
-  // ======================================================
-  // LOAD EXISTING TEST
-  // ======================================================
-
-  const loadTest = (
-    id,
-    data
-  ) => {
-
-    setExam(
-      data.exam || "uppcs"
-    );
-
-    setTestNumber(
-      data.testNumber || 1
-    );
-
-    setTitle(
-      data.title || ""
-    );
-
-    setStatus(
-      data.status || "draft"
-    );
-
-    setQuestionsText(
-      JSON.stringify(
-        data.questions || [],
-        null,
-        2
+  const updateQuestion = (index, field, value) => {
+    setQuestions((prev) =>
+      prev.map((q, i) =>
+        i === index ? { ...q, [field]: value } : q
       )
     );
-
-    setMessage(
-      `✏️ ${data.title || id} edit mode में खुल गया।`
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-
   };
 
+  const updateOption = (questionIndex, optionIndex, value) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== questionIndex) return q;
+        const options = [...(q.options || ["", "", "", ""])];
+        options[optionIndex] = value;
+        return { ...q, options };
+      })
+    );
+  };
 
-  // ======================================================
-  // NEW TEST
-  // ======================================================
+  const addQuestion = () => {
+    if (questions.length >= 150) {
+      alert("अधिकतम 150 Questions ही जोड़े जा सकते हैं।");
+      return;
+    }
+
+    const nextIndex = questions.length;
+    setQuestions((prev) => [
+      ...prev,
+      createEmptyQuestion(nextIndex + 1),
+    ]);
+    setCurrentQuestion(nextIndex);
+    setMessage(`➕ प्रश्न ${nextIndex + 1} जोड़ दिया गया।`);
+
+    setTimeout(() => {
+      document.getElementById("question-editor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+  };
+
+  const deleteQuestion = (index) => {
+    if (questions.length === 1) {
+      alert("कम से कम 1 Question होना चाहिए।");
+      return;
+    }
+
+    if (!window.confirm(`प्रश्न ${index + 1} delete करना है?`)) {
+      return;
+    }
+
+    const updated = questions
+      .filter((_, i) => i !== index)
+      .map((q, i) => ({ ...q, id: i + 1 }));
+
+    setQuestions(updated);
+    setCurrentQuestion(Math.min(index, updated.length - 1));
+    setMessage("🗑️ प्रश्न delete हो गया।");
+  };
+
+  const loadTest = (id, data) => {
+    setExam(data.exam || "uppcs");
+    setTestNumber(Number(data.testNumber || 1));
+    setTitle(data.title || "");
+    setStatus(data.status || "draft");
+
+    const loaded = Array.isArray(data.questions) ? data.questions : [];
+    const formatted = loaded.slice(0, 150).map((q, index) => ({
+      id: index + 1,
+      question: q?.question ?? q?.questionText ?? q?.text ?? "",
+      options: [
+        q?.options?.[0] ?? "",
+        q?.options?.[1] ?? "",
+        q?.options?.[2] ?? "",
+        q?.options?.[3] ?? "",
+      ],
+      answer: Number.isFinite(Number(q?.answer)) ? Number(q.answer) : 0,
+      explanation: q?.explanation ?? "",
+    }));
+
+    setQuestions(formatted.length ? formatted : [createEmptyQuestion(1)]);
+    setCurrentQuestion(0);
+    setMessage(`✏️ ${data.title || id} edit mode में खुल गया।`);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const newTest = () => {
-
     setExam("uppcs");
-
     setTestNumber(1);
-
-    setTitle(
-      "UPPCS Test 01"
-    );
-
+    setTitle("UPPCS Test 01");
     setStatus("draft");
-
-    setQuestionsText(
-      JSON.stringify(
-        [
-          {
-            id: 1,
-            question: "",
-            options: [
-              "",
-              "",
-              "",
-            ],
-            answer: 0,
-            explanation: "",
-          },
-        ],
-        null,
-        2
-      )
-    );
-
-    setMessage(
-      "📝 नया Test तैयार है।"
-    );
-
+    setQuestions([createEmptyQuestion(1)]);
+    setCurrentQuestion(0);
+    setMessage("📝 नया Test तैयार है।");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const validateQuestions = () => {
+    if (!questions.length) {
+      alert("कम से कम 1 Question होना चाहिए।");
+      return false;
+    }
 
-  // ======================================================
-  // SAVE TEST
-  // ======================================================
+    if (questions.length > 150) {
+      alert("अधिकतम 150 Questions ही save किए जा सकते हैं।");
+      return false;
+    }
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+
+      if (!q.question.trim()) {
+        alert(`प्रश्न ${i + 1} खाली है।`);
+        setCurrentQuestion(i);
+        return false;
+      }
+
+      for (let j = 0; j < 4; j++) {
+        if (!q.options?.[j]?.trim()) {
+          alert(`प्रश्न ${i + 1} का विकल्प ${String.fromCharCode(65 + j)} खाली है।`);
+          setCurrentQuestion(i);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
 
   const saveTest = async () => {
-
     if (!isAdmin) {
-
-      alert(
-        "Admin access नहीं है।"
-      );
-
+      alert("Admin access नहीं है।");
       return;
-
     }
-
 
     if (!title.trim()) {
-
-      alert(
-        "Test title डालें।"
-      );
-
+      alert("Test title डालें।");
       return;
-
     }
 
+    if (!validateQuestions()) return;
 
-    let questions;
+    const cleanQuestions = questions.map((q, index) => ({
+      id: index + 1,
+      question: q.question.trim(),
+      options: q.options.slice(0, 4).map((option) => option.trim()),
+      answer: Number(q.answer),
+      explanation: q.explanation?.trim() || "",
+    }));
 
-    try {
-
-      questions =
-        JSON.parse(
-          questionsText
-        );
-
-    } catch (error) {
-
-      alert(
-        "Questions JSON सही नहीं है।"
-      );
-
-      return;
-
-    }
-
-
-    if (
-      !Array.isArray(questions) ||
-      questions.length === 0
-    ) {
-
-      alert(
-        "कम से कम 1 Question होना चाहिए।"
-      );
-
-      return;
-
-    }
-
-    if (questions.length > MAX_TEST_QUESTIONS) {
-
-      alert(
-        `अधिकतम ${MAX_TEST_QUESTIONS} Questions ही रख सकते हैं। अभी ${questions.length} Questions हैं।`
-      );
-
-      return;
-
-    }
-
-
-    const id =
-      testId(
-        exam,
-        testNumber
-      );
-
+    const id = testId(exam, testNumber);
 
     const data = {
-
       id,
-
       exam,
-<<<<<<< HEAD
       testNumber: Number(testNumber),
       access: getTestAccess(testNumber),
       title: title.trim(),
-=======
-
-      testNumber:
-        Number(testNumber),
-
-      title,
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
       status,
-
-      questions,
-
-      updatedAt:
-        Date.now(),
-
-      updatedBy:
-        user.email,
-
+      questions: cleanQuestions,
+      updatedAt: Date.now(),
+      updatedBy: user.email,
     };
-
 
     setSaving(true);
 
     try {
-
-      await set(
-        ref(
-          db,
-          `tests/${id}`
-        ),
-        data
-      );
-
+      await set(ref(db, `tests/${id}`), data);
 
       setMessage(
-
         status === "public"
           ? "🌐 Test PUBLIC हो गया। Website पर दिखाई देगा।"
           : status === "unlisted"
           ? "🔗 Test UNLISTED हो गया।"
           : "📝 Test DRAFT में save हो गया।"
-
       );
-
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        "Save नहीं हुआ:\n" +
-        error.message
-      );
-
+      alert("Save नहीं हुआ:\n" + error.message);
     } finally {
-
       setSaving(false);
-
     }
-
   };
 
-
-  // ======================================================
-  // DELETE
-  // ======================================================
-
-  const deleteTest = async (
-    id
-  ) => {
-
-    const ok =
-      window.confirm(
-        "क्या आप यह Test delete करना चाहते हैं?"
-      );
-
-    if (!ok) {
-      return;
-    }
-
+  const deleteTest = async (id) => {
+    if (!window.confirm("क्या आप यह Test delete करना चाहते हैं?")) return;
 
     try {
-
-      await remove(
-        ref(
-          db,
-          `tests/${id}`
-        )
-      );
-
-
-      setMessage(
-        "🗑️ Test delete हो गया।"
-      );
-
+      await remove(ref(db, `tests/${id}`));
+      setMessage("🗑️ Test delete हो गया।");
     } catch (error) {
-
-      alert(
-        "Delete error:\n" +
-        error.message
-      );
-
+      alert("Delete error:\n" + error.message);
     }
-
   };
 
-<<<<<<< HEAD
   const updateResource = (index, field, value) => {
     setResourceDraft((prev) => prev.map((x, i) => i === index ? { ...x, [field]: value } : x));
   };
@@ -2726,297 +1892,335 @@ function AdminPanel({
     (a, b) =>
       Number(a[1].testNumber || 0) - Number(b[1].testNumber || 0)
   );
-=======
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
 
-  const testList =
-    Object.entries(tests || {})
-      .sort(
-        (a, b) =>
-          Number(
-            a[1].testNumber || 0
-          ) -
-          Number(
-            b[1].testNumber || 0
-          )
-      );
-
+  const question = questions[currentQuestion] || createEmptyQuestion(1);
 
   return (
-
     <div className="admin-container">
-
-      {/* ==================================================
-          ADMIN HEADER
-      ================================================== */}
-
       <div className="admin-header">
-
         <div>
-
-          <div className="admin-crown">
-            👑
-          </div>
-
-          <h1>
-            Study With Power
-            Admin Panel
-          </h1>
-
-          <p>
-            Admin: {user.email}
-          </p>
-
+          <div className="admin-crown">👑</div>
+          <h1>Study With Power Admin Panel</h1>
+          <p>Admin: {user.email}</p>
         </div>
 
-
-        <button
-          className="admin-close"
-          onClick={onClose}
-        >
+        <button className="admin-close" onClick={onClose}>
           ← Website
         </button>
-
       </div>
 
-
-      {/* ==================================================
-          TEST EDITOR
-      ================================================== */}
-
       <div className="admin-card">
-
         <div className="admin-title-row">
-
           <div>
-<<<<<<< HEAD
             <h2>📝 Test Manager</h2>
             <div className="access-rule-note">🆓 Test 01 = Free &nbsp; | &nbsp; 💰 Test 02 और आगे = Paid</div>
             <p>Test बनाएँ, Questions जोड़ें और Public/Unlisted करें।</p>
-=======
-
-            <h2>
-              📝 Test Manager
-            </h2>
-
-            <p>
-              Test बनाएँ, Questions जोड़ें
-              और Public/Unlisted करें।
-            </p>
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
           </div>
 
-
-          <button
-            className="secondary-btn"
-            onClick={newTest}
-          >
+          <button className="secondary-btn" onClick={newTest}>
             ＋ New Test
           </button>
-
         </div>
 
-
         <div className="admin-form">
-
           <div>
-
-            <label>
-              Exam
-            </label>
-
-            <select
-              value={exam}
-              onChange={(e) =>
-                setExam(
-                  e.target.value
-                )
-              }
-            >
-
-              {exams.map(
-                (item) => (
-
-                  <option
-                    key={item.id}
-                    value={item.id}
-                  >
-                    {item.name}
-                  </option>
-
-                )
-              )}
-
+            <label>Exam</label>
+            <select value={exam} onChange={(e) => setExam(e.target.value)}>
+              {exams.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
             </select>
-
           </div>
 
-
           <div>
-
-            <label>
-              Test Number
-            </label>
-
+            <label>Test Number</label>
             <input
               type="number"
               min="1"
               value={testNumber}
-              onChange={(e) =>
-                setTestNumber(
-                  Number(
-                    e.target.value
-                  )
-                )
-              }
+              onChange={(e) => setTestNumber(Number(e.target.value))}
             />
-
           </div>
 
-
           <div className="full">
-
-            <label>
-              Test Title
-            </label>
-
+            <label>Test Title</label>
             <input
               value={title}
-              onChange={(e) =>
-                setTitle(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="UPPCS Test 01"
             />
-
           </div>
 
-
           <div className="full">
+            <label>Visibility / Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="draft">📝 Draft</option>
+              <option value="unlisted">🔗 Unlisted</option>
+              <option value="public">🌐 Public</option>
+            </select>
 
-            <label>
-              Visibility / Status
+            <div className="status-help">
+              <div>📝 <strong>Draft:</strong> काम चल रहा है।</div>
+              <div>🔗 <strong>Unlisted:</strong> सामान्य Test List में नहीं दिखेगा।</div>
+              <div>🌐 <strong>Public:</strong> Students की Test Series में दिखेगा।</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ==================================================
+            QUESTION FORM — JSON पूरी तरह हटाया गया
+        ================================================== */}
+        <div className="questions-editor" id="question-editor">
+          <div className="admin-title-row" style={{ marginBottom: 15 }}>
+            <div>
+              <h2>📚 Question Form</h2>
+              <p className="small-text">
+                कुल {questions.length} / 150 प्रश्न
+              </p>
+            </div>
+
+            <button
+              className="secondary-btn"
+              onClick={addQuestion}
+              disabled={questions.length >= 150}
+            >
+              {questions.length >= 150
+                ? "✓ 150 Questions"
+                : "＋ Add Question"}
+            </button>
+          </div>
+
+          {/* Question navigation */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 20,
+            }}
+          >
+            {questions.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setCurrentQuestion(index)}
+                style={{
+                  width: 40,
+                  height: 40,
+                  border: 0,
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  background:
+                    currentQuestion === index ? "#16a34a" : "#2563eb",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #dbeafe",
+              borderRadius: 14,
+              padding: 20,
+              background: "#f8fafc",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ margin: 0 }}>
+                प्रश्न {currentQuestion + 1}
+              </h3>
+
+              <button
+                type="button"
+                className="danger-btn"
+                onClick={() => deleteQuestion(currentQuestion)}
+              >
+                🗑️ Delete Question
+              </button>
+            </div>
+
+            <label style={{ display: "block", marginTop: 18 }}>
+              प्रश्न
             </label>
-
-            <select
-              value={status}
+            <textarea
+              value={question.question}
               onChange={(e) =>
-                setStatus(
+                updateQuestion(currentQuestion, "question", e.target.value)
+              }
+              placeholder="यहाँ प्रश्न लिखें..."
+              style={{
+                width: "100%",
+                minHeight: 110,
+                marginTop: 8,
+                padding: 12,
+                boxSizing: "border-box",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                fontSize: 17,
+                fontFamily: "inherit",
+              }}
+            />
+
+            <h3 style={{ marginTop: 22 }}>विकल्प</h3>
+
+            {question.options.map((option, index) => (
+              <div key={index} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <strong
+                    style={{
+                      minWidth: 32,
+                      fontSize: 18,
+                    }}
+                  >
+                    {String.fromCharCode(65 + index)}.
+                  </strong>
+
+                  <input
+                    value={option}
+                    onChange={(e) =>
+                      updateOption(
+                        currentQuestion,
+                        index,
+                        e.target.value
+                      )
+                    }
+                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 16,
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateQuestion(currentQuestion, "answer", index)
+                    }
+                    style={{
+                      padding: "10px 12px",
+                      border: 0,
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      background:
+                        Number(question.answer) === index
+                          ? "#16a34a"
+                          : "#e2e8f0",
+                      color:
+                        Number(question.answer) === index
+                          ? "#fff"
+                          : "#334155",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {Number(question.answer) === index
+                      ? "✓ सही उत्तर"
+                      : "सही चुनें"}
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <label style={{ display: "block", marginTop: 22 }}>
+              व्याख्या
+            </label>
+            <textarea
+              value={question.explanation}
+              onChange={(e) =>
+                updateQuestion(
+                  currentQuestion,
+                  "explanation",
                   e.target.value
                 )
               }
+              placeholder="सही उत्तर की व्याख्या लिखें..."
+              style={{
+                width: "100%",
+                minHeight: 120,
+                marginTop: 8,
+                padding: 12,
+                boxSizing: "border-box",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                fontSize: 16,
+                fontFamily: "inherit",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                marginTop: 20,
+              }}
             >
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={currentQuestion === 0}
+                onClick={() =>
+                  setCurrentQuestion((value) => Math.max(0, value - 1))
+                }
+              >
+                ← पिछला
+              </button>
 
-              <option value="draft">
-                📝 Draft
-              </option>
-
-              <option value="unlisted">
-                🔗 Unlisted
-              </option>
-
-              <option value="public">
-                🌐 Public
-              </option>
-
-            </select>
-
-
-            <div className="status-help">
-
-              <div>
-                📝 <strong>Draft:</strong>{" "}
-                काम चल रहा है।
-              </div>
-
-              <div>
-                🔗 <strong>Unlisted:</strong>{" "}
-                सामान्य Test List में नहीं दिखेगा।
-              </div>
-
-              <div>
-                🌐 <strong>Public:</strong>{" "}
-                Students की Test Series में दिखेगा।
-              </div>
-
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  if (currentQuestion < questions.length - 1) {
+                    setCurrentQuestion((value) => value + 1);
+                  } else {
+                    addQuestion();
+                  }
+                }}
+              >
+                {currentQuestion < questions.length - 1
+                  ? "अगला →"
+                  : "＋ नया प्रश्न"}
+              </button>
             </div>
-
           </div>
-
         </div>
-
-
-        {/* QUESTIONS */}
-
-        <div className="questions-editor">
-
-          <label>
-            Questions JSON
-          </label>
-
-          <p className="small-text">
-
-            आपके वर्तमान{" "}
-            <strong>
-              test01.js
-            </strong>{" "}
-            के questions इसी format में
-            यहाँ paste किए जा सकते हैं।
-
-          </p>
-
-
-          <textarea
-            value={questionsText}
-            onChange={(e) =>
-              setQuestionsText(
-                e.target.value
-              )
-            }
-            spellCheck={false}
-          />
-
-        </div>
-
 
         <div className="admin-actions">
-
-          <button
-            className="save-btn"
-            disabled={saving}
-            onClick={saveTest}
-          >
-
-            {saving
-              ? "⏳ Saving..."
-              : "💾 Save Test"}
-
+          <button className="save-btn" disabled={saving} onClick={saveTest}>
+            {saving ? "⏳ Saving..." : "💾 Save Test"}
           </button>
 
-
-          <button
-            className="secondary-btn"
-            onClick={newTest}
-          >
+          <button className="secondary-btn" onClick={newTest}>
             Clear / New
           </button>
-
         </div>
 
-
-        {message && (
-
-          <div className="success-message">
-            {message}
-          </div>
-
-        )}
-
+        {message && <div className="success-message">{message}</div>}
       </div>
 
-<<<<<<< HEAD
       <div className="admin-card resource-admin-card">
           <div className="admin-title-row">
             <div><h2>🎛️ Home Resource Manager</h2><p>Home के 6 cards को Admin Panel से control करें।</p></div>
@@ -3040,131 +2244,49 @@ function AdminPanel({
 
         <div className="admin-card">
         <h2>📚 सभी Saved Tests</h2>
-=======
-
-      {/* ==================================================
-          SAVED TESTS
-      ================================================== */}
-
-      <div className="admin-card">
-
-        <h2>
-          📚 सभी Saved Tests
-        </h2>
-
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
         <p className="small-text">
-          यहाँ से किसी भी Test को Edit,
-          Delete या उसका Status बदल सकते हैं।
+          यहाँ से किसी भी Test को Edit, Delete या उसका Status बदल सकते हैं।
         </p>
 
-
         {testList.length === 0 ? (
-
           <div className="admin-empty">
-
-            <div>
-              📭
-            </div>
-
-            <h3>
-              अभी कोई Test नहीं है।
-            </h3>
-
-            <p>
-              ऊपर New Test से शुरुआत करें।
-            </p>
-
+            <div>📭</div>
+            <h3>अभी कोई Test नहीं है।</h3>
+            <p>ऊपर New Test से शुरुआत करें।</p>
           </div>
-
         ) : (
-
           <div className="admin-test-list">
-
-            {testList.map(
-              ([id, data]) => (
-
-                <div
-                  className="admin-test-row"
-                  key={id}
-                >
-
-                  <div className="admin-test-info">
-
-                    <div className="test-status">
-
-                      {data.status ===
-                      "public"
-                        ? "🌐 PUBLIC"
-                        : data.status ===
-                          "unlisted"
-                        ? "🔗 UNLISTED"
-                        : "📝 DRAFT"}
-
-                    </div>
-
-                    <h3>
-                      {data.title}
-                    </h3>
-
-                    <p>
-                      {data.exam?.toUpperCase()}
-                      {" • "}
-                      Test{" "}
-                      {data.testNumber}
-                      {" • "}
-                      {data.questions?.length ||
-                        0}{" "}
-                      Questions
-                    </p>
-
-                    <small>
-                      ID: {id}
-                    </small>
-
+            {testList.map(([id, data]) => (
+              <div className="admin-test-row" key={id}>
+                <div className="admin-test-info">
+                  <div className="test-status">
+                    {data.status === "public"
+                      ? "🌐 PUBLIC"
+                      : data.status === "unlisted"
+                      ? "🔗 UNLISTED"
+                      : "📝 DRAFT"}
                   </div>
 
-
-                  <div className="admin-test-buttons">
-
-                    <button
-                      onClick={() =>
-                        loadTest(
-                          id,
-                          data
-                        )
-                      }
-                    >
-                      ✏️ Edit
-                    </button>
-
-
-                    <button
-                      className="danger-btn"
-                      onClick={() =>
-                        deleteTest(id)
-                      }
-                    >
-                      🗑️ Delete
-                    </button>
-
-                  </div>
-
+                  <h3>{data.title}</h3>
+                  <p>
+                    {data.exam?.toUpperCase()} • Test {data.testNumber} • {data.questions?.length || 0} Questions
+                  </p>
+                  <small>ID: {id}</small>
                 </div>
 
-              )
-            )}
-
+                <div className="admin-test-buttons">
+                  <button onClick={() => loadTest(id, data)}>✏️ Edit</button>
+                  <button className="danger-btn" onClick={() => deleteTest(id)}>
+                    🗑️ Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-
         )}
-
       </div>
-
     </div>
-
   );
-
 }
 
 
@@ -3289,117 +2411,6 @@ button:disabled {
   color: white !important;
 }
 
-
-/* LOGIN MODAL */
-
-.login-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, .55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 1000;
-}
-
-.login-modal {
-  position: relative;
-  width: min(420px, 100%);
-  background: white;
-  border-radius: 16px;
-  padding: 25px;
-  box-shadow: 0 20px 50px rgba(0,0,0,.2);
-  text-align: center;
-}
-
-.login-modal h2 {
-  margin: 0 0 8px;
-}
-
-.login-modal p {
-  color: #64748b;
-  font-size: 14px;
-  margin: 0 0 18px;
-}
-
-.login-modal-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  border: none;
-  background: #f1f5f9;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 16px;
-}
-
-.google-login-btn,
-.phone-login-btn {
-  width: 100%;
-  border: none;
-  border-radius: 9px;
-  padding: 12px;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.google-login-btn {
-  background: #1264d8;
-  color: white;
-}
-
-.phone-login-btn {
-  background: #16a34a;
-  color: white;
-  margin-top: 10px;
-}
-
-.google-login-btn:disabled,
-.phone-login-btn:disabled {
-  opacity: .6;
-  cursor: not-allowed;
-}
-
-.login-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 16px 0;
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.login-divider::before,
-.login-divider::after {
-  content: "";
-  height: 1px;
-  background: #e2e8f0;
-  flex: 1;
-}
-
-.phone-login-input {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #cbd5e1;
-  border-radius: 9px;
-  padding: 12px;
-  outline: none;
-  font-size: 15px;
-  margin-top: 8px;
-}
-
-.phone-login-input:focus {
-  border-color: #1264d8;
-}
-
-#recaptcha-container {
-  display: flex;
-  justify-content: center;
-  overflow: hidden;
-}
 
 /* MAIN */
 
@@ -3758,16 +2769,45 @@ button:disabled {
   line-height: 1.6;
 }
 
-.option {
-  display: block;
+.options-list {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  gap: 12px;
+}
+
+.option {
+  display: flex !important;
+  position: static !important;
+  float: none !important;
+  align-items: flex-start;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+  flex: 0 0 auto;
   text-align: left;
-  padding: 13px;
-  margin: 10px 0;
-  border:
-    1px solid #cbd5e1;
+  padding: 14px 16px;
+  margin: 0 !important;
+  border: 1px solid #cbd5e1;
   background: #f8fafc;
   border-radius: 8px;
+  font-size: 17px;
+  line-height: 1.5;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.option-label {
+  flex: 0 0 32px;
+}
+
+.option-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .option:hover {
@@ -3777,8 +2817,7 @@ button:disabled {
 
 .option.selected {
   background: #dbeafe;
-  border:
-    2px solid #2563eb;
+  border: 2px solid #2563eb;
 }
 
 .test-navigation {
@@ -4171,7 +3210,6 @@ button:disabled {
   }
 
 }
-<<<<<<< HEAD
 
 
 /* =========================================================
@@ -4291,9 +3329,6 @@ body,
 /* =========================================================
    TEST PAGE RESPONSIVE / OVERFLOW FIX
    ========================================================= */
-=======
-`;
->>>>>>> 07c532c (Fix AI MCQ payment and test system)
 
 html,
 body,
