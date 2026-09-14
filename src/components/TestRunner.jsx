@@ -200,6 +200,19 @@ export default function TestRunner({ test, onBack }) {
               q?.details ??
               "इस प्रश्न की व्याख्या उपलब्ध नहीं है।";
 
+            const importantFacts = Array.isArray(q?.importantFacts)
+              ? q.importantFacts
+              : Array.isArray(q?.महत्वपूर्णतथ्य)
+                ? q.महत्वपूर्णतथ्य
+                : [];
+
+            const examTrick =
+              q?.examTrick ??
+              q?.exam_trick ??
+              q?.ExamTrick ??
+              q?.परीक्षाट्रिक ??
+              "";
+
             return (
               <div
                 key={q?.id ?? i}
@@ -239,8 +252,62 @@ export default function TestRunner({ test, onBack }) {
                     lineHeight: 1.75,
                   }}
                 >
-                  💡 <strong>व्याख्या:</strong> {explanation}
+                  <div>
+                    💡 <strong>व्याख्या:</strong>
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    {explanation}
+                  </div>
                 </div>
+
+                {importantFacts.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 15,
+                      borderRadius: 12,
+                      background: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      lineHeight: 1.8,
+                    }}
+                  >
+                    <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                      📌 महत्वपूर्ण तथ्य:
+                    </div>
+
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: 24,
+                      }}
+                    >
+                      {importantFacts.map((fact, factIndex) => (
+                        <li key={factIndex} style={{ marginBottom: 4 }}>
+                          {fact}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {examTrick && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 15,
+                      borderRadius: 12,
+                      background: "#eef2ff",
+                      border: "1px solid #c7d2fe",
+                      lineHeight: 1.8,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <div style={{ marginBottom: 6 }}>
+                      🧠 <strong>Exam Trick:</strong>
+                    </div>
+                    <div>{examTrick}</div>
+                  </div>
+                )}
               </div>
             );
           })}
