@@ -20,13 +20,6 @@ import {
   remove,
 } from "firebase/database";
 
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
-
 import firebaseConfig from "./firebase-config.json";
 
 // ======================================================
@@ -43,7 +36,6 @@ const firebaseApp = initializeApp({
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const db = getDatabase(firebaseApp);
-const storage = getStorage(firebaseApp);
 
 const ADMIN_EMAIL =
   "cciashish@gmail.com";
@@ -2099,7 +2091,7 @@ function AdminPanel({
     );
   };
 
-  // Explanation के लिए image Firebase Storage में upload करें।
+  // Explanation image को Cloudinary Free/Unsigned Upload से upload करें।
   const uploadExplanationImage = async (file) => {
     if (!file) return;
 
@@ -2116,17 +2108,29 @@ function AdminPanel({
     try {
       setMessage("⏳ Explanation image upload हो रही है...");
 
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const fileName = `explanation_${Date.now()}_${safeName}`;
-      const imageRef = storageRef(storage, `test-explanations/${fileName}`);
+      const cloudName = "rrivgwb1";
+      const uploadPreset = "study_with_power";
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
 
-      await uploadBytes(imageRef, file);
-      const imageUrl = await getDownloadURL(imageRef);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
 
-      updateQuestion(currentQuestion, "explanationImage", imageUrl);
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.secure_url) {
+        throw new Error(data.error?.message || "Cloudinary upload failed");
+      }
+
+      updateQuestion(currentQuestion, "explanationImage", data.secure_url);
       setMessage("✅ Explanation image upload हो गई। अब Save Test दबाएँ।");
     } catch (error) {
-      console.error("Explanation image upload error:", error);
+      console.error("Cloudinary explanation image upload error:", error);
       alert("Image upload नहीं हुई:\n" + error.message);
       setMessage("");
     }
