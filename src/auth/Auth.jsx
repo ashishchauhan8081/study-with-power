@@ -149,15 +149,22 @@ export default function Auth({ onLogin }) {
         }
       } catch {}
 
+      // =================================================
+      // FIREBASE OTP ERROR HANDLING
+      // =================================================
+
       if (error.code === "auth/invalid-phone-number") {
         setMessage("Mobile Number सही नहीं है।");
       } else if (error.code === "auth/too-many-requests") {
         setMessage(
           "बहुत ज्यादा प्रयास हो गए हैं। कुछ समय बाद फिर कोशिश करें।"
         );
-      } else if (error.code === "auth/quota-exceeded") {
+      } else if (
+        error.code === "auth/billing-not-enabled" ||
+        error.code === "auth/quota-exceeded"
+      ) {
         setMessage(
-          "SMS quota समाप्त हो गया है। Firebase Billing/Quota check करें।"
+          "📱 अभी Mobile OTP सेवा उपलब्ध नहीं है। कृपया Google से Login करें।"
         );
       } else {
         setMessage(

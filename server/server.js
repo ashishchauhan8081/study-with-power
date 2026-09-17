@@ -1,785 +1,868 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-const crypto = require("crypto");
-const Razorpay = require("razorpay");
 const dotenv = require("dotenv");
+const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
+const admin = require("firebase-admin");
+const Razorpay = require("razorpay");
 
-// ==================================================
-// ENVIRONMENT
-// ==================================================
-
-dotenv.config({
-  path: path.join(__dirname, ".env"),
-});
-
-dotenv.config({
-  path: path.join(__dirname, "..", ".env"),
-});
-
-const { GoogleGenAI } = require("@google/genai");
+dotenv.config();
 
 const app = express();
-
-// ==================================================
-// MIDDLEWARE
-// ==================================================
-
-app.use(cors());
-app.use(express.json());
-
-// ==================================================
-// PORT
-// ==================================================
-
 const PORT = process.env.PORT || 5000;
 
-// ==================================================
-// GEMINI API KEY
-// ==================================================
+/* =========================
+   CORS
+========================= */
 
-const GEMINI_API_KEY =
-  process.env.GEMINI_API_KEY?.trim();
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "https://study-with-power.vercel.app",
+];
 
-if (!GEMINI_API_KEY) {
-  console.error("❌ GEMINI_API_KEY नहीं मिली!");
-} else {
-  console.log("✅ Gemini API Key मिल गई");
-}
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
 
-// ==================================================
-// GEMINI AI
-// ==================================================
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-let ai = null;
+      if (
+        origin.endsWith(".vercel.app") &&
+        origin.includes("study-with-power")
+      ) {
+        return callback(null, true);
+      }
 
-if (GEMINI_API_KEY) {
-  ai = new GoogleGenAI({
-    apiKey: GEMINI_API_KEY,
+      return callback(new Error("CORS: Origin not allowed"));
+    },
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "2mb" }));
+
+/* =========================
+   FIREBASE ADMIN
+========================= */
+
+let firebaseInitialized = false;
+
+try {
+  let serviceAccount = null;
+
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    );
+  }
+
+  if (!serviceAccount) {
+    const serviceAccountPath = path.join(
+      __dirname,
+      "firebase-service-account.json"
+    );
+
+    if (fs.existsSync(serviceAccountPath)) {
+      serviceAccount = require(serviceAccountPath);
+    }
+  }
+
+  if (!serviceAccount) {
+    throw new Error(
+      "Firebase service account not found"
+    );
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+
+    databaseURL:
+      process.env.FIREBASE_DATABASE_URL ||
+      "https://study-with-power-f6914-default-rtdb.asia-southeast1.firebasedatabase.app",
   });
+
+  firebaseInitialized = true;
+
+  console.log("✅ Firebase Admin connected");
+} catch (error) {
+  console.error("❌ Firebase initialization failed");
+  console.error(error.message);
 }
 
-// ==================================================
-// RAZORPAY
-// ==================================================
-
-const RAZORPAY_KEY_ID =
-  process.env.RAZORPAY_KEY_ID?.trim();
-
-const RAZORPAY_KEY_SECRET =
-  process.env.RAZORPAY_KEY_SECRET?.trim();
+/* =========================
+   RAZORPAY
+========================= */
 
 let razorpay = null;
 
 if (
-  RAZORPAY_KEY_ID &&
-  RAZORPAY_KEY_SECRET
+  process.env.RAZORPAY_KEY_ID &&
+  process.env.RAZORPAY_KEY_SECRET
 ) {
   razorpay = new Razorpay({
-    key_id: RAZORPAY_KEY_ID,
-    key_secret: RAZORPAY_KEY_SECRET,
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
   });
 
-  console.log("✅ Razorpay API Keys मिल गईं");
+  console.log("✅ Razorpay connected");
 } else {
-  console.error("❌ Razorpay API Keys नहीं मिलीं!");
-  console.error(
-    "RAZORPAY_KEY_ID और RAZORPAY_KEY_SECRET .env में डालें।"
-  );
+  console.log("⚠️ Razorpay keys missing");
 }
 
-// ==================================================
-// REACT DIST
-// ==================================================
+/* =========================
+   WHATSAPP CLOUD API
+========================= */
 
-const distPath = path.join(
-  __dirname,
-  "..",
-  "dist"
-);
+const WHATSAPP_ACCESS_TOKEN =
+  process.env.WHATSAPP_ACCESS_TOKEN?.trim();
 
-app.use(
-  express.static(distPath)
-);
+const WHATSAPP_PHONE_NUMBER_ID =
+  process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
 
-// ==================================================
-// HEALTH CHECK
-// ==================================================
+const WHATSAPP_API_VERSION =
+  process.env.WHATSAPP_API_VERSION?.trim() || "v23.0";
+
+const WHATSAPP_OTP_TEMPLATE_NAME =
+  process.env.WHATSAPP_OTP_TEMPLATE_NAME?.trim() ||
+  "login_otp";
+
+const WHATSAPP_TEMPLATE_LANGUAGE =
+  process.env.WHATSAPP_TEMPLATE_LANGUAGE?.trim() ||
+  "en_US";
+
+const ADMIN_EMAIL =
+  (
+    process.env.ADMIN_EMAIL?.trim() ||
+    "cciashish@gmail.com"
+  ).toLowerCase();
+
+const whatsappConfigured =
+  !!(
+    WHATSAPP_ACCESS_TOKEN &&
+    WHATSAPP_PHONE_NUMBER_ID &&
+    WHATSAPP_OTP_TEMPLATE_NAME
+  );
+
+if (whatsappConfigured) {
+  console.log("✅ WhatsApp Cloud API credentials found");
+} else {
+  console.log("⚠️ WhatsApp Cloud API is not configured");
+}
+
+/* =========================
+   SEND WHATSAPP OTP
+========================= */
+
+async function sendWhatsAppOtp(phone, otp) {
+  if (!whatsappConfigured) {
+    throw new Error(
+      "WhatsApp Cloud API configured नहीं है। .env में WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID और WHATSAPP_OTP_TEMPLATE_NAME डालें।"
+    );
+  }
+
+  const to = String(phone || "").replace(/\D/g, "");
+
+  if (!/^91[6-9]\d{9}$/.test(to)) {
+    throw new Error("Invalid Indian WhatsApp number");
+  }
+
+  const url =
+    `https://graph.facebook.com/${WHATSAPP_API_VERSION}/` +
+    `${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to,
+    type: "template",
+
+    template: {
+      name: WHATSAPP_OTP_TEMPLATE_NAME,
+
+      language: {
+        code: WHATSAPP_TEMPLATE_LANGUAGE,
+      },
+
+      components: [
+        {
+          type: "body",
+
+          parameters: [
+            {
+              type: "text",
+              text: String(otp),
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+
+    headers: {
+      Authorization:
+        `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+
+      "Content-Type": "application/json",
+    },
+
+    body: JSON.stringify(payload),
+  });
+
+  const data =
+    await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const detail =
+      data?.error?.message ||
+      data?.error?.error_user_msg ||
+      JSON.stringify(data);
+
+    throw new Error(
+      `WhatsApp API error (${response.status}): ${detail}`
+    );
+  }
+
+  return data;
+}
+
+/* =========================
+   HOME
+========================= */
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+
+    message:
+      "Study With Power Server is Online 🚀",
+
+    firebase:
+      firebaseInitialized,
+
+    razorpay:
+      !!razorpay,
+
+    whatsappCloudApi:
+      whatsappConfigured,
+  });
+});
+
+/* =========================
+   HEALTH CHECK
+========================= */
 
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
-    message: "Study With Power Server चल रहा है",
+
+    server: "online",
+
+    firebase:
+      firebaseInitialized,
+
+    razorpay:
+      !!razorpay,
+
+    whatsappCloudApi:
+      whatsappConfigured,
   });
 });
 
-// ==================================================
-// HOME
-// ==================================================
-
-app.get("/", (req, res) => {
-  res.sendFile(
-    path.join(
-      distPath,
-      "index.html"
-    )
-  );
-});
-
-// ==================================================
-// WAIT FUNCTION
-// ==================================================
-
-function wait(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-// ==================================================
-// GEMINI REQUEST
-// ==================================================
-
-async function askGemini(
-  prompt,
-  config = {}
-) {
-  if (!ai) {
-    throw new Error(
-      "GEMINI_API_KEY सेट नहीं है।"
-    );
-  }
-
-  const models = [
-    "gemini-3.7-flash",
-    "gemini-3.6-flash",
-    "gemini-2.5-flash",
-  ];
-
-  let lastError = null;
-
-  for (const model of models) {
-    for (
-      let attempt = 1;
-      attempt <= 2;
-      attempt++
-    ) {
-      try {
-        console.log(
-          `🤖 Gemini Model: ${model} | Attempt: ${attempt}`
-        );
-
-        const response =
-          await ai.models.generateContent({
-            model,
-            contents: prompt,
-            config,
-          });
-
-        console.log(
-          `✅ Gemini उत्तर मिला: ${model}`
-        );
-
-        return response;
-      } catch (error) {
-        lastError = error;
-
-        const errorText =
-          error?.message ||
-          JSON.stringify(error);
-
-        console.error(
-          `❌ ${model} ERROR:`,
-          errorText
-        );
-
-        const temporaryError =
-          errorText.includes("503") ||
-          errorText.includes("UNAVAILABLE") ||
-          errorText.includes("high demand") ||
-          errorText.includes("overloaded") ||
-          errorText.includes("temporarily");
-
-        if (temporaryError) {
-          if (attempt === 1) {
-            console.log(
-              `⏳ ${model} busy है। 3 सेकंड बाद retry...`
-            );
-
-            await wait(3000);
-          } else {
-            console.log(
-              `➡️ ${model} उपलब्ध नहीं है। अगले model पर जा रहे हैं...`
-            );
-          }
-        } else {
-          throw error;
-        }
-      }
-    }
-  }
-
-  throw lastError;
-}
-
-// ==================================================
-// AI STUDY ASSISTANT
-// ==================================================
+/* =========================
+   ADMIN GENERATE + SEND OTP
+========================= */
 
 app.post(
-  "/api/ask",
+  "/api/auth/admin-generate-whatsapp-otp",
   async (req, res) => {
     try {
-      const question =
-        req.body?.question;
+      if (!firebaseInitialized) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Firebase Admin is not configured",
+        });
+      }
+
+      if (!whatsappConfigured) {
+        return res.status(500).json({
+          success: false,
+
+          message:
+            "WhatsApp Cloud API configured नहीं है। पहले .env में WhatsApp credentials डालें।",
+        });
+      }
+
+      /* =========================
+         ADMIN TOKEN
+      ========================= */
+
+      const authHeader =
+        String(
+          req.headers.authorization || ""
+        );
 
       if (
-        !question ||
-        !question.trim()
+        !authHeader.startsWith("Bearer ")
+      ) {
+        return res.status(401).json({
+          success: false,
+
+          message:
+            "Admin authentication required",
+        });
+      }
+
+      const idToken =
+        authHeader
+          .slice(7)
+          .trim();
+
+      let decoded;
+
+      try {
+        decoded =
+          await admin
+            .auth()
+            .verifyIdToken(idToken);
+      } catch (authError) {
+        console.error(
+          "Admin token verification failed:",
+          authError.message
+        );
+
+        return res.status(401).json({
+          success: false,
+
+          message:
+            "Invalid or expired admin session",
+        });
+      }
+
+      const email =
+        String(
+          decoded.email || ""
+        ).toLowerCase();
+
+      if (
+        !decoded.email_verified ||
+        email !== ADMIN_EMAIL
+      ) {
+        return res.status(403).json({
+          success: false,
+
+          message:
+            "Admin access denied",
+        });
+      }
+
+      /* =========================
+         REQUEST ID
+      ========================= */
+
+      const { requestId } =
+        req.body || {};
+
+      if (!requestId) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Request ID required",
+        });
+      }
+
+      const db =
+        admin.database();
+
+      const requestRef =
+        db.ref(
+          `loginRequests/${requestId}`
+        );
+
+      const snapshot =
+        await requestRef.get();
+
+      if (!snapshot.exists()) {
+        return res.status(404).json({
+          success: false,
+
+          message:
+            "Login request not found",
+        });
+      }
+
+      const request =
+        snapshot.val() || {};
+
+      /* =========================
+         CHECK VERIFIED
+      ========================= */
+
+      if (
+        request.status ===
+        "verified"
       ) {
         return res.status(400).json({
-          error:
-            "कृपया अपना प्रश्न लिखिए।",
+          success: false,
+
+          message:
+            "यह Login पहले ही verify हो चुका है।",
         });
       }
 
-      if (!GEMINI_API_KEY) {
-        return res.status(500).json({
-          error:
-            "Gemini API Key सेट नहीं है।",
+      /* =========================
+         CHECK EXPIRY
+      ========================= */
+
+      if (
+        Number(
+          request.expiresAt || 0
+        ) < Date.now()
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "यह Login Request expire हो चुकी है। User से नया Login Request भेजें।",
         });
       }
 
-      console.log(
-        "📩 AI प्रश्न:",
-        question
+      /* =========================
+         GENERATE SECURE OTP
+      ========================= */
+
+      const otpCode =
+        String(
+          crypto.randomInt(
+            100000,
+            1000000
+          )
+        );
+
+      const now =
+        Date.now();
+
+      const expiresAt =
+        now +
+        5 * 60 * 1000;
+
+      /* =========================
+         SEND WHATSAPP FIRST
+      ========================= */
+
+      await sendWhatsAppOtp(
+        request.phone,
+        otpCode
       );
 
-      const prompt = `
-आप "Study With Power" के AI Study Assistant हैं।
+      /* =========================
+         SAVE OTP
+      ========================= */
 
-विद्यार्थी के प्रश्न का उत्तर सरल,
-स्पष्ट और परीक्षा उपयोगी हिंदी में दें।
+      await requestRef.update({
+        otp:
+          otpCode,
 
-उत्तर इस format में दें:
+        status:
+          "otp_generated",
 
-📚 उत्तर:
-प्रश्न का सीधा और स्पष्ट उत्तर 2-4 वाक्यों में दें।
+        generatedAt:
+          now,
 
-🔹 मुख्य बिंदु:
-• महत्वपूर्ण बिंदु
-• महत्वपूर्ण बिंदु
-• महत्वपूर्ण बिंदु
+        expiresAt:
+          expiresAt,
 
-🎯 परीक्षा के लिए महत्वपूर्ण:
-• परीक्षा में पूछे जाने योग्य तथ्य
-• महत्वपूर्ण तारीख / व्यक्ति / स्थान
-• महत्वपूर्ण तथ्य
+        generatedBy:
+          email,
 
-💡 याद रखने योग्य बातें:
-• बहुत महत्वपूर्ण तथ्य
-• एक लाइन में याद रखने योग्य जानकारी
+        whatsappSent:
+          true,
 
-नियम:
+        whatsappSentAt:
+          now,
+      });
 
-1. हिंदी में उत्तर दें।
-2. छोटे और स्पष्ट वाक्यों का प्रयोग करें।
-3. Headings इसी तरह रखें।
-4. Bullet points के लिए केवल • का प्रयोग करें।
-5. अनावश्यक लंबा उत्तर न दें।
-6. इतिहास, भूगोल, राजनीति, विज्ञान और अर्थव्यवस्था में परीक्षा उपयोगी तथ्य दें।
-7. Typing mistake हो तो सही अर्थ समझें।
-8. प्रतियोगी परीक्षाओं के लिए उपयोगी उत्तर दें।
-9. गलत जानकारी न दें।
-10. तथ्यात्मक और स्पष्ट उत्तर दें।
-
-विद्यार्थी का प्रश्न:
-
-${question}
-`;
-
-      const response =
-        await askGemini(prompt);
-
-      const answer =
-        response?.text;
+      console.log(
+        `✅ WhatsApp OTP sent to ${request.phone} for request ${requestId}`
+      );
 
       return res.json({
-        answer:
-          answer ||
-          "AI से उत्तर नहीं मिला।",
+        success: true,
+
+        requestId,
+
+        expiresAt,
+
+        phone:
+          request.phone,
+
+        message:
+          "OTP WhatsApp पर successfully भेज दिया गया।",
       });
     } catch (error) {
       console.error(
-        "❌ GEMINI AI ERROR:",
+        "❌ Admin WhatsApp OTP error:",
         error
       );
 
       return res.status(500).json({
-        error:
-          "AI से उत्तर नहीं मिल सका। कृपया कुछ समय बाद फिर प्रयास करें।",
+        success: false,
+
+        message:
+          error?.message ||
+          "WhatsApp OTP भेजने में समस्या हुई।",
       });
     }
   }
 );
 
-// ==================================================
-// MCQ GENERATOR
-// ==================================================
+/* =========================
+   CREATE LOGIN REQUEST
+========================= */
 
 app.post(
-  "/api/mcq",
+  "/api/auth/send-whatsapp-otp",
   async (req, res) => {
     try {
+      if (!firebaseInitialized) {
+        return res.status(500).json({
+          success: false,
+
+          message:
+            "Firebase Admin is not configured",
+        });
+      }
+
+      const { phone } =
+        req.body;
+
+      if (!phone) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Phone number required",
+        });
+      }
+
+      const normalized =
+        String(phone).replace(
+          /\D/g,
+          ""
+        );
+
+      if (
+        !/^91[6-9]\d{9}$/.test(
+          normalized
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Invalid Indian mobile number",
+        });
+      }
+
+      const requestId =
+        `${Date.now()}_` +
+        Math.random()
+          .toString(36)
+          .substring(2, 10);
+
+      const db =
+        admin.database();
+
+      await db
+        .ref(
+          `loginRequests/${requestId}`
+        )
+        .set({
+          id:
+            requestId,
+
+          phone:
+            normalized,
+
+          status:
+            "pending",
+
+          otp:
+            "",
+
+          createdAt:
+            Date.now(),
+
+          expiresAt:
+            Date.now() +
+            5 * 60 * 1000,
+        });
+
+      return res.json({
+        success: true,
+
+        requestId:
+          requestId,
+
+        message:
+          "Login request created. Admin will generate OTP.",
+      });
+    } catch (error) {
+      console.error(
+        "OTP request error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Login request failed",
+      });
+    }
+  }
+);
+
+/* =========================
+   VERIFY WHATSAPP OTP
+========================= */
+
+app.post(
+  "/api/auth/verify-whatsapp-otp",
+  async (req, res) => {
+    try {
+      if (!firebaseInitialized) {
+        return res.status(500).json({
+          success: false,
+
+          message:
+            "Firebase Admin is not configured",
+        });
+      }
+
       const {
-        topic,
-        count,
-        exam,
+        requestId,
+        otp,
       } = req.body;
 
       if (
-        !topic ||
-        !topic.trim()
+        !requestId ||
+        !otp
       ) {
         return res.status(400).json({
-          error:
-            "कृपया MCQ का Topic लिखिए।",
+          success: false,
+
+          message:
+            "Request ID and OTP required",
         });
       }
 
-      if (!GEMINI_API_KEY) {
-        return res.status(500).json({
-          error:
-            "Gemini API Key सेट नहीं है।",
+      const db =
+        admin.database();
+
+      const snapshot =
+        await db
+          .ref(
+            `loginRequests/${requestId}`
+          )
+          .get();
+
+      if (!snapshot.exists()) {
+        return res.status(404).json({
+          success: false,
+
+          message:
+            "Login request not found",
         });
       }
 
-      const questionCount =
-        Math.min(
-          Math.max(
-            Number(count) || 5,
-            1
-          ),
-          20
-        );
+      const data =
+        snapshot.val();
 
-      const examName =
-        exam ||
-        "सामान्य परीक्षा";
+      /* =========================
+         EXPIRY CHECK
+      ========================= */
 
-      console.log(
-        `📝 MCQ Request: ${topic} | ${questionCount} | ${examName}`
-      );
-
-      const prompt = `
-आप "Study With Power" के AI MCQ Generator हैं।
-
-Topic:
-${topic}
-
-परीक्षा:
-${examName}
-
-प्रश्नों की संख्या:
-${questionCount}
-
-${examName} परीक्षा के स्तर के ${questionCount} बहुविकल्पीय प्रश्न बनाइए।
-
-हर प्रश्न में:
-
-1. प्रश्न
-2. चार विकल्प A, B, C, D
-3. सही उत्तर
-4. छोटी और स्पष्ट व्याख्या
-
-नियम:
-
-- सभी प्रश्न हिंदी में हों।
-- प्रश्न तथ्यात्मक और परीक्षा उपयोगी हों।
-- एक ही प्रश्न दोबारा न दें।
-- सही उत्तर केवल A, B, C या D हो।
-- गलत विकल्प भी विश्वसनीय लगें।
-- परीक्षा के स्तर के अनुसार प्रश्न बनाएं।
-- आसान, मध्यम और कठिन प्रश्नों का मिश्रण रखें।
-- केवल JSON format में उत्तर दें।
-
-JSON FORMAT:
-
-{
-  "questions": [
-    {
-      "question": "प्रश्न",
-      "options": {
-        "A": "विकल्प A",
-        "B": "विकल्प B",
-        "C": "विकल्प C",
-        "D": "विकल्प D"
-      },
-      "answer": "A",
-      "explanation": "सही उत्तर की छोटी व्याख्या"
-    }
-  ]
-}
-`;
-
-      const response =
-        await askGemini(
-          prompt,
-          {
-            responseMimeType:
-              "application/json",
-          }
-        );
-
-      const text =
-        response?.text;
-
-      if (!text) {
-        return res.status(500).json({
-          error:
-            "Gemini ने MCQ उत्तर नहीं दिया।",
-        });
-      }
-
-      let result;
-
-      try {
-        result =
-          JSON.parse(text);
-      } catch (error) {
-        console.error(
-          "❌ MCQ JSON Parse Error:",
-          error
-        );
-
-        return res.status(500).json({
-          error:
-            "Gemini ने सही MCQ format नहीं भेजा।",
-        });
-      }
-
-      return res.json({
-        questions:
-          result.questions || [],
-      });
-    } catch (error) {
-      console.error(
-        "❌ MCQ ERROR:",
-        error
-      );
-
-      return res.status(500).json({
-        error:
-          "MCQ बनाने में समस्या हुई। कृपया फिर प्रयास करें।",
-      });
-    }
-  }
-);
-
-// ==================================================
-// DAILY CURRENT AFFAIRS
-// ==================================================
-
-app.post(
-  "/api/current-affairs",
-  async (req, res) => {
-    try {
-      if (!GEMINI_API_KEY) {
-        return res.status(500).json({
-          error:
-            "Gemini API Key सेट नहीं है।",
-        });
-      }
-
-      const requestedCount =
+      if (
+        Date.now() >
         Number(
-          req.body?.count
-        ) || 10;
+          data.expiresAt || 0
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
 
-      const questionCount =
-        Math.min(
-          Math.max(
-            requestedCount,
-            5
-          ),
-          20
-        );
-
-      const today =
-        new Intl.DateTimeFormat(
-          "en-CA",
-          {
-            timeZone:
-              "Asia/Kolkata",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          }
-        ).format(
-          new Date()
-        );
-
-      console.log(
-        `📰 Current Affairs: ${today}`
-      );
-
-      const prompt = `
-आप "Study With Power" के Daily Current Affairs Quiz Generator हैं।
-
-आज की तारीख (IST):
-${today}
-
-${questionCount} Current Affairs MCQ तैयार करें।
-
-मुख्य लक्ष्य:
-
-• UPPCS
-• UPPSC
-• SSC
-• Banking
-• अन्य प्रतियोगी परीक्षाएँ
-
-भारत और उत्तर प्रदेश को प्राथमिकता दें।
-
-विषय:
-
-• राष्ट्रीय घटनाएँ
-• अंतरराष्ट्रीय घटनाएँ
-• अर्थव्यवस्था
-• विज्ञान एवं तकनीक
-• सरकारी योजनाएँ
-• नियुक्तियाँ
-• पुरस्कार
-• खेल
-• रक्षा
-• महत्वपूर्ण घटनाएँ
-
-केवल वास्तविक और विश्वसनीय जानकारी दें।
-
-प्रश्न हिंदी में हों।
-
-हर प्रश्न में:
-
-1. प्रश्न
-2. चार विकल्प A, B, C, D
-3. सही उत्तर
-4. छोटी तथ्यात्मक व्याख्या
-
-केवल JSON format में उत्तर दें।
-
-{
-  "questions": [
-    {
-      "question": "प्रश्न",
-      "options": {
-        "A": "विकल्प A",
-        "B": "विकल्प B",
-        "C": "विकल्प C",
-        "D": "विकल्प D"
-      },
-      "answer": "A",
-      "explanation": "व्याख्या"
-    }
-  ]
-}
-`;
-
-      const response =
-        await askGemini(
-          prompt,
-          {
-            responseMimeType:
-              "application/json",
-          }
-        );
-
-      const text =
-        response?.text;
-
-      if (!text) {
-        return res.status(500).json({
-          error:
-            "Current Affairs Quiz नहीं मिला।",
+          message:
+            "OTP expired",
         });
       }
 
-      let result;
+      /* =========================
+         OTP CHECK
+      ========================= */
 
-      try {
-        result =
-          JSON.parse(text);
-      } catch (error) {
-        console.error(
-          "❌ Current Affairs JSON Error:",
-          error
-        );
+      if (
+        String(data.otp) !==
+        String(otp)
+      ) {
+        return res.status(400).json({
+          success: false,
 
-        return res.status(500).json({
-          error:
-            "Current Affairs का सही format नहीं मिला।",
+          message:
+            "Invalid OTP",
         });
       }
+
+      /* =========================
+         VERIFIED
+      ========================= */
+
+      await db
+        .ref(
+          `loginRequests/${requestId}`
+        )
+        .update({
+          status:
+            "verified",
+
+          verifiedAt:
+            Date.now(),
+
+          otp:
+            "",
+        });
 
       return res.json({
-        date: today,
-        questions:
-          result.questions || [],
+        success: true,
+
+        phone:
+          data.phone,
+
+        message:
+          "OTP verified successfully",
       });
     } catch (error) {
       console.error(
-        "❌ CURRENT AFFAIRS ERROR:",
+        "OTP verification error:",
         error
       );
 
-      return res.status(500).json({
-        error:
-          "Daily Current Affairs Quiz बनाने में समस्या हुई।",
-      });
-    }
-  }
-);
-
-// ==================================================
-// RAZORPAY - PUBLIC KEY
-// ==================================================
-
-app.get(
-  "/api/payment/key",
-  (req, res) => {
-    if (!RAZORPAY_KEY_ID) {
       return res.status(500).json({
         success: false,
-        error:
-          "Razorpay Key ID सेट नहीं है।",
+
+        message:
+          "OTP verification failed",
       });
     }
-
-    return res.json({
-      success: true,
-      key_id:
-        RAZORPAY_KEY_ID,
-    });
   }
 );
 
-// ==================================================
-// RAZORPAY - CREATE ORDER
-// ==================================================
+/* =========================
+   RAZORPAY CREATE ORDER
+========================= */
 
 app.post(
-  "/api/payment/order",
+  "/api/payment/create-order",
   async (req, res) => {
     try {
       if (!razorpay) {
         return res.status(500).json({
           success: false,
-          error:
-            "Razorpay सेट नहीं है। RAZORPAY_KEY_ID और RAZORPAY_KEY_SECRET जाँचें।",
+
+          message:
+            "Razorpay is not configured",
         });
       }
 
-      const amount =
-        Number(
-          req.body?.amount
-        );
+      const {
+        amount,
+        currency = "INR",
+        receipt,
+      } = req.body;
 
-      const product =
-        String(
-          req.body?.product ||
-            "Study With Power Combo"
-        ).slice(0, 200);
-
-      const receipt =
-        String(
-          req.body?.receipt ||
-            `swp_${Date.now()}`
-        ).slice(0, 40);
+      const numericAmount =
+        Number(amount);
 
       if (
-        !Number.isFinite(amount) ||
-        amount <= 0
+        !numericAmount ||
+        numericAmount <= 0
       ) {
         return res.status(400).json({
           success: false,
-          error:
-            "सही payment amount भेजिए।",
+
+          message:
+            "Valid amount required",
         });
       }
 
-      const amountInPaise =
-        Math.round(
-          amount * 100
-        );
+      const options = {
+        amount:
+          Math.round(
+            numericAmount *
+              100
+          ),
 
-      console.log(
-        `💳 Razorpay Order Request: ₹${amount}`
-      );
+        currency:
+          currency,
+
+        receipt:
+          receipt ||
+          `swp_${Date.now()}`,
+      };
 
       const order =
-        await razorpay.orders.create({
-          amount:
-            amountInPaise,
-          currency:
-            "INR",
-          receipt,
-          notes: {
-            product,
-          },
-        });
-
-      console.log(
-        `✅ Razorpay Order Created: ${order.id}`
-      );
+        await razorpay.orders.create(
+          options
+        );
 
       return res.json({
         success: true,
-        order_id:
-          order.id,
-        amount:
-          order.amount,
-        currency:
-          order.currency,
-        key_id:
-          RAZORPAY_KEY_ID,
+
+        order:
+          order,
       });
     } catch (error) {
       console.error(
-        "❌ RAZORPAY ORDER ERROR:",
+        "Razorpay order error:",
         error
       );
 
       return res.status(500).json({
         success: false,
-        error:
-          error?.error?.description ||
-          error?.message ||
-          "Razorpay order बनाने में समस्या हुई।",
+
+        message:
+          "Unable to create payment order",
       });
     }
   }
 );
 
-// ==================================================
-// RAZORPAY - VERIFY PAYMENT
-// ==================================================
+/* =========================
+   RAZORPAY VERIFY
+========================= */
 
 app.post(
   "/api/payment/verify",
   async (req, res) => {
     try {
-      if (!RAZORPAY_KEY_SECRET) {
-        return res.status(500).json({
-          success: false,
-          error:
-            "Razorpay Key Secret सेट नहीं है।",
-        });
-      }
-
       const {
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
-      } = req.body || {};
+      } = req.body;
 
       if (
         !razorpay_order_id ||
@@ -788,136 +871,209 @@ app.post(
       ) {
         return res.status(400).json({
           success: false,
-          error:
-            "Payment verification के लिए जरूरी details नहीं मिलीं।",
+
+          message:
+            "Payment verification data missing",
         });
       }
 
-      const generatedSignature =
+      if (
+        !process.env
+          .RAZORPAY_KEY_SECRET
+      ) {
+        return res.status(500).json({
+          success: false,
+
+          message:
+            "Razorpay secret not configured",
+        });
+      }
+
+      const body =
+        razorpay_order_id +
+        "|" +
+        razorpay_payment_id;
+
+      const expectedSignature =
         crypto
           .createHmac(
             "sha256",
-            RAZORPAY_KEY_SECRET
+            process.env
+              .RAZORPAY_KEY_SECRET
           )
-          .update(
-            `${razorpay_order_id}|${razorpay_payment_id}`
-          )
+          .update(body)
           .digest("hex");
 
-      const received =
-        Buffer.from(
-          razorpay_signature,
-          "utf8"
-        );
+      const verified =
+        expectedSignature ===
+        razorpay_signature;
 
-      const generated =
-        Buffer.from(
-          generatedSignature,
-          "utf8"
-        );
-
-      const valid =
-        received.length ===
-          generated.length &&
-        crypto.timingSafeEqual(
-          received,
-          generated
-        );
-
-      if (!valid) {
-        console.error(
-          "❌ Razorpay Signature Invalid"
-        );
-
+      if (!verified) {
         return res.status(400).json({
           success: false,
-          error:
-            "Payment verification failed.",
+
+          verified: false,
+
+          message:
+            "Invalid payment signature",
         });
       }
 
-      console.log(
-        `✅ Razorpay Payment Verified: ${razorpay_payment_id}`
-      );
-
       return res.json({
         success: true,
-        payment_id:
-          razorpay_payment_id,
-        order_id:
-          razorpay_order_id,
+
+        verified: true,
+
         message:
-          "Payment सफलतापूर्वक verify हो गया।",
+          "Payment verified successfully",
       });
     } catch (error) {
       console.error(
-        "❌ RAZORPAY VERIFY ERROR:",
+        "Payment verification error:",
         error
       );
 
       return res.status(500).json({
         success: false,
-        error:
-          "Payment verification में समस्या हुई।",
+
+        verified: false,
+
+        message:
+          "Payment verification failed",
       });
     }
   }
 );
 
-// ==================================================
-// SPA FALLBACK
-// ==================================================
+/* =========================
+   WHATSAPP WEBHOOK
+========================= */
 
 app.get(
-  /.*/,
+  "/webhook/whatsapp",
   (req, res) => {
-    res.sendFile(
-      path.join(
-        distPath,
-        "index.html"
-      )
-    );
+    const mode =
+      req.query["hub.mode"];
+
+    const token =
+      req.query[
+        "hub.verify_token"
+      ];
+
+    const challenge =
+      req.query[
+        "hub.challenge"
+      ];
+
+    if (
+      mode === "subscribe" &&
+      token &&
+      token ===
+        process.env
+          .WHATSAPP_VERIFY_TOKEN
+    ) {
+      return res
+        .status(200)
+        .send(challenge);
+    }
+
+    return res.sendStatus(403);
   }
 );
 
-// ==================================================
-// SERVER START
-// ==================================================
+app.post(
+  "/webhook/whatsapp",
+  (req, res) => {
+    console.log(
+      "WhatsApp webhook received"
+    );
+
+    console.log(
+      JSON.stringify(
+        req.body,
+        null,
+        2
+      )
+    );
+
+    return res.sendStatus(200);
+  }
+);
+
+/* =========================
+   ERROR HANDLER
+========================= */
+
+app.use(
+  (err, req, res, next) => {
+    console.error(
+      "Server error:",
+      err
+    );
+
+    if (
+      err.message &&
+      err.message.startsWith(
+        "CORS"
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+
+        message:
+          "CORS blocked this request",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+
+      message:
+        "Internal server error",
+    });
+  }
+);
+
+/* =========================
+   START SERVER
+========================= */
 
 app.listen(
   PORT,
   "0.0.0.0",
   () => {
+    console.log("");
+
     console.log(
-      "=================================="
+      "🚀 Study With Power Server Started"
     );
 
     console.log(
-      "🚀 Study With Power Server"
+      `🌐 Port: ${PORT}`
     );
 
     console.log(
-      `🌐 Server running on port ${PORT}`
+      "📱 OTP Login: Enabled"
     );
 
     console.log(
-      `💳 Razorpay: ${
-        razorpay
-          ? "READY"
-          : "NOT CONFIGURED"
-      }`
+      "💳 Razorpay: " +
+        (razorpay
+          ? "Enabled"
+          : "Disabled")
     );
 
     console.log(
-      `🤖 Gemini: ${
-        ai
-          ? "READY"
-          : "NOT CONFIGURED"
-      }`
+      "📱 WhatsApp Cloud API: " +
+        (whatsappConfigured
+          ? "Enabled"
+          : "NOT CONFIGURED")
     );
 
     console.log(
-      "=================================="
+      "📡 Webhook: /webhook/whatsapp"
     );
+
+    console.log("");
   }
 );

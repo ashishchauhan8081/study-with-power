@@ -6,8 +6,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
+  signInAnonymously,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -17,6 +16,8 @@ import {
   ref,
   onValue,
   set,
+  update,
+  get,
   remove,
 } from "firebase/database";
 
@@ -287,6 +288,10 @@ export default function App() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [pendingTest, setPendingTest] = useState(null);
 
+  // Manual Mobile OTP (बिना WhatsApp API)
+  const [manualOtpRequestId, setManualOtpRequestId] = useState("");
+  const [manualOtpPhone, setManualOtpPhone] = useState("");
+
   const [cloudTests, setCloudTests] =
     useState({});
 
@@ -431,47 +436,150 @@ export default function App() {
   };
 
   const finishLogin = (loggedInUser) => {
-    setLoginModalOpen(false); setConfirmationResult(null); setOtp(""); setPhoneNumber("");
-    const test = pendingTest; setPendingTest(null);
-    if (test) { setSelectedTest(test); setPage("test"); window.scrollTo({top:0,behavior:"smooth"}); }
+    setLoginModalOpen(false);
+    setManualOtpRequestId("");
+    setManualOtpPhone("");
+    setOtp("");
+    const test = pendingTest;
+    setPendingTest(null);
+    if (test) {
+      setSelectedTest(test);
+      setPage("test");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
     return loggedInUser;
   };
 
   const loginWithGoogle = async () => {
-    try { const result = await signInWithPopup(auth, googleProvider); return finishLogin(result.user); }
-    catch (error) { console.error(error); alert("Google Login नहीं हुआ:\n" + error.message); return null; }
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      return finishLogin(result.user);
+    } catch (error) {
+      console.error(error);
+      alert("Google Login नहीं हुआ:\n" + error.message);
+      return null;
+    }
   };
 
-  const setupRecaptcha = () => {
-    if (window.recaptchaVerifier) return window.recaptchaVerifier;
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "normal", callback: () => {}, "expired-callback": () => {} });
-    window.recaptchaVerifier.render().catch(console.error);
-    return window.recaptchaVerifier;
-  };
-
+  // ====================================================
+  // MANUAL MOBILE OTP — WhatsApp API के बिना
+  // User request Firebase में जाएगी।
+  // Admin Panel OTP generate करेगा और Admin उसे खुद WhatsApp पर भेजेगा।
+  // ====================================================
   const sendPhoneOtp = async () => {
     const raw = phoneNumber.trim().replace(/\s+/g, "");
     const normalized = raw.startsWith("+") ? raw : `+91${raw.replace(/^0+/, "")}`;
-    if (!/^\+91[6-9]\d{9}$/.test(normalized)) { alert("कृपया सही 10 अंकों का Mobile Number डालें।"); return; }
+
+    if (!/^\+91[6-9]\d{9}$/.test(normalized)) {
+      alert("कृपया सही 10 अंकों का Mobile Number डालें।");
+      return;
+    }
+
     try {
       setPhoneLoading(true);
-      const result = await signInWithPhoneNumber(auth, normalized, setupRecaptcha());
-      setConfirmationResult(result); setPhoneNumber(normalized); alert("OTP आपके Mobile Number पर भेज दिया गया है।");
+
+      // Anonymous session is created before the login request so the
+      // Realtime Database Rules can bind this request to this user UID.
+      const authResult = auth.currentUser
+        ? { user: auth.currentUser }
+        : await signInAnonymously(auth);
+
+      const uid = authResult.user.uid;
+      const requestId =
+        `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+      await set(ref(db, `loginRequests/${requestId}`), {
+        id: requestId,
+        uid,
+        phone: normalized,
+        status: "pending",
+        otp: "",
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      });
+
+      setManualOtpRequestId(requestId);
+      setManualOtpPhone(normalized);
+      setPhoneNumber(normalized);
+
+      alert(
+        "✅ Login Request Admin Panel में भेज दी गई है।\n\n" +
+        "Admin OTP Generate करके आपको WhatsApp पर भेजेंगे।"
+      );
     } catch (error) {
-      console.error(error);
-      if (window.recaptchaVerifier) { try { window.recaptchaVerifier.clear(); } catch (_) {} window.recaptchaVerifier = null; }
-      alert("OTP नहीं भेजा गया:\n" + error.message);
-    } finally { setPhoneLoading(false); }
+      console.error("Manual OTP request error:", error);
+      alert("Login Request नहीं भेजी गई:\n" + error.message);
+    } finally {
+      setPhoneLoading(false);
+    }
   };
 
   const verifyPhoneOtp = async () => {
-    if (!confirmationResult) return;
-    if (!/^\d{6}$/.test(otp.trim())) { alert("कृपया 6 अंकों का OTP डालें।"); return; }
-    try { setPhoneLoading(true); const result = await confirmationResult.confirm(otp.trim()); finishLogin(result.user); }
-    catch (error) { console.error(error); alert("OTP गलत है या Expire हो चुका है।\n" + error.message); }
-    finally { setPhoneLoading(false); }
-  };
+    if (!manualOtpRequestId) return;
 
+    const enteredOtp = otp.trim();
+
+    if (!/^\d{6}$/.test(enteredOtp)) {
+      alert("कृपया 6 अंकों का OTP डालें।");
+      return;
+    }
+
+    try {
+      setPhoneLoading(true);
+
+      const snapshot = await get(
+        ref(db, `loginRequests/${manualOtpRequestId}`)
+      );
+
+      if (!snapshot.exists()) {
+        alert("Login Request नहीं मिली। फिर से OTP Request करें।");
+        return;
+      }
+
+      const request = snapshot.val();
+      const now = Date.now();
+
+      if (request.status === "verified") {
+        alert("यह OTP पहले ही इस्तेमाल हो चुका है।");
+        return;
+      }
+
+      if (!request.otp || String(request.otp) !== enteredOtp) {
+        alert("❌ OTP गलत है।");
+        return;
+      }
+
+      if (Number(request.expiresAt || 0) < now) {
+        alert("⏱️ OTP Expire हो चुका है। नया Login Request करें।");
+        return;
+      }
+
+      // Anonymous session was already created when the request was made.
+      // Keep using the same UID for the verified request.
+      const authResult = auth.currentUser
+        ? { user: auth.currentUser }
+        : await signInAnonymously(auth);
+
+      await update(
+        ref(db, `loginRequests/${manualOtpRequestId}`),
+        {
+          status: "verified",
+          verifiedAt: now,
+          verifiedUid: authResult.user.uid,
+          otp: "",
+        }
+      );
+
+      localStorage.setItem("swp_manual_phone", manualOtpPhone || request.phone);
+
+      finishLogin(authResult.user);
+    } catch (error) {
+      console.error("Manual OTP verify error:", error);
+      alert("OTP Verify नहीं हुआ:\n" + error.message);
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
 
 
   const logout = async () => {
@@ -821,22 +929,115 @@ export default function App() {
           <div className="login-modal-overlay" onClick={() => setLoginModalOpen(false)}>
             <div className="login-modal" onClick={(e) => e.stopPropagation()}>
               <button className="login-modal-close" onClick={() => setLoginModalOpen(false)}>×</button>
+
               <h2>🔐 Login / Sign Up</h2>
-              <p className="login-modal-subtitle">Google या Mobile OTP से Login करें</p>
-              <button className="google-login-btn" onClick={loginWithGoogle} type="button">🔵 Continue with Google</button>
+              <p className="login-modal-subtitle">
+                Google या Manual Mobile OTP से Login करें
+              </p>
+
+              <button
+                className="google-login-btn"
+                onClick={loginWithGoogle}
+                type="button"
+              >
+                🔵 Continue with Google
+              </button>
+
               <div className="login-divider"><span>या</span></div>
+
               <label className="login-label">📱 Mobile Number</label>
-              <div className="phone-input-row"><span className="country-code">+91</span><input value={phoneNumber.replace(/^\+91/, "")} onChange={(e)=>setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0,10))} placeholder="10 अंकों का Mobile Number" inputMode="numeric" disabled={!!confirmationResult}/></div>
-              {!confirmationResult ? (<>
-                <div id="recaptcha-container" className="recaptcha-container"></div>
-                <button className="primary mobile-login-btn" onClick={sendPhoneOtp} disabled={phoneLoading} type="button">{phoneLoading ? "OTP भेजा जा रहा है..." : "📲 OTP भेजें"}</button>
-              </>) : (<>
-                <label className="login-label">🔢 OTP</label>
-                <input className="otp-input" value={otp} onChange={(e)=>setOtp(e.target.value.replace(/\D/g, "").slice(0,6))} placeholder="6 अंकों का OTP" inputMode="numeric" autoFocus/>
-                <button className="primary mobile-login-btn" onClick={verifyPhoneOtp} disabled={phoneLoading} type="button">{phoneLoading ? "Verify हो रहा है..." : "✅ OTP Verify करें"}</button>
-                <button className="resend-btn" onClick={()=>{setConfirmationResult(null);setOtp("");if(window.recaptchaVerifier){try{window.recaptchaVerifier.clear()}catch(_){}}window.recaptchaVerifier=null;}} type="button">← दूसरा Mobile Number / OTP</button>
-              </>)}
-              <small className="login-note">Mobile Login के लिए Firebase Console में Phone Authentication और reCAPTCHA सक्षम होना जरूरी है।</small>
+
+              <div className="phone-input-row">
+                <span className="country-code">+91</span>
+                <input
+                  value={phoneNumber.replace(/^\+91/, "")}
+                  onChange={(e) =>
+                    setPhoneNumber(
+                      e.target.value.replace(/\D/g, "").slice(0, 10)
+                    )
+                  }
+                  placeholder="10 अंकों का Mobile Number"
+                  inputMode="numeric"
+                  disabled={!!manualOtpRequestId}
+                />
+              </div>
+
+              {!manualOtpRequestId ? (
+                <>
+                  <button
+                    className="primary mobile-login-btn"
+                    onClick={sendPhoneOtp}
+                    disabled={phoneLoading}
+                    type="button"
+                  >
+                    {phoneLoading
+                      ? "Request भेजी जा रही है..."
+                      : "📲 Login Request भेजें"}
+                  </button>
+
+                  <small className="login-note">
+                    Request Admin Panel में जाएगी। Admin OTP Generate करके आपको
+                    WhatsApp पर खुद भेजेंगे।
+                  </small>
+                </>
+              ) : (
+                <>
+                  <div style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 10,
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    color: "#92400e",
+                    lineHeight: 1.5
+                  }}>
+                    🟡 <strong>OTP Pending</strong><br />
+                    Admin ने अभी OTP Generate करके WhatsApp पर भेजना है।
+                  </div>
+
+                  <label className="login-label">🔢 OTP</label>
+
+                  <input
+                    className="otp-input"
+                    value={otp}
+                    onChange={(e) =>
+                      setOtp(
+                        e.target.value.replace(/\D/g, "").slice(0, 6)
+                      )
+                    }
+                    placeholder="6 अंकों का OTP"
+                    inputMode="numeric"
+                    autoFocus
+                  />
+
+                  <button
+                    className="primary mobile-login-btn"
+                    onClick={verifyPhoneOtp}
+                    disabled={phoneLoading}
+                    type="button"
+                  >
+                    {phoneLoading
+                      ? "Verify हो रहा है..."
+                      : "✅ OTP Verify करें"}
+                  </button>
+
+                  <button
+                    className="resend-btn"
+                    onClick={() => {
+                      setManualOtpRequestId("");
+                      setManualOtpPhone("");
+                      setOtp("");
+                    }}
+                    type="button"
+                  >
+                    ← नया Mobile Number / Request
+                  </button>
+
+                  <small className="login-note">
+                    OTP 5 मिनट तक valid रहेगा।
+                  </small>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -2041,13 +2242,19 @@ function AdminPanel({
   const [title, setTitle] = useState("UPPCS Test 01");
   const [status, setStatus] = useState("draft");
 
-  // Questions केवल Question Form से manage होंगे
+  // Questions JSON is the only question editor.
   const [questions, setQuestions] = useState([
     createEmptyQuestion(1),
   ]);
+  const [questionJsonDraft, setQuestionJsonDraft] = useState(
+    JSON.stringify([createEmptyQuestion(1)], null, 2)
+  );
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Manual OTP Login Requests
+  const [loginRequests, setLoginRequests] = useState({});
 
   const [resourceDraft, setResourceDraft] = useState(
     Array.isArray(resources) && resources.length ? resources : defaultResources
@@ -2056,6 +2263,24 @@ function AdminPanel({
   useEffect(() => {
     if (Array.isArray(resources) && resources.length) setResourceDraft(resources);
   }, [resources]);
+
+  // Admin को सभी Manual Mobile Login Requests real-time मिलेंगी।
+  useEffect(() => {
+    if (user?.email !== ADMIN_EMAIL) return;
+
+    const requestsRef = ref(db, "loginRequests");
+    const unsubscribe = onValue(
+      requestsRef,
+      (snapshot) => {
+        setLoginRequests(snapshot.val() || {});
+      },
+      (error) => {
+        console.error("Login Requests Error:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.email]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -2179,22 +2404,11 @@ function AdminPanel({
     setStatus(data.status || "draft");
 
     const loaded = Array.isArray(data.questions) ? data.questions : [];
-    const formatted = loaded.slice(0, 150).map((q, index) => ({
-      id: index + 1,
-      question: q?.question ?? q?.questionText ?? q?.text ?? "",
-      options: [
-        q?.options?.[0] ?? "",
-        q?.options?.[1] ?? "",
-        q?.options?.[2] ?? "",
-        q?.options?.[3] ?? "",
-      ],
-      answer: Number.isFinite(Number(q?.answer)) ? Number(q.answer) : 0,
-      explanation: q?.explanation ?? "",
-      explanationImage: q?.explanationImage ?? "",
-    }));
+    const formatted = normalizeAdminQuestions(loaded.slice(0, 150));
 
     const finalQuestions = formatted.length ? formatted : [createEmptyQuestion(1)];
     setQuestions(finalQuestions);
+    setQuestionJsonDraft(JSON.stringify(finalQuestions, null, 2));
     setCurrentQuestion(0);
     setMessage(`✏️ ${data.title || id} edit mode में खुल गया।`);
 
@@ -2208,8 +2422,9 @@ function AdminPanel({
     setStatus("draft");
     const emptyQuestions = [createEmptyQuestion(1)];
     setQuestions(emptyQuestions);
+    setQuestionJsonDraft(JSON.stringify(emptyQuestions, null, 2));
     setCurrentQuestion(0);
-    setMessage("📝 नया Test तैयार है। Question Form में Questions भरें और Save Test करें।");
+    setMessage("📝 नया Test तैयार है। Questions JSON डालें और Save Test करें।");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -2342,6 +2557,7 @@ function AdminPanel({
     try {
       await set(ref(db, `tests/${id}`), data);
       setQuestions(cleanQuestions);
+      setQuestionJsonDraft(JSON.stringify(cleanQuestions, null, 2));
       setCurrentQuestion(0);
 
       setMessage(
@@ -2358,6 +2574,99 @@ function AdminPanel({
       setSaving(false);
     }
   };
+
+  const generateManualOtp = async (requestId) => {
+    const request = loginRequests?.[requestId];
+    if (!request) return;
+
+    if (request.status === "verified") {
+      alert("यह Login पहले ही verify हो चुका है।");
+      return;
+    }
+
+    if (Number(request.expiresAt || 0) < Date.now()) {
+      alert("यह Login Request expire हो चुकी है। User से नया Login Request भेजें।");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const idToken = await user.getIdToken(true);
+
+      const configuredBase =
+        typeof import.meta !== "undefined" &&
+        import.meta.env?.VITE_API_BASE_URL
+          ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
+          : "";
+
+      const apiBase =
+        configuredBase ||
+        (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+          ? "http://localhost:5000"
+          : "");
+
+      const response = await fetch(
+        `${apiBase}/api/auth/admin-generate-whatsapp-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            requestId,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data?.success) {
+        throw new Error(
+          data?.message ||
+          `Server Error (${response.status})`
+        );
+      }
+
+      setMessage(
+        `✅ OTP ${request.phone} के WhatsApp पर automatic भेज दिया गया। OTP 5 मिनट तक valid रहेगा।`
+      );
+    } catch (error) {
+      console.error("WhatsApp OTP error:", error);
+      alert(
+        "❌ WhatsApp पर OTP नहीं भेजा गया।\n\n" +
+        (error?.message || "Server/WhatsApp API error")
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyManualOtp = async (otpCode) => {
+    try {
+      await navigator.clipboard.writeText(String(otpCode || ""));
+      setMessage("📋 OTP Copy हो गया। अब WhatsApp पर User को भेजें।");
+    } catch (_) {
+      window.prompt("OTP Copy करें:", String(otpCode || ""));
+    }
+  };
+
+  const deleteLoginRequest = async (requestId) => {
+    if (!window.confirm("क्या यह Login Request हटानी है?")) return;
+
+    try {
+      await remove(ref(db, `loginRequests/${requestId}`));
+      setMessage("🗑️ Login Request delete हो गई।");
+    } catch (error) {
+      alert("Request delete error:\n" + error.message);
+    }
+  };
+
+  const loginRequestList = Object.entries(loginRequests || {})
+    .map(([id, data]) => ({ id, ...(data || {}) }))
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
 
   const deleteTest = async (id) => {
     if (!window.confirm("क्या आप यह Test delete करना चाहते हैं?")) return;
@@ -2409,6 +2718,121 @@ function AdminPanel({
         <button className="admin-close" onClick={onClose}>
           ← Website
         </button>
+      </div>
+
+      <div className="admin-card" style={{ border: "1px solid #fbbf24", background: "#fffbeb" }}>
+        <div className="admin-title-row">
+          <div>
+            <h2>🔔 Mobile Login Requests</h2>
+            <p>Student Mobile Login Request भेजे तो यहाँ दिखेगी। OTP Generate करके WhatsApp पर खुद भेजें।</p>
+          </div>
+          <div style={{
+            padding: "8px 12px",
+            borderRadius: 9,
+            background: "#fef3c7",
+            color: "#92400e",
+            fontWeight: 800
+          }}>
+            {loginRequestList.filter((x) => x.status !== "verified").length} Pending
+          </div>
+        </div>
+
+        {loginRequestList.length === 0 ? (
+          <div className="admin-empty">
+            <div>📭</div>
+            <h3>अभी कोई Mobile Login Request नहीं है।</h3>
+          </div>
+        ) : (
+          <div className="admin-test-list">
+            {loginRequestList.map((request) => {
+              const isExpired = Number(request.expiresAt || 0) < Date.now();
+              return (
+                <div
+                  className="admin-test-row"
+                  key={request.id}
+                  style={{
+                    border: request.status === "pending"
+                      ? "2px solid #fbbf24"
+                      : "1px solid #dbe3ee",
+                    background: "#fff"
+                  }}
+                >
+                  <div className="admin-test-info">
+                    <div className="test-status">
+                      {request.status === "verified"
+                        ? "✅ VERIFIED"
+                        : request.status === "otp_generated" && !isExpired
+                        ? "🔢 OTP GENERATED"
+                        : isExpired
+                        ? "⏱️ EXPIRED"
+                        : "🟡 NEW REQUEST"}
+                    </div>
+
+                    <h3>📱 {request.phone}</h3>
+                    <p>
+                      {request.createdAt
+                        ? new Date(Number(request.createdAt)).toLocaleString("hi-IN")
+                        : "Time unavailable"}
+                    </p>
+
+                    {request.status === "otp_generated" &&
+                      !isExpired &&
+                      request.whatsappSent && (
+                        <div style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginTop: 8,
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          background: "#ecfdf5",
+                          border: "1px solid #86efac",
+                          color: "#166534",
+                          fontWeight: 800
+                        }}>
+                          ✅ OTP WhatsApp पर भेज दिया गया
+                        </div>
+                      )}
+                  </div>
+
+                  <div className="admin-test-buttons" style={{ flexWrap: "wrap" }}>
+                    {request.status !== "verified" && (
+                      <button
+                        className="save-btn"
+                        onClick={() => generateManualOtp(request.id)}
+                      >
+                        🔢 Generate OTP
+                      </button>
+                    )}
+
+
+
+                    <button
+                      className="danger-btn"
+                      onClick={() => deleteLoginRequest(request.id)}
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{
+          marginTop: 12,
+          padding: 12,
+          borderRadius: 10,
+          background: "#fff",
+          border: "1px solid #fde68a",
+          color: "#78350f",
+          lineHeight: 1.6
+        }}>
+          <strong>Automatic WhatsApp OTP:</strong> User request → यहाँ <strong>Generate OTP</strong> → OTP अपने-आप WhatsApp पर भेजा जाएगा → User website में OTP डाले।
+          <br />
+          <strong>ध्यान दें:</strong> WhatsApp Cloud API और approved OTP template server की <code>.env</code> में configured होना चाहिए।
+        </div>
       </div>
 
       <div className="admin-card">
@@ -2472,234 +2896,178 @@ function AdminPanel({
         </div>
 
         {/* ==================================================
-            QUESTION FORM
+            QUESTIONS JSON
         ================================================== */}
         <div className="questions-editor" id="question-editor">
           <div style={{
-            width: "100%", boxSizing: "border-box", padding: 18,
-            borderRadius: 14, border: "1px solid #93c5fd", background: "#eff6ff"
+            width: "100%",
+            boxSizing: "border-box",
+            padding: 18,
+            borderRadius: 14,
+            border: "1px solid #93c5fd",
+            background: "#eff6ff"
           }}>
             <div className="admin-title-row" style={{
-              marginBottom: 14, display: "flex", justifyContent: "space-between",
-              alignItems: "center", gap: 12, flexWrap: "wrap"
+              marginBottom: 14,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap"
             }}>
               <div>
-                <h2 style={{ margin: 0 }}>📝 Question Form</h2>
+                <h2 style={{ margin: 0 }}>{"{ }"} Questions JSON</h2>
                 <p className="small-text" style={{ marginTop: 5 }}>
-                  प्रश्न, 4 विकल्प, सही उत्तर और पूरी व्याख्या यहाँ भरें।
+                  इस Test के सभी Questions JSON में डालें। अधिकतम 150 Questions।
                 </p>
               </div>
               <div style={{
-                padding: "7px 12px", borderRadius: 8, background: "#dbeafe",
-                color: "#1d4ed8", fontWeight: 800, fontSize: 13
+                padding: "7px 12px",
+                borderRadius: 8,
+                background: "#dbeafe",
+                color: "#1d4ed8",
+                fontWeight: 800,
+                fontSize: 13
               }}>
-                प्रश्न {currentQuestion + 1} / {questions.length}
+                Current Questions: {questions.length}
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
-              <div>
-                <label>प्रश्न</label>
-                <textarea
-                  value={question.question || ""}
-                  onChange={(e) => updateQuestion(currentQuestion, "question", e.target.value)}
-                  placeholder="जैसे: सिंधु घाटी सभ्यता का प्रमुख बंदरगाह कौन-सा था?"
-                  style={{
-                    width: "100%", minHeight: 90, padding: 12, borderRadius: 9,
-                    border: "1px solid #cbd5e1", boxSizing: "border-box",
-                    resize: "vertical", fontSize: 16, lineHeight: 1.5, outline: "none"
-                  }}
-                />
-              </div>
-
-              {[0,1,2,3].map((optionIndex) => (
-                <div key={optionIndex}>
-                  <label>विकल्प {String.fromCharCode(65 + optionIndex)}</label>
-                  <input
-                    value={question.options?.[optionIndex] || ""}
-                    onChange={(e) => updateOption(currentQuestion, optionIndex, e.target.value)}
-                    placeholder={`विकल्प ${String.fromCharCode(65 + optionIndex)}`}
-                  />
-                </div>
-              ))}
-
-              <div>
-                <label>सही उत्तर</label>
-                <select
-                  value={Number.isInteger(Number(question.answer)) ? Number(question.answer) : 0}
-                  onChange={(e) => updateQuestion(currentQuestion, "answer", Number(e.target.value))}
-                >
-                  <option value={0}>A — विकल्प A</option>
-                  <option value={1}>B — विकल्प B</option>
-                  <option value={2}>C — विकल्प C</option>
-                  <option value={3}>D — विकल्प D</option>
-                </select>
-              </div>
-
-              <div>
-                <label>व्याख्या</label>
-                <textarea
-                  value={question.explanation || ""}
-                  onChange={(e) => updateQuestion(currentQuestion, "explanation", e.target.value)}
-                  placeholder={`व्याख्या यहाँ लिखें।
-
-महत्वपूर्ण तथ्य:
-📍 स्थान: गुजरात
-⚓ विशेषता: प्राचीन डॉकयार्ड
-🏺 सभ्यता: सिंधु घाटी/हड़प्पा सभ्यता
-
-Exam Trick:
-👉 लोथल = बंदरगाह + डॉकयार्ड`}
-                  style={{
-                    width: "100%", minHeight: 280, padding: 12, borderRadius: 9,
-                    border: "1px solid #cbd5e1", boxSizing: "border-box",
-                    resize: "vertical", fontSize: 16, lineHeight: 1.65, outline: "none"
-                  }}
-                />
-
-                <div style={{
-                  marginTop: 14,
-                  padding: 14,
-                  border: "1px solid #bfdbfe",
-                  borderRadius: 10,
-                  background: "#f8fbff"
-                }}>
-                  <label style={{ display: "block", fontWeight: 800, marginBottom: 8 }}>
-                    🖼️ व्याख्या में Image
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadExplanationImage(file);
-                      e.target.value = "";
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 9,
-                      background: "#fff",
-                      boxSizing: "border-box"
-                    }}
-                  />
-
-                  <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
-                    JPG, PNG, WEBP आदि • अधिकतम 5 MB
-                  </div>
-
-                  {question.explanationImage && (
-                    <div style={{
-                      marginTop: 14,
-                      padding: 12,
-                      background: "#fff",
-                      border: "1px solid #dbeafe",
-                      borderRadius: 10
-                    }}>
-                      <div style={{
-                        fontWeight: 800,
-                        marginBottom: 8,
-                        color: "#1e3a8a"
-                      }}>
-                        👁️ Image Preview
-                      </div>
-
-                      <img
-                        src={question.explanationImage}
-                        alt="Explanation preview"
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          maxWidth: 700,
-                          maxHeight: 450,
-                          objectFit: "contain",
-                          margin: "0 auto",
-                          borderRadius: 8,
-                          border: "1px solid #e2e8f0",
-                          background: "#fff"
-                        }}
-                      />
-
-                      <button
-                        type="button"
-                        className="secondary-btn"
-                        style={{ marginTop: 10 }}
-                        onClick={() =>
-                          updateQuestion(
-                            currentQuestion,
-                            "explanationImage",
-                            ""
-                          )
-                        }
-                      >
-                        🗑️ Image हटाएँ
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ marginTop: 7, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                  <strong>Format:</strong> महत्वपूर्ण तथ्य और Exam Trick अलग लाइन में लिखें।
-                  हर तथ्य नई लाइन में लिखें। Test में व्याख्या अपने-आप व्यवस्थित दिखाई देगी।
-                </div>
-              </div>
-            </div>
+            <textarea
+              value={questionJsonDraft}
+              onChange={(e) => setQuestionJsonDraft(e.target.value)}
+              spellCheck={false}
+              style={{
+                width: "100%",
+                minHeight: 520,
+                padding: 14,
+                borderRadius: 10,
+                border: "1px solid #94a3b8",
+                boxSizing: "border-box",
+                resize: "vertical",
+                fontSize: 14,
+                lineHeight: 1.6,
+                fontFamily: "Consolas, Monaco, monospace",
+                background: "#0f172a",
+                color: "#e2e8f0",
+                outline: "none"
+              }}
+              placeholder={`[
+  {
+    "id": 1,
+    "question": "भारत का संविधान कब लागू हुआ?",
+    "options": [
+      "15 अगस्त 1947",
+      "26 जनवरी 1950",
+      "26 नवंबर 1949",
+      "2 अक्टूबर 1950"
+    ],
+    "answer": "B",
+    "explanation": "भारतीय संविधान 26 जनवरी 1950 को लागू हुआ।",
+    "explanationImage": ""
+  }
+]`}
+            />
 
             <div style={{
-              display: "flex", gap: 10, flexWrap: "wrap",
-              marginTop: 16, alignItems: "center"
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              marginTop: 12
             }}>
               <button
-                type="button" className="secondary-btn" disabled={currentQuestion === 0}
-                onClick={() => setCurrentQuestion((v) => Math.max(0, v - 1))}
-              >
-                ← Previous Question
-              </button>
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  try {
+                    const parsed = JSON.parse(questionJsonDraft);
+                    const list = Array.isArray(parsed)
+                      ? parsed
+                      : Array.isArray(parsed?.questions)
+                      ? parsed.questions
+                      : null;
 
-              <button type="button" className="save-btn" onClick={addQuestion}>
-                ＋ Add Question
+                    if (!list) throw new Error("JSON array या {questions:[...]} होना चाहिए।");
+                    if (!list.length) throw new Error("कम से कम 1 Question होना चाहिए।");
+                    if (list.length > 150) throw new Error("अधिकतम 150 Questions ही allowed हैं।");
+
+                    setMessage(`✅ JSON सही है। ${list.length} Questions मिले।`);
+                  } catch (error) {
+                    alert("❌ JSON Error:\n" + error.message);
+                  }
+                }}
+              >
+                ✓ Validate JSON
               </button>
 
               <button
-                type="button" className="danger-btn"
-                onClick={() => deleteQuestion(currentQuestion)}
+                type="button"
+                className="save-btn"
+                onClick={() => {
+                  try {
+                    const parsed = JSON.parse(questionJsonDraft);
+                    const list = Array.isArray(parsed)
+                      ? parsed
+                      : Array.isArray(parsed?.questions)
+                      ? parsed.questions
+                      : null;
+
+                    if (!list) throw new Error("JSON array या {questions:[...]} होना चाहिए।");
+
+                    const normalized = normalizeAdminQuestions(list);
+
+                    if (!validateQuestions(normalized)) return;
+
+                    setQuestions(normalized);
+                    setCurrentQuestion(0);
+                    setQuestionJsonDraft(JSON.stringify(normalized, null, 2));
+                    setMessage(`✅ ${normalized.length} Questions JSON से Load हो गए। अब Save Test करें।`);
+                  } catch (error) {
+                    alert("❌ JSON Load नहीं हुआ:\n" + error.message);
+                  }
+                }}
               >
-                🗑 Delete Question
+                ↓ Apply JSON
               </button>
 
               <button
-                type="button" className="secondary-btn"
-                disabled={currentQuestion >= questions.length - 1}
-                onClick={() => setCurrentQuestion((v) => Math.min(questions.length - 1, v + 1))}
+                type="button"
+                className="secondary-btn"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(questionJsonDraft);
+                    setMessage("📋 Questions JSON Copy हो गया।");
+                  } catch (_) {
+                    window.prompt("Questions JSON Copy करें:", questionJsonDraft);
+                  }
+                }}
               >
-                Next Question →
+                📋 Copy JSON
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setQuestionJsonDraft(JSON.stringify(questions, null, 2))}
+              >
+                ↻ Current Questions → JSON
               </button>
             </div>
 
             <div style={{
-              marginTop: 16, padding: 12, borderRadius: 10,
-              background: "#fff", border: "1px solid #bfdbfe"
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 10,
+              background: "#fff",
+              border: "1px solid #bfdbfe",
+              lineHeight: 1.7,
+              color: "#334155"
             }}>
-              <strong>Question List:</strong>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                {questions.map((q, index) => (
-                  <button
-                    key={q.id || index}
-                    type="button"
-                    onClick={() => setCurrentQuestion(index)}
-                    style={{
-                      border: index === currentQuestion ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                      background: index === currentQuestion ? "#dbeafe" : "#fff",
-                      color: "#1e3a8a", borderRadius: 8, padding: "7px 11px",
-                      fontWeight: 800, cursor: "pointer"
-                    }}
-                  >
-                    Q{index + 1}
-                  </button>
-                ))}
-              </div>
+              <strong>JSON Format:</strong>
+              <div>• <code>answer</code> = A/B/C/D या 0/1/2/3</div>
+              <div>• हर Question में 4 Options जरूरी हैं</div>
+              <div>• <code>explanation</code> और <code>explanationImage</code> optional हैं</div>
+              <div>• पहले <strong>Validate JSON</strong>, फिर <strong>Apply JSON</strong>, और अंत में <strong>Save Test</strong> करें।</div>
             </div>
           </div>
         </div>
