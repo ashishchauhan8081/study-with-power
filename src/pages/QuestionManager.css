@@ -1,1 +1,250 @@
+.question-manager {
+  width: 100%;
+}
 
+.qm-header {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+
+.qm-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.qm-header p {
+  margin: 5px 0 0;
+  color: #666;
+}
+
+.qm-header-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qm-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qm-btn.blue {
+  background: #2563eb;
+  color: white;
+}
+
+.qm-btn.purple {
+  background: #7c3aed;
+  color: white;
+}
+
+.qm-btn.green {
+  background: #16a34a;
+  color: white;
+}
+
+.qm-btn.red {
+  background: #dc2626;
+  color: white;
+}
+
+.qm-btn.orange {
+  background: #ea580c;
+  color: white;
+}
+
+.qm-btn.gray {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.qm-btn.red-outline {
+  background: white;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+}
+
+.qm-import-box {
+  background: #f8fafc;
+  border: 2px dashed #7c3aed;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.qm-import-box h3 {
+  margin-top: 0;
+}
+
+.qm-import-box textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: monospace;
+  resize: vertical;
+}
+
+.qm-import-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.qm-number-list {
+  background: white;
+  border-radius: 14px;
+  padding: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.qm-number {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.qm-number.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.qm-editor {
+  background: white;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+
+.qm-editor-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.qm-editor-top h3 {
+  margin: 0;
+}
+
+.qm-editor-top div {
+  display: flex;
+  gap: 8px;
+}
+
+.qm-field {
+  margin-bottom: 18px;
+}
+
+.qm-field label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+.qm-field input,
+.qm-field textarea,
+.qm-field select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  padding: 12px;
+  font-size: 15px;
+  outline: none;
+  background: white;
+}
+
+.qm-field textarea {
+  resize: vertical;
+}
+
+.qm-field input:focus,
+.qm-field textarea:focus,
+.qm-field select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.qm-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.qm-navigation {
+  margin-top: 20px;
+  background: white;
+  border-radius: 14px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.qm-navigation span {
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .qm-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qm-header-buttons {
+    width: 100%;
+  }
+
+  .qm-btn {
+    padding: 9px 11px;
+    font-size: 13px;
+  }
+
+  .qm-options {
+    grid-template-columns: 1fr;
+  }
+
+  .qm-editor-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qm-editor-top div {
+    flex-wrap: wrap;
+  }
+
+  .qm-navigation {
+    flex-direction: column;
+  }
+
+  .qm-navigation .qm-btn {
+    width: 100%;
+  }
+}
