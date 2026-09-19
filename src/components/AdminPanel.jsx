@@ -1,15 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
-import "./App.css";
+import React, { useEffect, useState } from "react";
+import "../App.css";
+import "./AdminPanel.css";
 
 import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-} from "firebase/auth";
-
 import {
   getDatabase,
   ref,
@@ -18,7 +11,12 @@ import {
   remove,
 } from "firebase/database";
 
-import firebaseConfig from "./firebase-config.json";
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "firebase/auth";
+
+import firebaseConfig from "../firebase-config.json";
 
 // ======================================================
 // FIREBASE
@@ -31,5195 +29,1732 @@ const firebaseApp = initializeApp({
     "https://study-with-power-f6914-default-rtdb.asia-southeast1.firebasedatabase.app",
 });
 
-const auth = getAuth(firebaseApp);
-const googleProvider = new GoogleAuthProvider();
 const db = getDatabase(firebaseApp);
+const auth = getAuth(firebaseApp);
 
-const ADMIN_EMAIL =
-  "cciashish@gmail.com";
+// ======================================================
+// ADMIN
+// ======================================================
 
+const ADMIN_EMAIL = "cciashish@gmail.com";
 
 // ======================================================
 // EXAMS
 // ======================================================
 
 const exams = [
-  {
-    id: "upsc",
-    name: "UPSC",
-    icon: "🇮🇳",
-    color: "#fee2e2",
-    description: "UPSC Civil Services परीक्षा स्तर",
-  },
-  {
-    id: "uppcs",
-    name: "UPPCS",
-    icon: "🏛️",
-    color: "#fef3c7",
-    description: "UPPCS परीक्षा स्तर",
-  },
-  {
-    id: "uppet",
-    name: "UP PET",
-    icon: "🎯",
-    color: "#dcfce7",
-    description: "UP PET परीक्षा स्तर",
-  },
-  {
-    id: "bpsc",
-    name: "BPSC",
-    icon: "🏛️",
-    color: "#ede9fe",
-    description: "BPSC परीक्षा स्तर",
-  },
-  {
-    id: "mppsc",
-    name: "MPPSC",
-    icon: "📚",
-    color: "#dbeafe",
-    description: "MPPSC परीक्षा स्तर",
-  },
-  {
-    id: "ssc",
-    name: "SSC",
-    icon: "📝",
-    color: "#fce7f3",
-    description: "SSC परीक्षा स्तर",
-  },
-  {
-    id: "railway",
-    name: "Railway",
-    icon: "🚆",
-    color: "#e0f2fe",
-    description: "Railway / RRB परीक्षा स्तर",
-  },
-  {
-    id: "banking",
-    name: "Banking",
-    icon: "🏦",
-    color: "#dcfce7",
-    description: "Banking परीक्षा स्तर",
-  },
-  {
-    id: "upsssc",
-    name: "UPSSSC",
-    icon: "📖",
-    color: "#f3e8ff",
-    description: "UPSSSC परीक्षा स्तर",
-  },
-  {
-    id: "roaro",
-    name: "RO/ARO",
-    icon: "📜",
-    color: "#fef3c7",
-    description: "RO / ARO परीक्षा स्तर",
-  },
-  {
-    id: "police",
-    name: "Police",
-    icon: "👮",
-    color: "#fee2e2",
-    description: "Police परीक्षा स्तर",
-  },
-  {
-    id: "teaching",
-    name: "Teaching",
-    icon: "👨‍🏫",
-    color: "#dbeafe",
-    description: "Teaching परीक्षा स्तर",
-  },
+  { id: "upsc", name: "UPSC", icon: "🇮🇳" },
+  { id: "uppcs", name: "UPPCS", icon: "🏛️" },
+  { id: "uppet", name: "UP PET", icon: "🎯" },
+  { id: "bpsc", name: "BPSC", icon: "🏛️" },
+  { id: "mppsc", name: "MPPSC", icon: "📚" },
+  { id: "ssc", name: "SSC", icon: "📝" },
+  { id: "railway", name: "Railway", icon: "🚆" },
+  { id: "banking", name: "Banking", icon: "🏦" },
+  { id: "upsssc", name: "UPSSSC", icon: "📖" },
+  { id: "roaro", name: "RO/ARO", icon: "📜" },
+  { id: "police", name: "Police", icon: "👮" },
+  { id: "teaching", name: "Teaching", icon: "👨‍🏫" },
 ];
 
-
 // ======================================================
-// RESOURCES
-// ======================================================
-
-const defaultResources = [
-  {
-    icon: "📚",
-    title: "NCERT Books",
-    text:
-      "कक्षा 6 से 12 तक की NCERT पुस्तकों का अध्ययन करें।",
-    page: "resources", enabled: true,
-  },
-  {
-    icon: "📰",
-    title: "Current Affairs",
-    text:
-      "प्रतिदिन के महत्वपूर्ण Current Affairs पढ़ें।",
-    page: "current", enabled: true,
-  },
-  {
-    icon: "📝",
-    title: "MCQ Practice",
-    text:
-      "विषयवार महत्वपूर्ण MCQ का अभ्यास करें।",
-    page: "mcq", enabled: true,
-  },
-  {
-    icon: "📖",
-    title: "Previous Year Questions",
-    text:
-      "पिछली परीक्षाओं के प्रश्नों का अभ्यास करें।",
-    page: "resources", enabled: true,
-  },
-  {
-    icon: "🎯",
-    title: "Test Series",
-    text:
-      "सभी प्रमुख प्रतियोगी परीक्षाओं की Test Series।",
-    page: "tests", enabled: true,
-  },
-  {
-    icon: "🤖",
-    title: "AI MCQ Generator",
-    text:
-      "AI की सहायता से नए MCQ तैयार करें।",
-    page: "mcq", enabled: true,
-  },
-];
-
-
-// ======================================================
-// HELPERS
+// QUESTION
 // ======================================================
 
-function testId(examId, number) {
-  return `${examId}_test_${number}`;
-}
-
-function normalizeQuestions(questions) {
-  if (!Array.isArray(questions)) {
-    return [];
-  }
-
-  return questions.map((q, index) => ({
-    id: q?.id ?? index + 1,
-    question: q?.question ?? q?.questionText ?? q?.text ?? "",
-    options: Array.isArray(q?.options) ? q.options.slice(0, 4) : ["", "", "", ""],
-    // answer को raw रूप में रखें। Firebase में यह 0/1/2/3, A/B/C/D,
-    // option text, या "भाग I/भाग II..." हो सकता है।
-    answer: q?.answer,
-    explanation: q?.explanation ?? "",
-  }));
-}
-
-// Firebase के अलग-अलग answer formats को option index (0-3) में बदलता है।
-function getCorrectIndex(question) {
-  const options = Array.isArray(question?.options) ? question.options : [];
-  const answer = question?.answer;
-
-  if (!options.length || answer === undefined || answer === null) return -1;
-
-  if (typeof answer === "number" && Number.isInteger(answer)) {
-    if (answer >= 0 && answer < options.length) return answer;
-    if (answer >= 1 && answer <= options.length) return answer - 1;
-  }
-
-  const raw = String(answer).trim();
-  if (!raw) return -1;
-
-  // "0", "1", "2", "3" या "1", "2", "3", "4"
-  if (/^\d+$/.test(raw)) {
-    const n = Number(raw);
-    if (n >= 0 && n < options.length) return n;
-    if (n >= 1 && n <= options.length) return n - 1;
-  }
-
-  // "A", "A.", "A) Option text" आदि
-  const letterMatch = raw.match(/^([ABCD])(?:\s*[.\):-]|\s*$)/i);
-  if (letterMatch) {
-    const idx = "ABCD".indexOf(letterMatch[1].toUpperCase());
-    if (idx >= 0 && idx < options.length) return idx;
-  }
-
-  // "भाग I", "भाग II", "भाग III", "भाग IV"
-  const partMatch = raw.match(/भाग\s*(I{1,3}|IV|V|1|2|3|4)\b/i);
-  if (partMatch) {
-    const part = partMatch[1].toUpperCase();
-    const map = { I: 0, II: 1, III: 2, IV: 3, V: 4, "1": 0, "2": 1, "3": 2, "4": 3 };
-    const idx = map[part];
-    if (idx !== undefined && idx < options.length) return idx;
-  }
-
-  // "A. option" से prefix हटाकर option text match करें।
-  const cleaned = raw.replace(/^[ABCD]\s*[.\):-]\s*/i, "").trim();
-  const exact = options.findIndex((option) => String(option ?? "").trim() === raw || String(option ?? "").trim() === cleaned);
-  if (exact >= 0) return exact;
-
-  // Case/space insensitive text match
-  const compact = (v) => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
-  const compactAnswer = compact(cleaned);
-  const loose = options.findIndex((option) => compact(option) === compactAnswer);
-  return loose >= 0 ? loose : -1;
-}
-
-
-// ======================================================
-// APP
-// ======================================================
-
-export default function App() {
-
-  const [page, setPage] =
-    useState("home");
-
-  const [selectedExam, setSelectedExam] =
-    useState(null);
-
-  const [selectedTest, setSelectedTest] =
-    useState(null);
-
-  const [user, setUser] =
-    useState(null);
-
-  const [authLoading, setAuthLoading] =
-    useState(true);
-
-  const [cloudTests, setCloudTests] =
-    useState({});
-
-  const [siteResources, setSiteResources] = useState(defaultResources);
-
-  const [adminOpen, setAdminOpen] =
-    useState(false);
-
-
-  // ====================================================
-  // AUTH
-  // ====================================================
-
-  useEffect(() => {
-
-    const unsubscribe =
-      onAuthStateChanged(
-        auth,
-        (currentUser) => {
-          setUser(currentUser);
-          setAuthLoading(false);
-        }
-      );
-
-    return () => unsubscribe();
-
-  }, []);
-
-
-  // ====================================================
-  // FIREBASE TESTS
-  // ====================================================
-
-  useEffect(() => {
-
-    const testsRef =
-      ref(db, "tests");
-
-    const unsubscribe =
-      onValue(
-        testsRef,
-        (snapshot) => {
-
-          setCloudTests(
-            snapshot.val() || {}
-          );
-
-        },
-        (error) => {
-
-          console.error(
-            "Firebase Tests Error:",
-            error
-          );
-
-        }
-      );
-
-    return () => unsubscribe();
-
-  }, []);
-
-
-  // ====================================================
-  // SITE RESOURCES
-  // ====================================================
-  useEffect(() => {
-    const r = ref(db, "siteContent/resources");
-    const unsub = onValue(r, (snap) => {
-      const v = snap.val();
-      if (Array.isArray(v) && v.length) setSiteResources(v);
-      else if (v && typeof v === "object") setSiteResources(Object.values(v));
-      else setSiteResources(defaultResources);
-    }, () => setSiteResources(defaultResources));
-    return () => unsub();
-  }, []);
-
-  const visibleResources = useMemo(
-    () => siteResources.filter((x) => x?.enabled !== false),
-    [siteResources]
-  );
-
-
-  // ====================================================
-  // PUBLIC TESTS
-  // ====================================================
-
-  const publicTests =
-    useMemo(() => {
-
-      const result = {};
-
-      Object.entries(cloudTests).forEach(
-        ([id, test]) => {
-
-          if (
-            test &&
-            test.status === "public"
-          ) {
-            result[id] = test;
-          }
-
-        }
-      );
-
-      return result;
-
-    }, [cloudTests]);
-
-
-  // ====================================================
-  // LOGIN
-  // ====================================================
-
-  const login = async () => {
-
-    try {
-
-      const result = await signInWithPopup(
-        auth,
-        googleProvider
-      );
-
-      return result.user;
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        "Login नहीं हुआ:\n" +
-        error.message
-      );
-
-      return null;
-
-    }
-
-  };
-
-
-  const logout = async () => {
-
-    try {
-
-      await signOut(auth);
-
-      setAdminOpen(false);
-      setPage("home");
-
-    } catch (error) {
-
-      alert(
-        "Logout error: " +
-        error.message
-      );
-
-    }
-
-  };
-
-
-  // ====================================================
-  // NAVIGATION
-  // ====================================================
-
-  const goHome = () => {
-
-    setPage("home");
-    setSelectedExam(null);
-    setSelectedTest(null);
-    setAdminOpen(false);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-
-  };
-
-
-  const openExam = (exam) => {
-
-    setSelectedExam(exam);
-    setPage("tests");
-    setSelectedTest(null);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-
-  };
-
-
-  const openTest = async (test) => {
-
-    // Test शुरू करने से पहले Login अनिवार्य है।
-    // Login नहीं है तो Google Login खुलेगा और सफल Login के बाद ही Test खुलेगा।
-    if (!user) {
-      const loggedInUser = await login();
-
-      if (!loggedInUser) {
-        return;
-      }
-    }
-
-    setSelectedTest(test);
-    setPage("test");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-
-  };
-
-
-  // ====================================================
-  // ADMIN PANEL
-  // ====================================================
-
-  if (adminOpen) {
-
-    return (
-      <div className="app">
-
-        <style>{styles}</style>
-
-        <AdminPanel
-          user={user}
-          tests={cloudTests}
-          resources={siteResources}
-          onClose={() => {
-            setAdminOpen(false);
-          }}
-        />
-
-      </div>
-    );
-
-  }
-
-
-  // ====================================================
-  // TEST PAGE
-  // ====================================================
-
-  if (
-    page === "test" &&
-    selectedTest
-  ) {
-
-    // Extra security: Login के बिना Test Page कभी render नहीं होगा।
-    if (!user) {
-      return (
-        <div className="app">
-          <style>{styles}</style>
-          <div className="container">
-            <div className="empty-box">
-              <h2>🔐 Test शुरू करने के लिए Login जरूरी है</h2>
-              <p>कृपया पहले Google से Login करें।</p>
-              <button className="open-btn" onClick={login}>
-                🔐 Login करें
-              </button>
-              <button className="back" onClick={() => setPage("tests")}>
-                ← वापस जाएँ
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="app test-page-app">
-
-        <style>{styles}</style>
-
-        <main className="test-page-container">
-          <TestRunner
-            test={selectedTest}
-            onBack={() => {
-              setPage("tests");
-            }}
-          />
-        </main>
-
-      </div>
-    );
-
-  }
-
-
-  return (
-    <>
-
-      <style>{styles}</style>
-
-      <div className="app">
-
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
-        <header className="header">
-
-          <div className="header-inner">
-
-            <div
-              className="logo"
-              onClick={goHome}
-            >
-
-              <div className="logo-icon">
-                📚
-              </div>
-
-              <div className="logo-text">
-
-                <h2>
-                  Study With Power
-                </h2>
-
-                <span>
-                  Learn Today | Lead Tomorrow
-                </span>
-
-              </div>
-
-            </div>
-
-
-            <nav className="nav">
-
-              <button
-                onClick={goHome}
-              >
-                🏠 Home
-              </button>
-
-              <button
-                onClick={() =>
-                  setPage("resources")
-                }
-              >
-                📚 Books
-              </button>
-
-              <button
-                onClick={() =>
-                  setPage("current")
-                }
-              >
-                📰 Current Affairs
-              </button>
-
-              <button
-                onClick={() =>
-                  setPage("mcq")
-                }
-              >
-                📝 MCQ
-              </button>
-
-
-              {user?.email ===
-                ADMIN_EMAIL && (
-
-                <button
-                  className="admin-btn"
-                  onClick={() =>
-                    setAdminOpen(true)
-                  }
-                >
-                  👑 Admin Panel
-                </button>
-
-              )}
-
-
-              {/* LOGIN */}
-
-              {user ? (
-
-                <button
-                  className="login-btn"
-                  onClick={logout}
-                  title={user.email}
-                >
-                  👤 Logout
-                </button>
-
-              ) : (
-
-                <button
-                  className="login-btn"
-                  onClick={login}
-                >
-                  🔐 Login
-                </button>
-
-              )}
-
-            </nav>
-
-          </div>
-
-        </header>
-
-
-        <main className="container">
-
-
-          {/* =================================================
-              HOME
-          ================================================= */}
-
-          {page === "home" && (
-
-            <>
-
-              <section className="hero">
-
-                <h1>
-                  <span>
-                    Study With{" "}
-                  </span>
-
-                  <span>
-                    Power
-                  </span>
-                </h1>
-
-                <p>
-                  प्रतियोगी परीक्षाओं की
-                  तैयारी के लिए एक ही
-                  प्लेटफॉर्म
-                </p>
-
-                <div className="search">
-
-                  <input
-                    placeholder="आप क्या पढ़ना चाहते हैं?"
-                  />
-
-                  <button>
-                    🔎 खोजें
-                  </button>
-
-                </div>
-
-              </section>
-
-
-              <div className="section-title">
-
-                <h2>
-                  🎯 All Exam Test Series
-                </h2>
-
-                <p>
-                  सभी प्रमुख प्रतियोगी
-                  परीक्षाओं के लिए Test Series
-                </p>
-
-              </div>
-
-
-              <div className="exam-grid">
-
-                {exams.map((exam) => (
-
-                  <div
-                    className="exam-card"
-                    key={exam.id}
-                    style={{
-                      background:
-                        exam.color,
-                    }}
-                  >
-
-                    <div className="exam-icon">
-                      {exam.icon}
-                    </div>
-
-                    <h3>
-                      {exam.name}
-                    </h3>
-
-                    <p>
-                      {exam.description}
-                    </p>
-
-                    <span className="paid">
-                      ₹99 • PAID
-                    </span>
-
-                    <button
-                      className="open-btn"
-                      onClick={() =>
-                        openExam(exam)
-                      }
-                    >
-                      Test Series →
-                    </button>
-
-                  </div>
-
-                ))}
-
-              </div>
-
-
-              <div className="section-title">
-
-                <h2>
-                  📚 Study Resources
-                </h2>
-
-                <p>
-                  परीक्षा की तैयारी के लिए
-                  सभी आवश्यक सामग्री
-                </p>
-
-              </div>
-
-
-              <div className="resource-grid">
-
-                {visibleResources.map(
-                  (item, index) => (
-
-                    <div
-                      className="resource-card"
-                      key={index}
-                    >
-
-                      <div className="icon">
-                        {item.icon}
-                      </div>
-
-                      <h3>
-                        {item.title}
-                      </h3>
-
-                      <p>
-                        {item.text}
-                      </p>
-
-                      <button
-                        className="open-btn"
-                        onClick={() => {
-
-                          if (item.page === "tests") {
-                            openExam(exams[0]);
-                          } else {
-                            setPage(item.page || "resources");
-                          }
-
-                        }}
-                      >
-                        Open →
-                      </button>
-
-                    </div>
-
-                  )
-                )}
-
-              </div>
-
-
-              <div className="blue-box">
-
-                <h2>
-                  📰 Daily Current Affairs Quiz
-                </h2>
-
-                <p>
-                  आज के महत्वपूर्ण Current
-                  Affairs पर आधारित MCQ
-                </p>
-
-                <button
-                  className="primary"
-                  onClick={() =>
-                    setPage("current")
-                  }
-                >
-                  आज का Quiz शुरू करें
-                </button>
-
-              </div>
-
-
-              <div className="blue-box">
-
-                <h2>
-                  🤖 AI MCQ Generator
-                </h2>
-
-                <p>
-                  परीक्षा और विषय चुनकर
-                  नए MCQ तैयार करें।
-                </p>
-
-                <button
-                  className="primary"
-                  onClick={() =>
-                    setPage("mcq")
-                  }
-                >
-                  MCQ Generator खोलें
-                </button>
-
-              </div>
-
-            </>
-
-          )}
-
-
-          {/* =================================================
-              TEST LIST
-          ================================================= */}
-
-          {page === "tests" &&
-            selectedExam && (
-
-            <>
-
-              <button
-                className="back"
-                onClick={goHome}
-              >
-                ← Home पर वापस जाएँ
-              </button>
-
-
-              <div className="page-title">
-
-                <div className="big-icon">
-                  {selectedExam.icon}
-                </div>
-
-                <h1>
-                  {selectedExam.name}
-                  {" "}
-                  Test Series
-                </h1>
-
-                <p>
-                  {selectedExam.description}
-                </p>
-
-              </div>
-
-
-              <div className="test-grid">
-
-                {Object.entries(
-                  publicTests
-                )
-                  .filter(
-                    ([id, test]) =>
-                      test.exam ===
-                      selectedExam.id
-                  )
-                  .sort(
-                    (a, b) =>
-                      Number(
-                        a[1].testNumber
-                      ) -
-                      Number(
-                        b[1].testNumber
-                      )
-                  )
-                  .map(
-                    ([id, test]) => (
-
-                      <div
-                        className="test-card"
-                        key={id}
-                      >
-
-                        <h3>
-                          {test.title}
-                        </h3>
-
-                        <p>
-                          {test.questions?.length ||
-                            0}{" "}
-                          MCQ Questions
-                        </p>
-
-                        <div className="price">
-                          ₹99
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            openTest(test)
-                          }
-                        >
-                          Start Test
-                        </button>
-
-                      </div>
-
-                    )
-                  )}
-
-              </div>
-
-
-              {Object.entries(
-                publicTests
-              ).filter(
-                ([id, test]) =>
-                  test.exam ===
-                  selectedExam.id
-              ).length === 0 && (
-
-                <div className="empty-box">
-
-                  <div>
-                    📚
-                  </div>
-
-                  <h2>
-                    अभी कोई Public Test नहीं है
-                  </h2>
-
-                  <p>
-                    इस परीक्षा के Test
-                    जल्द ही उपलब्ध होंगे।
-                  </p>
-
-                </div>
-
-              )}
-
-            </>
-
-          )}
-
-
-          {/* =================================================
-              RESOURCES
-          ================================================= */}
-
-          {page === "resources" && (
-
-            <>
-
-              <button
-                className="back"
-                onClick={goHome}
-              >
-                ← Home
-              </button>
-
-              <div className="page-title">
-
-                <div className="big-icon">
-                  📚
-                </div>
-
-                <h1>
-                  Study Resources
-                </h1>
-
-                <p>
-                  NCERT, Books और परीक्षा
-                  उपयोगी अध्ययन सामग्री
-                </p>
-
-              </div>
-
-              <div className="resource-grid">
-
-                {visibleResources.map(
-                  (item, index) => (
-
-                    <div
-                      className="resource-card"
-                      key={index}
-                    >
-
-                      <div className="icon">
-                        {item.icon}
-                      </div>
-
-                      <h3>
-                        {item.title}
-                      </h3>
-
-                      <p>
-                        {item.text}
-                      </p>
-
-                    </div>
-
-                  )
-                )}
-
-              </div>
-
-            </>
-
-          )}
-
-
-          {/* =================================================
-              CURRENT
-          ================================================= */}
-
-          {page === "current" && (
-
-            <>
-
-              <button
-                className="back"
-                onClick={goHome}
-              >
-                ← Home
-              </button>
-
-              <div className="page-title">
-
-                <div className="big-icon">
-                  📰
-                </div>
-
-                <h1>
-                  Current Affairs
-                </h1>
-
-                <p>
-                  Daily Current Affairs
-                  और Current Affairs MCQ
-                </p>
-
-              </div>
-
-
-              <div className="resource-grid">
-
-                <div className="resource-card">
-
-                  <div className="icon">
-                    🗞️
-                  </div>
-
-                  <h3>
-                    Today's Current Affairs
-                  </h3>
-
-                  <p>
-                    आज के महत्वपूर्ण राष्ट्रीय
-                    और अंतरराष्ट्रीय घटनाक्रम।
-                  </p>
-
-                </div>
-
-
-                <div className="resource-card">
-
-                  <div className="icon">
-                    📝
-                  </div>
-
-                  <h3>
-                    Current Affairs MCQ
-                  </h3>
-
-                  <p>
-                    Current Affairs आधारित
-                    महत्वपूर्ण MCQ।
-                  </p>
-
-                </div>
-
-
-                <div className="resource-card">
-
-                  <div className="icon">
-                    📅
-                  </div>
-
-                  <h3>
-                    Monthly Current Affairs
-                  </h3>
-
-                  <p>
-                    पूरे महीने के महत्वपूर्ण
-                    Current Affairs।
-                  </p>
-
-                </div>
-
-              </div>
-
-            </>
-
-          )}
-
-
-          {/* =================================================
-              MCQ
-          ================================================= */}
-
-          {page === "mcq" && (
-
-            <>
-
-              <button
-                className="back"
-                onClick={goHome}
-              >
-                ← Home
-              </button>
-
-              <div className="page-title">
-
-                <div className="big-icon">
-                  🤖
-                </div>
-
-                <h1>
-                  AI MCQ Generator
-                </h1>
-
-                <p>
-                  विषय और परीक्षा के अनुसार
-                  MCQ तैयार करें
-                </p>
-
-              </div>
-
-
-              <div className="question-box">
-
-                <h3>
-                  विषय चुनें
-                </h3>
-
-                <select className="full-input">
-
-                  <option>
-                    History
-                  </option>
-
-                  <option>
-                    Geography
-                  </option>
-
-                  <option>
-                    Polity
-                  </option>
-
-                  <option>
-                    Economy
-                  </option>
-
-                  <option>
-                    Science
-                  </option>
-
-                  <option>
-                    Current Affairs
-                  </option>
-
-                </select>
-
-
-                <button
-                  className="primary"
-                >
-                  🤖 MCQ Generate करें
-                </button>
-
-
-                <div className="notice">
-
-                  Gemini API जोड़ने के बाद
-                  यहाँ AI से वास्तविक MCQ
-                  Generate होंगे।
-
-                </div>
-
-              </div>
-
-            </>
-
-          )}
-
-        </main>
-
-
-        {/* =================================================
-            FOOTER
-        ================================================= */}
-
-        <footer className="footer">
-
-          <h2>
-            📚 Study With Power
-          </h2>
-
-          <p>
-            Learn Today | Lead Tomorrow
-          </p>
-
-          <p
-            style={{
-              marginTop: "15px",
-            }}
-          >
-            © 2026 Study With Power.
-            All Rights Reserved.
-          </p>
-
-        </footer>
-
-      </div>
-
-    </>
-  );
-}
-
-
-// ========================================================
-// TEST RUNNER
-// ========================================================
-
-function TestRunner({
-  test,
-  onBack,
-}) {
-  // अधिकतम 150 प्रश्न
-  const questions = normalizeQuestions(
-    test?.questions || []
-  ).slice(0, 150);
-
-  const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
-
-  const buttonBase = {
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    boxSizing: "border-box",
-  };
-
-  const calculateResult = () => {
-    let correct = 0;
-    questions.forEach((q, index) => {
-      const correctIndex = getCorrectIndex(q);
-      if (correctIndex >= 0 && answers[index] === correctIndex) correct++;
-    });
-    const wrong = questions.length - correct;
-    const percentage = questions.length
-      ? Math.round((correct / questions.length) * 100)
-      : 0;
-    return { correct, wrong, percentage };
-  };
-
-  if (!questions.length) {
-    return (
-      <div className="test-runner-page">
-        <button
-          type="button"
-          onClick={onBack}
-          style={{ ...buttonBase, padding: "12px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700", marginBottom: "20px" }}
-        >
-          ← Test List
-        </button>
-        <div className="test-empty-card">
-          <h2>इस Test में Questions नहीं हैं।</h2>
-        </div>
-      </div>
-    );
-  }
-
-  // =============================
-  // RESULT SCREEN
-  // =============================
-  if (submitted) {
-    const { correct, wrong, percentage } = calculateResult();
-
-    return (
-      <div className="test-runner-page">
-        <div className="test-result-card">
-          <div style={{ fontSize: "52px" }}>🎉</div>
-          <h1 style={{ color: "#1d4ed8", marginBottom: "8px" }}>Test Complete</h1>
-          <h2 style={{ marginTop: 0 }}>{test?.title || "Test"}</h2>
-
-          <div style={{ fontSize: "42px", fontWeight: "800", color: "#1d4ed8", margin: "20px 0 10px" }}>
-            {correct} / {questions.length}
-          </div>
-
-          <p style={{ fontSize: "20px", margin: "8px 0" }}>
-            प्रतिशत: <strong>{percentage}%</strong>
-          </p>
-
-          <div style={{ display: "flex", justifyContent: "center", gap: "15px", flexWrap: "wrap", margin: "25px 0" }}>
-            <div style={{ padding: "15px 25px", borderRadius: "12px", background: "#dcfce7", color: "#166534", fontWeight: "800", fontSize: "20px" }}>
-              ✓ सही: {correct}
-            </div>
-            <div style={{ padding: "15px 25px", borderRadius: "12px", background: "#fee2e2", color: "#991b1b", fontWeight: "800", fontSize: "20px" }}>
-              ✗ गलत: {wrong}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap", marginTop: "25px" }}>
-            <button
-              type="button"
-              onClick={() => {
-                setCurrent(0);
-                setAnswers({});
-                setSubmitted(false);
-                setReviewMode(true);
-                setShowExplanation(false);
-              }}
-              style={{ ...buttonBase, padding: "13px 20px", background: "#1264d8", color: "#fff", fontSize: "17px", fontWeight: "700" }}
-            >
-              🔄 Questions Retest / व्याख्या देखें
-            </button>
-
-            <button
-              type="button"
-              onClick={onBack}
-              style={{ ...buttonBase, padding: "13px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700" }}
-            >
-              ← Test List
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const question = questions[current];
-  const selected = answers[current];
-  const hasSelected = selected !== undefined;
-  const correctAnswer = getCorrectIndex(question);
-
-  const goPrevious = () => {
-    setCurrent((value) => Math.max(0, value - 1));
-    setShowExplanation(false);
-  };
-
-  const goNext = () => {
-    if (current < questions.length - 1) {
-      setCurrent((value) => value + 1);
-      setShowExplanation(false);
-    } else {
-      setSubmitted(true);
-    }
-  };
-
-  const selectOption = (index) => {
-    if (reviewMode && hasSelected) return;
-
-    setAnswers((prev) => ({
-      ...prev,
-      [current]: index,
-    }));
-
-    if (reviewMode) {
-      setShowExplanation(true);
-    } else {
-      // सामान्य Test में option चुनते ही अगला प्रश्न
-      window.setTimeout(() => {
-        if (current < questions.length - 1) {
-          setCurrent((value) => value + 1);
-        } else {
-          setSubmitted(true);
-        }
-      }, 180);
-    }
-  };
-
-  return (
-    <div className="test-runner-page">
-      <button
-        type="button"
-        onClick={onBack}
-        style={{ ...buttonBase, padding: "12px 20px", background: "#e2e8f0", color: "#111827", fontSize: "17px", fontWeight: "700", marginBottom: "20px" }}
-      >
-        ← Test List
-      </button>
-
-      <div className="test-runner-shell">
-        {/* TEST HEADER */}
-        <div className="test-header-block">
-          <div className="test-exam-name">
-            {test?.exam || "UPPCS"}
-          </div>
-          <div className="test-title-name">
-            {test?.title || "Test"} / {questions.length}
-          </div>
-          <div className="test-progress-text">
-            प्रश्न {current + 1} / {questions.length}
-            {reviewMode && <span style={{ marginLeft: "10px", color: "#7c3aed" }}>• Review Mode</span>}
-          </div>
-        </div>
-
-        {/* QUESTION */}
-        <div className="test-question-block">
-          <h2 className="test-question-text">
-            {current + 1}. {question.question}
-          </h2>
-        </div>
-
-        {/* OPTIONS */}
-        <div className="test-options-list">
-          {(question.options || []).slice(0, 4).map((option, index) => {
-            const isSelected = selected === index;
-            const isCorrect = index === correctAnswer;
-            const isWrong = reviewMode && isSelected && !isCorrect;
-
-            let background = "#1264d8";
-            if (reviewMode && hasSelected) {
-              if (isCorrect) background = "#16a34a";
-              else if (isWrong) background = "#dc2626";
-            } else if (isSelected) {
-              background = "#2563eb";
-            }
-
-            return (
-              <button
-                key={index}
-                type="button"
-                disabled={reviewMode && hasSelected}
-                onClick={() => selectOption(index)}
-                style={{
-                  ...buttonBase,
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  width: "100%",
-                  minHeight: "64px",
-                  margin: 0,
-                  padding: "16px 20px",
-                  background,
-                  color: "#fff",
-                  textAlign: "left",
-                  fontSize: "20px",
-                  fontWeight: "700",
-                  lineHeight: "1.4",
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                  overflowWrap: "anywhere",
-                  opacity: reviewMode && hasSelected && !isSelected && !isCorrect ? 0.85 : 1,
-                  cursor: reviewMode && hasSelected ? "default" : "pointer",
-                  boxShadow: "0 5px 15px rgba(18,100,216,.20)",
-                }}
-              >
-                <span style={{ flex: "0 0 45px", width: "45px", fontSize: "21px", fontWeight: "800" }}>
-                  {String.fromCharCode(65 + index)}.
-                </span>
-                <span style={{ flex: "1 1 auto", minWidth: 0, lineHeight: "1.4" }}>
-                  {option}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* EXPLANATION - केवल RETEST/REVIEW MODE में */}
-        {reviewMode && showExplanation && hasSelected && (
-          <div style={{ width: "100%", marginTop: "20px", padding: "18px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", boxSizing: "border-box" }}>
-            <div style={{ fontSize: "19px", fontWeight: "800", marginBottom: "8px", color: selected === correctAnswer ? "#166534" : "#991b1b" }}>
-              {selected === correctAnswer
-                ? "✓ सही उत्तर"
-                : correctAnswer >= 0
-                ? `✗ गलत उत्तर — सही उत्तर: ${String.fromCharCode(65 + correctAnswer)}`
-                : "✗ उत्तर जाँचने के लिए सही उत्तर उपलब्ध नहीं है"}
-            </div>
-            <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", color: "#1e3a8a" }}>
-              व्याख्या
-            </div>
-            <div style={{ fontSize: "17px", lineHeight: "1.6", color: "#334155", whiteSpace: "pre-wrap" }}>
-              {question.explanation || "इस प्रश्न की व्याख्या Admin Panel में उपलब्ध नहीं है।"}
-            </div>
-          </div>
-        )}
-
-        {/* NAVIGATION */}
-        <div className="test-navigation">
-          <button
-            type="button"
-            disabled={current === 0}
-            onClick={goPrevious}
-            style={{ ...buttonBase, padding: "13px 22px", background: current === 0 ? "#bfdbfe" : "#1264d8", color: "#fff", fontSize: "17px", fontWeight: "700", opacity: current === 0 ? 0.75 : 1 }}
-          >
-            ← Previous
-          </button>
-
-          {reviewMode ? (
-            <button
-              type="button"
-              disabled={!hasSelected}
-              onClick={goNext}
-              style={{ ...buttonBase, padding: "13px 22px", background: hasSelected ? (current === questions.length - 1 ? "#16a34a" : "#1264d8") : "#94a3b8", color: "#fff", fontSize: "17px", fontWeight: "700" }}
-            >
-              {current === questions.length - 1 ? "✓ Review Complete" : "Next →"}
-            </button>
-          ) : (
-            <div style={{ fontSize: "16px", color: "#64748b", fontWeight: "600" }}>
-              विकल्प चुनते ही अगला प्रश्न खुलेगा
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-// ========================================================
-// ADMIN PANEL
-// ========================================================
-
-function createEmptyQuestion(id = 1) {
+function createQuestion(id = 1) {
   return {
     id,
     question: "",
     options: ["", "", "", ""],
     answer: 0,
     explanation: "",
+    explanationImage: "",
   };
 }
 
-// Automatic Test Access Rule:
-// हर Exam का Test 1 = FREE
-// Test 2 और उसके बाद = PAID
-function getTestAccess(testNumber) {
-  return Number(testNumber) === 1 ? "free" : "paid";
-}
-
-
 // ======================================================
-// ADMIN DASHBOARD
+// ADMIN PANEL
 // ======================================================
 
-function AdminDashboard({
+export default function AdminPanel({
   user,
-  tests,
-  resources,
-  onClose,
-  onOpenManager,
-}) {
-  const testEntries = Object.entries(tests || {});
-
-  const totalTests = testEntries.length;
-
-  const totalQuestions = testEntries.reduce(
-    (total, [, test]) =>
-      total + (Array.isArray(test?.questions) ? test.questions.length : 0),
-    0
-  );
-
-  const publicTests = testEntries.filter(
-    ([, test]) => test?.status === "public"
-  ).length;
-
-  const draftTests = testEntries.filter(
-    ([, test]) => test?.status === "draft"
-  ).length;
-
-  const unlistedTests = testEntries.filter(
-    ([, test]) => test?.status === "unlisted"
-  ).length;
-
-  const stats = [
-    {
-      icon: "👥",
-      title: "Total Users",
-      value: "—",
-      change: "Firebase Users",
-      className: "stat-blue",
-    },
-    {
-      icon: "🟢",
-      title: "Active Users",
-      value: "—",
-      change: "Live data",
-      className: "stat-green",
-    },
-    {
-      icon: "📝",
-      title: "Total Questions",
-      value: totalQuestions.toLocaleString("en-IN"),
-      change: "Saved Tests",
-      className: "stat-red",
-    },
-    {
-      icon: "📋",
-      title: "Total Tests",
-      value: totalTests.toLocaleString("en-IN"),
-      change: `${publicTests} Public`,
-      className: "stat-purple",
-    },
-    {
-      icon: "₹",
-      title: "Total Revenue",
-      value: "—",
-      change: "Payment data",
-      className: "stat-yellow",
-    },
-    {
-      icon: "🛒",
-      title: "Today's Orders",
-      value: "—",
-      change: "Payment data",
-      className: "stat-cyan",
-    },
-  ];
-
-  const recentTests = [...testEntries]
-    .sort(
-      (a, b) =>
-        Number(b[1]?.updatedAt || 0) -
-        Number(a[1]?.updatedAt || 0)
-    )
-    .slice(0, 5);
-
-  const popularTests = [...testEntries]
-    .sort(
-      (a, b) =>
-        Number(b[1]?.questions?.length || 0) -
-        Number(a[1]?.questions?.length || 0)
-    )
-    .slice(0, 5);
-
-  const announcements = [
-    {
-      icon: "🔵",
-      text: "Admin Dashboard तैयार है",
-      date: "Today",
-    },
-    {
-      icon: "🟠",
-      text: "Questions JSON से manage किए जा सकते हैं",
-      date: "Today",
-    },
-    {
-      icon: "🟣",
-      text: `${publicTests} Public Tests उपलब्ध हैं`,
-      date: "Today",
-    },
-    {
-      icon: "🟢",
-      text: `${totalQuestions} Questions saved tests में हैं`,
-      date: "Today",
-    },
-  ];
-
-  const openManager = () => {
-    if (typeof onOpenManager === "function") {
-      onOpenManager();
-    }
-  };
-
-  return (
-    <div className="dashboard-shell">
-
-      <header className="dashboard-header">
-        <div className="dashboard-brand">
-          <div className="dashboard-logo">📚</div>
-          <div>
-            <h1>
-              Study With <span>Power</span>
-            </h1>
-            <p>– Study for Success</p>
-          </div>
-        </div>
-
-        <div className="dashboard-tagline">
-          <strong>पढ़ो | समझो | आगे बढ़ो</strong>
-        </div>
-
-        <div className="dashboard-admin">
-          <div className="notification-icon">
-            🔔
-            <span>5</span>
-          </div>
-
-          <div className="admin-avatar">👨‍💼</div>
-
-          <div className="admin-user-info">
-            <strong>Admin</strong>
-            <small>Super Admin</small>
-          </div>
-
-          <span className="admin-arrow">⌄</span>
-        </div>
-      </header>
-
-      <div className="dashboard-layout">
-
-        <aside className="dashboard-sidebar">
-
-          <button className="sidebar-item active">
-            <span>🏠</span>
-            Dashboard
-          </button>
-
-          <button className="sidebar-item" onClick={openManager}>
-            <span>👥</span>
-            Users
-          </button>
-
-          <button className="sidebar-item" onClick={openManager}>
-            <span>❓</span>
-            Questions
-          </button>
-
-          <button className="sidebar-item" onClick={openManager}>
-            <span>📝</span>
-            Tests
-          </button>
-
-          <button className="sidebar-item" onClick={openManager}>
-            <span>📖</span>
-            Subjects
-          </button>
-
-          <button className="sidebar-item" onClick={openManager}>
-            <span>🎓</span>
-            Topics
-          </button>
-
-          <button className="sidebar-item" onClick={openManager}>
-            <span>📋</span>
-            Exams
-          </button>
-
-          <button className="sidebar-item">
-            <span>💳</span>
-            Test Series / Plans
-          </button>
-
-          <button className="sidebar-item">
-            <span>🧾</span>
-            Orders & Payments
-          </button>
-
-          <button className="sidebar-item">
-            <span>🎟️</span>
-            Coupons & Offers
-          </button>
-
-          <button className="sidebar-item">
-            <span>🤖</span>
-            AI MCQ Generator
-          </button>
-
-          <button className="sidebar-item">
-            <span>📄</span>
-            Study Material (PDF)
-          </button>
-
-          <button className="sidebar-item">
-            <span>📢</span>
-            Notifications
-          </button>
-
-          <button className="sidebar-item">
-            <span>📊</span>
-            Analytics
-          </button>
-
-          <button className="sidebar-item">
-            <span>⚙️</span>
-            Website Settings
-          </button>
-
-          <button className="sidebar-item">
-            <span>🔧</span>
-            App Settings
-          </button>
-
-          <button className="sidebar-item">
-            <span>🎨</span>
-            Branding (Logo)
-          </button>
-
-          <button className="sidebar-item">
-            <span>👤</span>
-            Admin Management
-          </button>
-
-          <button className="sidebar-item">
-            <span>📑</span>
-            Activity Logs
-          </button>
-
-          <button className="sidebar-item">
-            <span>❔</span>
-            Help & Support
-          </button>
-
-          <div className="sidebar-quote">
-            <strong>
-              शिक्षा ही शक्ति है
-              <br />
-              और शक्ति ही सफलता है।
-            </strong>
-            <small>— Study With Power</small>
-          </div>
-
-        </aside>
-
-        <main className="dashboard-main">
-
-          <div className="dashboard-main-top">
-            <div>
-              <h2>Welcome, Admin 👋</h2>
-              <p>Here's what's happening with your platform today.</p>
-            </div>
-
-            <div className="dashboard-actions">
-              <div className="dashboard-date">
-                📅{" "}
-                {new Date().toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </div>
-
-              <button className="website-view-btn" onClick={onClose}>
-                View Website ↗
-              </button>
-            </div>
-          </div>
-
-          <div className="stat-grid">
-            {stats.map((item) => (
-              <div
-                className={`stat-card ${item.className}`}
-                key={item.title}
-              >
-                <div className="stat-icon">{item.icon}</div>
-
-                <div className="stat-content">
-                  <span>{item.title}</span>
-                  <strong>{item.value}</strong>
-                  <small>↑ {item.change}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="dashboard-row">
-
-            <div className="dashboard-panel revenue-panel">
-              <div className="panel-heading">
-                <h3>Revenue Overview</h3>
-
-                <div className="chart-switch">
-                  <button className="selected">Monthly</button>
-                  <button>Yearly</button>
-                </div>
-              </div>
-
-              <div className="fake-chart">
-                <div className="chart-legend">
-                  <span>🟦 Revenue (₹)</span>
-                  <span>🟩 Orders</span>
-                </div>
-
-                <div className="chart-area">
-                  {[35, 45, 40, 58, 48, 65, 60, 72, 88].map(
-                    (height, index) => (
-                      <div className="chart-column" key={index}>
-                        <div
-                          className="chart-bar"
-                          style={{ height: `${height}%` }}
-                        />
-                        <span>
-                          {
-                            [
-                              "Jan",
-                              "Feb",
-                              "Mar",
-                              "Apr",
-                              "May",
-                              "Jun",
-                              "Jul",
-                              "Aug",
-                              "Sep",
-                            ][index]
-                          }
-                        </span>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-panel">
-              <div className="panel-heading">
-                <h3>Tests Overview</h3>
-              </div>
-
-              <div className="test-overview">
-                <div className="donut-chart">
-                  <div>
-                    <strong>{totalTests}</strong>
-                    <span>Total Tests</span>
-                  </div>
-                </div>
-
-                <div className="overview-list">
-                  <div>
-                    <span>🟢 Public</span>
-                    <strong>{publicTests}</strong>
-                  </div>
-
-                  <div>
-                    <span>🟡 Draft</span>
-                    <strong>{draftTests}</strong>
-                  </div>
-
-                  <div>
-                    <span>🟣 Unlisted</span>
-                    <strong>{unlistedTests}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-panel quick-panel">
-              <div className="panel-heading">
-                <h3>Quick Actions</h3>
-              </div>
-
-              <button className="quick-btn blue" onClick={openManager}>
-                ＋ Questions JSON
-              </button>
-
-              <button className="quick-btn green" onClick={openManager}>
-                ＋ Create New Test
-              </button>
-
-              <button className="quick-btn purple">
-                👤 Users
-              </button>
-
-              <button className="quick-btn orange">
-                🎟️ Create Coupon
-              </button>
-
-              <button className="quick-btn red">
-                📢 Send Notification
-              </button>
-
-              <button className="quick-btn cyan">
-                🤖 Generate MCQs (AI)
-              </button>
-            </div>
-
-          </div>
-
-          <div className="dashboard-table-grid">
-
-            <div className="dashboard-panel table-panel">
-              <div className="panel-heading">
-                <h3>Recent Tests</h3>
-                <button onClick={openManager}>View All</button>
-              </div>
-
-              {recentTests.length === 0 ? (
-                <div className="table-empty">
-                  अभी कोई Test नहीं है।
-                </div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Test Name</th>
-                      <th>Exam</th>
-                      <th>Questions</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {recentTests.map(([id, test], index) => (
-                      <tr key={id}>
-                        <td>{index + 1}</td>
-                        <td>
-                          <strong>{test.title || id}</strong>
-                        </td>
-                        <td>{(test.exam || "").toUpperCase()}</td>
-                        <td>{test.questions?.length || 0}</td>
-                        <td>
-                          <span
-                            className={`status-badge ${
-                              test.status || "draft"
-                            }`}
-                          >
-                            {test.status === "public"
-                              ? "Public"
-                              : test.status === "unlisted"
-                              ? "Unlisted"
-                              : "Draft"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="dashboard-panel table-panel">
-              <div className="panel-heading">
-                <h3>Top 5 Tests</h3>
-                <button onClick={openManager}>View All</button>
-              </div>
-
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Test Name</th>
-                    <th>Questions</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {popularTests.length === 0 ? (
-                    <tr>
-                      <td colSpan="3">अभी कोई Test नहीं है।</td>
-                    </tr>
-                  ) : (
-                    popularTests.map(([id, test], index) => (
-                      <tr key={id}>
-                        <td>{index + 1}</td>
-                        <td>{test.title || id}</td>
-                        <td>{test.questions?.length || 0}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="dashboard-panel table-panel">
-              <div className="panel-heading">
-                <h3>Announcements</h3>
-                <button>View All</button>
-              </div>
-
-              <div className="announcement-list">
-                {announcements.map((item, index) => (
-                  <div className="announcement-item" key={index}>
-                    <span>{item.icon}</span>
-                    <div>
-                      <strong>{item.text}</strong>
-                      <small>{item.date}</small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          <footer className="dashboard-footer">
-            <strong>Study With Power</strong>
-            <span>|</span>
-            <span>Study for Success</span>
-
-            <div>
-              आपकी सफलता, हमारी प्रतिबद्धता | © 2026 Study With Power.
-              All Rights Reserved.
-            </div>
-          </footer>
-
-        </main>
-      </div>
-    </div>
-  );
-}
-
-
-// ======================================================
-// ADMIN PANEL WRAPPER
-// ======================================================
-
-function AdminPanel({
-  user,
-  tests,
-  resources,
+  tests = {},
+  resources = [],
   onClose,
 }) {
-  const [adminSection, setAdminSection] = useState("dashboard");
+  // ====================================================
+  // AUTH
+  // ====================================================
 
-  if (adminSection === "manager") {
-    return (
-      <div className="admin-manager-wrapper">
-
-        <button
-          className="back-dashboard-btn"
-          onClick={() => setAdminSection("dashboard")}
-        >
-          ← Dashboard
-        </button>
-
-        <AdminManager
-          user={user}
-          tests={tests}
-          resources={resources}
-          onClose={onClose}
-        />
-
-      </div>
-    );
-  }
-
-  return (
-    <AdminDashboard
-      user={user}
-      tests={tests}
-      resources={resources}
-      onClose={onClose}
-      onOpenManager={() => setAdminSection("manager")}
-    />
-  );
-}
-
-function AdminManager({
-  user,
-  tests,
-  resources,
-  onClose,
-}) {
-  const [exam, setExam] = useState("uppcs");
-  const [testNumber, setTestNumber] = useState(1);
-  const [title, setTitle] = useState("UPPCS Test 01");
-  const [status, setStatus] = useState("draft");
-
-  // Question Form + Question JSON दोनों उपलब्ध रहेंगे
-  const [questions, setQuestions] = useState([
-    createEmptyQuestion(1),
-  ]);
-
-  const [questionsJson, setQuestionsJson] = useState(
-    JSON.stringify([createEmptyQuestion(1)], null, 2)
+  const [currentUser, setCurrentUser] = useState(
+    user || null
   );
 
-  const [questionEditorMode, setQuestionEditorMode] = useState("form");
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const [resourceDraft, setResourceDraft] = useState(
-    Array.isArray(resources) && resources.length ? resources : defaultResources
+  const [authChecking, setAuthChecking] = useState(
+    !user
   );
+
+  // ====================================================
+  // DATA
+  // ====================================================
+
+  const [cloudTests, setCloudTests] = useState(
+    tests || {}
+  );
+
+  const [siteResources, setSiteResources] = useState(
+    resources || []
+  );
+
+  // ====================================================
+  // TEST SETTINGS
+  // ====================================================
+
+  const [selectedExam, setSelectedExam] =
+    useState("uppcs");
+
+  const [testNumber, setTestNumber] =
+    useState(1);
+
+  const [testTitle, setTestTitle] =
+    useState("");
+
+  const [testStatus, setTestStatus] =
+    useState("draft");
+
+  const [testDuration, setTestDuration] =
+    useState(30);
+
+  const [testPrice, setTestPrice] =
+    useState(0);
+
+  // ====================================================
+  // QUESTIONS
+  // ====================================================
+
+  const [questions, setQuestions] =
+    useState([createQuestion(1)]);
+
+  const [currentQuestion, setCurrentQuestion] =
+    useState(0);
+
+  // ====================================================
+  // UI
+  // ====================================================
+
+  const [activeSection, setActiveSection] =
+    useState("tests");
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  // ====================================================
+  // AUTH LISTENER
+  // ====================================================
 
   useEffect(() => {
-    if (Array.isArray(resources) && resources.length) setResourceDraft(resources);
-  }, [resources]);
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (loggedUser) => {
+        setCurrentUser(loggedUser);
+        setAuthChecking(false);
+      }
+    );
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
+    return () => unsubscribe();
+  }, []);
 
-  if (!isAdmin) {
+  // ====================================================
+  // LOAD TESTS
+  // ====================================================
+
+  useEffect(() => {
+    const testsRef = ref(db, "tests");
+
+    const unsubscribe = onValue(
+      testsRef,
+      (snapshot) => {
+        setCloudTests(
+          snapshot.val() || {}
+        );
+      },
+      (error) => {
+        console.error(
+          "Admin tests error:",
+          error
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // ====================================================
+  // LOAD RESOURCES
+  // ====================================================
+
+  useEffect(() => {
+    const resourceRef = ref(
+      db,
+      "siteContent/resources"
+    );
+
+    const unsubscribe = onValue(
+      resourceRef,
+      (snapshot) => {
+        const value = snapshot.val();
+
+        if (Array.isArray(value)) {
+          setSiteResources(value);
+        } else if (
+          value &&
+          typeof value === "object"
+        ) {
+          setSiteResources(
+            Object.values(value)
+          );
+        }
+      },
+      () => {}
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // ====================================================
+  // ADMIN SECURITY
+  // ====================================================
+
+  if (authChecking) {
     return (
-      <div className="container">
-        <div className="result-box">
-          <div className="result-icon">🔐</div>
-          <h1>Admin Access Denied</h1>
-          <p>केवल Admin account इस panel को खोल सकता है।</p>
-          <button className="primary" onClick={onClose}>
-            ← Website पर जाएँ
-          </button>
+      <div className="admin-page">
+        <div className="admin-loading">
+          ⏳ Exam Test Admin Panel Loading...
         </div>
       </div>
     );
   }
 
-  const updateQuestion = (index, field, value) => {
-    setQuestions((prev) => {
-      const updated = prev.map((q, i) =>
-        i === index ? { ...q, [field]: value } : q
+  if (
+    !currentUser ||
+    currentUser.email !== ADMIN_EMAIL
+  ) {
+    return (
+      <div className="admin-page">
+        <div className="admin-denied">
+
+          <div className="denied-icon">
+            🔐
+          </div>
+
+          <h2>
+            Admin Access Denied
+          </h2>
+
+          <p>
+            केवल authorized admin account
+            से Admin Panel खोला जा सकता है।
+          </p>
+
+          <button
+            className="admin-btn primary"
+            onClick={onClose}
+          >
+            ← वापस जाएँ
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ====================================================
+  // TEST ID
+  // ====================================================
+
+  const getTestId = () => {
+    return `${selectedExam}_test_${testNumber}`;
+  };
+
+  // ====================================================
+  // RESET
+  // ====================================================
+
+  const resetTestForm = () => {
+    setSelectedExam("uppcs");
+    setTestNumber(1);
+    setTestTitle("");
+    setTestStatus("draft");
+    setTestDuration(30);
+    setTestPrice(0);
+
+    setQuestions([
+      createQuestion(1),
+    ]);
+
+    setCurrentQuestion(0);
+    setMessage("");
+  };
+
+  // ====================================================
+  // LOAD TEST
+  // ====================================================
+
+  const loadTest = (id, test) => {
+    if (!test) return;
+
+    setActiveSection("tests");
+
+    setSelectedExam(
+      test.exam || "uppcs"
+    );
+
+    setTestNumber(
+      Number(test.testNumber || 1)
+    );
+
+    setTestTitle(
+      test.title || ""
+    );
+
+    setTestStatus(
+      test.status || "draft"
+    );
+
+    setTestDuration(
+      Number(test.duration || 30)
+    );
+
+    setTestPrice(
+      Number(test.price || 0)
+    );
+
+    const loadedQuestions =
+      Array.isArray(test.questions)
+        ? test.questions
+        : [];
+
+    if (loadedQuestions.length) {
+      setQuestions(
+        loadedQuestions.map(
+          (q, index) => ({
+            id:
+              q.id ??
+              index + 1,
+
+            question:
+              q.question ||
+              q.questionText ||
+              "",
+
+            options:
+              Array.isArray(q.options)
+                ? [
+                    q.options[0] || "",
+                    q.options[1] || "",
+                    q.options[2] || "",
+                    q.options[3] || "",
+                  ]
+                : [
+                    "",
+                    "",
+                    "",
+                    "",
+                  ],
+
+            answer:
+              Number.isInteger(q.answer)
+                ? q.answer
+                : 0,
+
+            explanation:
+              q.explanation || "",
+
+            explanationImage:
+              q.explanationImage || "",
+          })
+        )
       );
-      setQuestionsJson(JSON.stringify(updated, null, 2));
-      return updated;
-    });
-  };
-
-  const updateOption = (questionIndex, optionIndex, value) => {
-    setQuestions((prev) => {
-      const updated = prev.map((q, i) => {
-        if (i !== questionIndex) return q;
-        const options = [...(q.options || ["", "", "", ""])];
-        options[optionIndex] = value;
-        return { ...q, options };
-      });
-      setQuestionsJson(JSON.stringify(updated, null, 2));
-      return updated;
-    });
-  };
-
-  const syncQuestionsToJson = (items) => {
-    setQuestionsJson(JSON.stringify(items, null, 2));
-  };
-
-  const applyQuestionsJson = () => {
-    try {
-      const parsed = JSON.parse(questionsJson);
-
-      if (!Array.isArray(parsed)) {
-        alert("Question JSON में array होना चाहिए।");
-        return;
-      }
-
-      if (parsed.length === 0) {
-        alert("कम से कम 1 Question होना चाहिए।");
-        return;
-      }
-
-      if (parsed.length > 150) {
-        alert("अधिकतम 150 Questions ही रख सकते हैं।");
-        return;
-      }
-
-      const formatted = parsed.map((q, index) => {
-        const rawAnswer = q?.answer;
-
-        let answer = 0;
-        if (typeof rawAnswer === "string") {
-          const normalized = rawAnswer.trim().toUpperCase();
-          if (["A", "B", "C", "D"].includes(normalized)) {
-            answer = normalized.charCodeAt(0) - 65;
-          } else if (/^[0-3]$/.test(normalized)) {
-            answer = Number(normalized);
-          }
-        } else if (Number.isFinite(Number(rawAnswer))) {
-          answer = Number(rawAnswer);
-        }
-
-        return {
-          id: index + 1,
-          question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
-          options: [
-            String(q?.options?.[0] ?? ""),
-            String(q?.options?.[1] ?? ""),
-            String(q?.options?.[2] ?? ""),
-            String(q?.options?.[3] ?? ""),
-          ],
-          answer: Math.max(0, Math.min(3, answer)),
-          explanation: String(q?.explanation ?? ""),
-        };
-      });
-
-      setQuestions(formatted);
-      setCurrentQuestion(0);
-      setQuestionEditorMode("form");
-      setMessage(`✅ ${formatted.length} Questions JSON से Form में आ गए।`);
-    } catch (error) {
-      alert("Question JSON सही नहीं है।\n\n" + error.message);
+    } else {
+      setQuestions([
+        createQuestion(1),
+      ]);
     }
+
+    setCurrentQuestion(0);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
-  const loadQuestionsJsonFromForm = () => {
-    setQuestionsJson(JSON.stringify(questions, null, 2));
-    setQuestionEditorMode("json");
-    setMessage("📋 Question Form का JSON तैयार है।");
-  };
+  // ====================================================
+  // ADD QUESTION
+  // ====================================================
 
   const addQuestion = () => {
     if (questions.length >= 150) {
-      alert("अधिकतम 150 Questions ही जोड़े जा सकते हैं।");
+      alert(
+        "अधिकतम 150 Questions रख सकते हैं।"
+      );
       return;
     }
 
-    const nextIndex = questions.length;
-    setQuestions((prev) => {
-      const updated = [...prev, createEmptyQuestion(nextIndex + 1)];
-      setQuestionsJson(JSON.stringify(updated, null, 2));
-      return updated;
-    });
-    setCurrentQuestion(nextIndex);
-    setMessage(`➕ प्रश्न ${nextIndex + 1} जोड़ दिया गया।`);
+    const newQuestion =
+      createQuestion(
+        questions.length + 1
+      );
 
-    setTimeout(() => {
-      document.getElementById("question-editor")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 50);
+    setQuestions((old) => [
+      ...old,
+      newQuestion,
+    ]);
+
+    setCurrentQuestion(
+      questions.length
+    );
   };
 
-  const deleteQuestion = (index) => {
+  // ====================================================
+  // UPDATE QUESTION
+  // ====================================================
+
+  const updateQuestion = (
+    field,
+    value
+  ) => {
+    setQuestions((old) =>
+      old.map((q, index) =>
+        index === currentQuestion
+          ? {
+              ...q,
+              [field]: value,
+            }
+          : q
+      )
+    );
+  };
+
+  // ====================================================
+  // UPDATE OPTION
+  // ====================================================
+
+  const updateOption = (
+    optionIndex,
+    value
+  ) => {
+    setQuestions((old) =>
+      old.map((q, index) => {
+        if (
+          index !== currentQuestion
+        ) {
+          return q;
+        }
+
+        const newOptions = [
+          ...q.options,
+        ];
+
+        newOptions[
+          optionIndex
+        ] = value;
+
+        return {
+          ...q,
+          options: newOptions,
+        };
+      })
+    );
+  };
+
+  // ====================================================
+  // DELETE QUESTION
+  // ====================================================
+
+  const deleteQuestion = () => {
     if (questions.length === 1) {
-      alert("कम से कम 1 Question होना चाहिए।");
+      alert(
+        "कम से कम 1 Question होना चाहिए।"
+      );
       return;
     }
 
-    if (!window.confirm(`प्रश्न ${index + 1} delete करना है?`)) {
-      return;
+    const ok = window.confirm(
+      `Question ${
+        currentQuestion + 1
+      } delete करें?`
+    );
+
+    if (!ok) return;
+
+    setQuestions((old) =>
+      old
+        .filter(
+          (_, index) =>
+            index !== currentQuestion
+        )
+        .map((q, index) => ({
+          ...q,
+          id: index + 1,
+        }))
+    );
+
+    setCurrentQuestion((old) =>
+      Math.max(
+        0,
+        Math.min(
+          old,
+          questions.length - 2
+        )
+      )
+    );
+  };
+
+  // ====================================================
+  // VALIDATE
+  // ====================================================
+
+  const validateTest = () => {
+    if (!selectedExam) {
+      alert(
+        "Exam select करें।"
+      );
+      return false;
     }
 
-    const updated = questions
-      .filter((_, i) => i !== index)
-      .map((q, i) => ({ ...q, id: i + 1 }));
+    if (!testNumber) {
+      alert(
+        "Test Number डालें।"
+      );
+      return false;
+    }
 
-    setQuestions(updated);
-    setQuestionsJson(JSON.stringify(updated, null, 2));
-    setCurrentQuestion(Math.min(index, updated.length - 1));
-    setMessage("🗑️ प्रश्न delete हो गया।");
-  };
+    if (!testTitle.trim()) {
+      alert(
+        "Test Title डालें।"
+      );
+      return false;
+    }
 
-  const loadTest = (id, data) => {
-    setExam(data.exam || "uppcs");
-    setTestNumber(Number(data.testNumber || 1));
-    setTitle(data.title || "");
-    setStatus(data.status || "draft");
-
-    const loaded = Array.isArray(data.questions) ? data.questions : [];
-    const formatted = loaded.slice(0, 150).map((q, index) => ({
-      id: index + 1,
-      question: q?.question ?? q?.questionText ?? q?.text ?? "",
-      options: [
-        q?.options?.[0] ?? "",
-        q?.options?.[1] ?? "",
-        q?.options?.[2] ?? "",
-        q?.options?.[3] ?? "",
-      ],
-      answer: Number.isFinite(Number(q?.answer)) ? Number(q.answer) : 0,
-      explanation: q?.explanation ?? "",
-    }));
-
-    const finalQuestions = formatted.length ? formatted : [createEmptyQuestion(1)];
-    setQuestions(finalQuestions);
-    setQuestionsJson(JSON.stringify(finalQuestions, null, 2));
-    setCurrentQuestion(0);
-    setMessage(`✏️ ${data.title || id} edit mode में खुल गया।`);
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const newTest = () => {
-    setExam("uppcs");
-    setTestNumber(1);
-    setTitle("UPPCS Test 01");
-    setStatus("draft");
-    const emptyQuestions = [createEmptyQuestion(1)];
-    setQuestions(emptyQuestions);
-    setQuestionsJson(JSON.stringify(emptyQuestions, null, 2));
-    setQuestionEditorMode("form");
-    setCurrentQuestion(0);
-    setMessage("📝 नया Test तैयार है।");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const validateQuestions = () => {
     if (!questions.length) {
-      alert("कम से कम 1 Question होना चाहिए।");
+      alert(
+        "कम से कम 1 Question डालें।"
+      );
       return false;
     }
 
-    if (questions.length > 150) {
-      alert("अधिकतम 150 Questions ही save किए जा सकते हैं।");
-      return false;
-    }
+    for (
+      let i = 0;
+      i < questions.length;
+      i++
+    ) {
+      const q =
+        questions[i];
 
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
+      if (
+        !q.question.trim()
+      ) {
+        alert(
+          `Question ${
+            i + 1
+          } खाली है।`
+        );
 
-      if (!q.question.trim()) {
-        alert(`प्रश्न ${i + 1} खाली है।`);
         setCurrentQuestion(i);
+
         return false;
       }
 
-      for (let j = 0; j < 4; j++) {
-        if (!q.options?.[j]?.trim()) {
-          alert(`प्रश्न ${i + 1} का विकल्प ${String.fromCharCode(65 + j)} खाली है।`);
-          setCurrentQuestion(i);
-          return false;
-        }
+      if (
+        q.options.some(
+          (option) =>
+            !String(
+              option || ""
+            ).trim()
+        )
+      ) {
+        alert(
+          `Question ${
+            i + 1
+          } के सभी 4 options भरें।`
+        );
+
+        setCurrentQuestion(i);
+
+        return false;
+      }
+
+      if (
+        q.answer < 0 ||
+        q.answer > 3
+      ) {
+        alert(
+          `Question ${
+            i + 1
+          } का सही उत्तर select करें।`
+        );
+
+        setCurrentQuestion(i);
+
+        return false;
       }
     }
 
     return true;
   };
 
+  // ====================================================
+  // SAVE TEST
+  // ====================================================
+
   const saveTest = async () => {
-    if (!isAdmin) {
-      alert("Admin access नहीं है।");
+    if (!validateTest()) {
       return;
     }
-
-    if (!title.trim()) {
-      alert("Test title डालें।");
-      return;
-    }
-
-    if (questionEditorMode === "json") {
-      try {
-        const parsed = JSON.parse(questionsJson);
-        if (!Array.isArray(parsed) || parsed.length === 0) {
-          alert("कम से कम 1 Question वाला JSON होना चाहिए।");
-          return;
-        }
-        if (parsed.length > 150) {
-          alert("अधिकतम 150 Questions ही save किए जा सकते हैं।");
-          return;
-        }
-
-        const normalized = parsed.map((q, index) => {
-          let answer = Number(q?.answer);
-          if (typeof q?.answer === "string") {
-            const a = q.answer.trim().toUpperCase();
-            answer = ["A", "B", "C", "D"].includes(a)
-              ? a.charCodeAt(0) - 65
-              : Number(a);
-          }
-
-          return {
-            id: index + 1,
-            question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
-            options: [
-              String(q?.options?.[0] ?? ""),
-              String(q?.options?.[1] ?? ""),
-              String(q?.options?.[2] ?? ""),
-              String(q?.options?.[3] ?? ""),
-            ],
-            answer: Math.max(0, Math.min(3, Number.isFinite(answer) ? answer : 0)),
-            explanation: String(q?.explanation ?? ""),
-          };
-        });
-
-        setQuestions(normalized);
-        setQuestionsJson(JSON.stringify(normalized, null, 2));
-      } catch (error) {
-        alert("Question JSON सही नहीं है।\n\n" + error.message);
-        return;
-      }
-    }
-
-    if (!validateQuestions()) return;
-
-    let sourceQuestions = questions;
-
-    if (questionEditorMode === "json") {
-      try {
-        const parsed = JSON.parse(questionsJson);
-        sourceQuestions = parsed.map((q, index) => {
-          let answer = Number(q?.answer);
-          if (typeof q?.answer === "string") {
-            const a = q.answer.trim().toUpperCase();
-            answer = ["A", "B", "C", "D"].includes(a)
-              ? a.charCodeAt(0) - 65
-              : Number(a);
-          }
-          return {
-            id: index + 1,
-            question: String(q?.question ?? q?.questionText ?? q?.text ?? ""),
-            options: [
-              String(q?.options?.[0] ?? ""),
-              String(q?.options?.[1] ?? ""),
-              String(q?.options?.[2] ?? ""),
-              String(q?.options?.[3] ?? ""),
-            ],
-            answer: Math.max(0, Math.min(3, Number.isFinite(answer) ? answer : 0)),
-            explanation: String(q?.explanation ?? ""),
-          };
-        });
-      } catch (error) {
-        alert("Question JSON सही नहीं है।\n\n" + error.message);
-        return;
-      }
-    }
-
-    const cleanQuestions = sourceQuestions.map((q, index) => ({
-      id: index + 1,
-      question: q.question.trim(),
-      options: q.options.slice(0, 4).map((option) => option.trim()),
-      answer: Number(q.answer),
-      explanation: q.explanation?.trim() || "",
-    }));
-
-    const id = testId(exam, testNumber);
-
-    const data = {
-      id,
-      exam,
-      testNumber: Number(testNumber),
-      access: getTestAccess(testNumber),
-      title: title.trim(),
-      status,
-      questions: cleanQuestions,
-      updatedAt: Date.now(),
-      updatedBy: user.email,
-    };
-
-    setSaving(true);
 
     try {
-      await set(ref(db, `tests/${id}`), data);
+      setSaving(true);
+      setMessage("");
+
+      const id =
+        getTestId();
+
+      const cleanQuestions =
+        questions.map(
+          (q, index) => ({
+            id: index + 1,
+
+            question:
+              q.question.trim(),
+
+            options:
+              q.options.map(
+                (option) =>
+                  String(
+                    option || ""
+                  ).trim()
+              ),
+
+            answer:
+              Number(q.answer),
+
+            explanation:
+              String(
+                q.explanation || ""
+              ).trim(),
+
+            explanationImage:
+              String(
+                q.explanationImage ||
+                  ""
+              ).trim(),
+          })
+        );
+
+      const testData = {
+        id,
+
+        exam:
+          selectedExam,
+
+        testNumber:
+          Number(testNumber),
+
+        title:
+          testTitle.trim(),
+
+        status:
+          testStatus,
+
+        duration:
+          Number(testDuration),
+
+        price:
+          Number(testPrice),
+
+        questions:
+          cleanQuestions,
+
+        totalQuestions:
+          cleanQuestions.length,
+
+        updatedAt:
+          Date.now(),
+
+        updatedBy:
+          currentUser?.email ||
+          ADMIN_EMAIL,
+      };
+
+      await set(
+        ref(db, `tests/${id}`),
+        testData
+      );
 
       setMessage(
-        status === "public"
-          ? "🌐 Test PUBLIC हो गया। Website पर दिखाई देगा।"
-          : status === "unlisted"
-          ? "🔗 Test UNLISTED हो गया।"
-          : "📝 Test DRAFT में save हो गया।"
+        `✅ ${testTitle} successfully save हो गया।`
       );
+
+      setCloudTests(
+        (old) => ({
+          ...old,
+          [id]: testData,
+        })
+      );
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
     } catch (error) {
-      console.error(error);
-      alert("Save नहीं हुआ:\n" + error.message);
+      console.error(
+        "Save test error:",
+        error
+      );
+
+      alert(
+        "❌ Test save नहीं हुआ:\n" +
+          error.message
+      );
+
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteTest = async (id) => {
-    if (!window.confirm("क्या आप यह Test delete करना चाहते हैं?")) return;
+  // ====================================================
+  // DELETE TEST
+  // ====================================================
+
+  const deleteTest = async (
+    id,
+    title
+  ) => {
+    const ok =
+      window.confirm(
+        `"${title}" को delete करना चाहते हैं?`
+      );
+
+    if (!ok) return;
 
     try {
-      await remove(ref(db, `tests/${id}`));
-      setMessage("🗑️ Test delete हो गया।");
+      await remove(
+        ref(db, `tests/${id}`)
+      );
+
+      alert(
+        "✅ Test delete हो गया।"
+      );
+
+      if (
+        id === getTestId()
+      ) {
+        resetTestForm();
+      }
+
     } catch (error) {
-      alert("Delete error:\n" + error.message);
+      console.error(error);
+
+      alert(
+        "Delete error:\n" +
+          error.message
+      );
     }
   };
 
-  const updateResource = (index, field, value) => {
-    setResourceDraft((prev) => prev.map((x, i) => i === index ? { ...x, [field]: value } : x));
+  // ====================================================
+  // RESOURCE UPDATE
+  // ====================================================
+
+  const updateResource = (
+    index,
+    field,
+    value
+  ) => {
+    setSiteResources(
+      (old) =>
+        old.map(
+          (item, i) =>
+            i === index
+              ? {
+                  ...item,
+                  [field]:
+                    value,
+                }
+              : item
+        )
+    );
   };
+
+  // ====================================================
+  // SAVE RESOURCES
+  // ====================================================
 
   const saveResources = async () => {
-    if (!isAdmin) return alert("Admin access नहीं है।");
-    setSaving(true);
     try {
-      const clean = resourceDraft.map((x, i) => ({
-        id: x.id || String(i + 1), icon: String(x.icon || "📚"),
-        title: String(x.title || "").trim(), text: String(x.text || "").trim(),
-        page: ["resources", "current", "mcq", "tests"].includes(x.page) ? x.page : "resources",
-        enabled: x.enabled !== false
-      }));
-      await set(ref(db, "siteContent/resources"), clean);
-      setResourceDraft(clean); setMessage("✅ Home Resource Cards save हो गए।");
-    } catch(e) { alert("Resources Save नहीं हुए:\n" + e.message); }
-    finally { setSaving(false); }
+      setSaving(true);
+
+      await set(
+        ref(
+          db,
+          "siteContent/resources"
+        ),
+        siteResources
+      );
+
+      alert(
+        "✅ Resources save हो गए।"
+      );
+
+    } catch (error) {
+      alert(
+        "Resources save error:\n" +
+          error.message
+      );
+
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const testList = Object.entries(tests || {}).sort(
-    (a, b) =>
-      Number(a[1].testNumber || 0) - Number(b[1].testNumber || 0)
-  );
+  // ====================================================
+  // TEST LIST
+  // ====================================================
 
-  const question = questions[currentQuestion] || createEmptyQuestion(1);
+  const testEntries =
+    Object.entries(
+      cloudTests || {}
+    ).sort(
+      (a, b) =>
+        Number(
+          a[1]?.testNumber || 0
+        ) -
+        Number(
+          b[1]?.testNumber || 0
+        )
+    );
+
+  const currentQuestionData =
+    questions[
+      currentQuestion
+    ] || createQuestion(1);
+
+  // ====================================================
+  // RENDER
+  // ====================================================
 
   return (
-    <div className="admin-container">
-      <div className="admin-header">
+    <div className="admin-page">
+
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
+      <header className="admin-header">
+
         <div>
-          <div className="admin-crown">👑</div>
-          <h1>Study With Power Admin Panel</h1>
-          <p>Admin: {user.email}</p>
+          <h1>
+            ⚙️ Exam Test Admin Panel
+          </h1>
+
+          <p>
+            Exam Test
+          </p>
         </div>
 
-        <button className="admin-close" onClick={onClose}>
-          ← Website
+        <div className="admin-header-right">
+
+          <span className="admin-email">
+            👤 {currentUser?.email}
+          </span>
+
+          <button
+            className="admin-btn danger"
+            onClick={onClose}
+          >
+            ✕ Close
+          </button>
+
+        </div>
+
+      </header>
+
+      {/* =================================================
+          MESSAGE
+      ================================================= */}
+
+      {message && (
+        <div className="admin-message">
+          {message}
+        </div>
+      )}
+
+      {/* =================================================
+          NAVIGATION
+      ================================================= */}
+
+      <div className="admin-tabs">
+
+        <button
+          className={
+            activeSection === "tests"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setActiveSection("tests")
+          }
+        >
+          📝 Test Manager
         </button>
+
+        <button
+          className={
+            activeSection === "resources"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setActiveSection("resources")
+          }
+        >
+          📚 Resources
+        </button>
+
       </div>
 
-      <div className="admin-card">
-        <div className="admin-title-row">
-          <div>
-            <h2>📝 Test Manager</h2>
-            <div className="access-rule-note">🆓 Test 01 = Free &nbsp; | &nbsp; 💰 Test 02 और आगे = Paid</div>
-            <p>Test बनाएँ, Questions जोड़ें और Public/Unlisted करें।</p>
-          </div>
+      {/* =================================================
+          TEST MANAGER
+      ================================================= */}
 
-          <button className="secondary-btn" onClick={newTest}>
-            ＋ New Test
-          </button>
-        </div>
+      {activeSection === "tests" && (
+        <div className="admin-content">
 
-        <div className="admin-form">
-          <div>
-            <label>Exam</label>
-            <select value={exam} onChange={(e) => setExam(e.target.value)}>
-              {exams.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* =================================================
+              TEST SETTINGS
+          ================================================= */}
 
-          <div>
-            <label>Test Number</label>
-            <input
-              type="number"
-              min="1"
-              value={testNumber}
-              onChange={(e) => setTestNumber(Number(e.target.value))}
-            />
-          </div>
+          <div className="admin-card">
 
-          <div className="full">
-            <label>Test Title</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="UPPCS Test 01"
-            />
-          </div>
+            <div className="card-title">
 
-          <div className="full">
-            <label>Visibility / Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="draft">📝 Draft</option>
-              <option value="unlisted">🔗 Unlisted</option>
-              <option value="public">🌐 Public</option>
-            </select>
+              <div>
+                <h2>
+                  📝 Exam & Test Manager
+                </h2>
 
-            <div className="status-help">
-              <div>📝 <strong>Draft:</strong> काम चल रहा है।</div>
-              <div>🔗 <strong>Unlisted:</strong> सामान्य Test List में नहीं दिखेगा।</div>
-              <div>🌐 <strong>Public:</strong> Students की Test Series में दिखेगा।</div>
-            </div>
-          </div>
-        </div>
-
-        {/* ==================================================
-            QUESTION EDITOR — FORM + JSON दोनों
-        ================================================== */}
-        <div className="questions-editor" id="question-editor">
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              marginBottom: 18,
-              padding: 8,
-              borderRadius: 12,
-              background: "#eef2ff",
-              border: "1px solid #c7d2fe",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setQuestionEditorMode("form")}
-              style={{
-                border: 0,
-                borderRadius: 8,
-                padding: "11px 16px",
-                cursor: "pointer",
-                fontWeight: 800,
-                background: questionEditorMode === "form" ? "#2563eb" : "#fff",
-                color: questionEditorMode === "form" ? "#fff" : "#1e3a8a",
-              }}
-            >
-              📝 Question Form
-            </button>
-
-            <button
-              type="button"
-              onClick={loadQuestionsJsonFromForm}
-              style={{
-                border: 0,
-                borderRadius: 8,
-                padding: "11px 16px",
-                cursor: "pointer",
-                fontWeight: 800,
-                background: questionEditorMode === "json" ? "#7c3aed" : "#fff",
-                color: questionEditorMode === "json" ? "#fff" : "#5b21b6",
-              }}
-            >
-              {"{ }"} Question JSON
-            </button>
-          </div>
-
-          {questionEditorMode === "json" ? (
-            <div
-              style={{
-                border: "1px solid #c4b5fd",
-                borderRadius: 14,
-                padding: 20,
-                background: "#faf5ff",
-              }}
-            >
-              <div className="admin-title-row" style={{ marginBottom: 12 }}>
-                <div>
-                  <h2 style={{ marginBottom: 4 }}>{"{ }"} Question JSON</h2>
-                  <p className="small-text">
-                    सीधे JSON paste करें। Answer में 0-3 या A-D दोनों मान्य हैं।
-                  </p>
-                </div>
+                <p>
+                  Exam → Test → Questions
+                  manage करें
+                </p>
               </div>
 
-              <textarea
-                value={questionsJson}
-                onChange={(e) => setQuestionsJson(e.target.value)}
-                spellCheck={false}
-                placeholder={`[
-  {
-    "question": "सिंधु घाटी सभ्यता का प्रमुख बंदरगाह कौन-सा था?",
-    "options": ["हड़प्पा", "लोथल", "कालीबंगा", "मोहनजोदड़ो"],
-    "answer": "B",
-    "explanation": "लोथल गुजरात में स्थित एक प्रमुख बंदरगाह था।"
-  }
-]`}
-                style={{
-                  width: "100%",
-                  minHeight: 420,
-                  padding: 14,
-                  boxSizing: "border-box",
-                  borderRadius: 10,
-                  border: "1px solid #c4b5fd",
-                  fontSize: 15,
-                  fontFamily: "Consolas, Monaco, monospace",
-                  lineHeight: 1.5,
-                  background: "#fff",
-                  resize: "vertical",
-                }}
-              />
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  flexWrap: "wrap",
-                  marginTop: 14,
-                }}
+              <button
+                className="admin-btn secondary"
+                onClick={resetTestForm}
               >
-                <button
-                  type="button"
-                  className="save-btn"
-                  onClick={applyQuestionsJson}
-                >
-                  ✅ JSON Apply करके Form में लाएँ
-                </button>
+                ＋ New Test
+              </button>
 
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setQuestionsJson(JSON.stringify(questions, null, 2))}
-                >
-                  🔄 Form से JSON बनाएं
-                </button>
-
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setQuestionEditorMode("form")}
-                >
-                  📝 Question Form खोलें
-                </button>
-              </div>
-
-              <div
-                style={{
-                  marginTop: 14,
-                  padding: 12,
-                  borderRadius: 10,
-                  background: "#fff",
-                  border: "1px solid #ddd6fe",
-                  lineHeight: 1.6,
-                }}
-              >
-                <strong>JSON format:</strong>{" "}
-                <code>question</code>, <code>options</code>,{" "}
-                <code>answer</code>, <code>explanation</code>.
-                <br />
-                <strong>Answer:</strong> <code>"A"</code>, <code>"B"</code>,{" "}
-                <code>"C"</code>, <code>"D"</code> या <code>0</code>,{" "}
-                <code>1</code>, <code>2</code>, <code>3</code>.
-              </div>
             </div>
-          ) : (
-          <div className="admin-title-row" style={{ marginBottom: 15 }}>
+
+            <div className="form-grid">
+
+              {/* EXAM */}
+
+              <div className="form-group">
+
+                <label>
+                  🎯 Exam
+                </label>
+
+                <select
+                  value={selectedExam}
+                  onChange={(e) =>
+                    setSelectedExam(
+                      e.target.value
+                    )
+                  }
+                >
+                  {exams.map(
+                    (exam) => (
+                      <option
+                        key={exam.id}
+                        value={exam.id}
+                      >
+                        {exam.icon}{" "}
+                        {exam.name}
+                      </option>
+                    )
+                  )}
+                </select>
+
+              </div>
+
+              {/* TEST NUMBER */}
+
+              <div className="form-group">
+
+                <label>
+                  🔢 Test Number
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={testNumber}
+                  onChange={(e) =>
+                    setTestNumber(
+                      Number(
+                        e.target.value
+                      )
+                    )
+                  }
+                />
+
+              </div>
+
+              {/* TEST TITLE */}
+
+              <div className="form-group full">
+
+                <label>
+                  📚 Test Title
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="जैसे UP PET Test 01"
+                  value={testTitle}
+                  onChange={(e) =>
+                    setTestTitle(
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              {/* STATUS */}
+
+              <div className="form-group">
+
+                <label>
+                  📢 Status
+                </label>
+
+                <select
+                  value={testStatus}
+                  onChange={(e) =>
+                    setTestStatus(
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="draft">
+                    Draft
+                  </option>
+
+                  <option value="public">
+                    Public
+                  </option>
+                </select>
+
+              </div>
+
+              {/* DURATION */}
+
+              <div className="form-group">
+
+                <label>
+                  ⏱️ Duration
+                  (Minutes)
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={testDuration}
+                  onChange={(e) =>
+                    setTestDuration(
+                      Number(
+                        e.target.value
+                      )
+                    )
+                  }
+                />
+
+              </div>
+
+              {/* PRICE */}
+
+              <div className="form-group">
+
+                <label>
+                  💰 Test Price (₹)
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={testPrice}
+                  onChange={(e) =>
+                    setTestPrice(
+                      Number(
+                        e.target.value
+                      )
+                    )
+                  }
+                />
+
+                <small>
+                  ₹0 = Free Test
+                </small>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              QUESTION EDITOR
+          ================================================= */}
+
+          <div className="admin-card">
+
+            <div className="card-title">
+
+              <div>
+                <h2>
+                  ❓ Questions
+                </h2>
+
+                <p>
+                  Total Questions:{" "}
+                  <strong>
+                    {questions.length}
+                  </strong>
+                </p>
+              </div>
+
+              <button
+                className="admin-btn primary"
+                onClick={addQuestion}
+              >
+                ＋ Add Question
+              </button>
+
+            </div>
+
+            {/* QUESTION NAV */}
+
+            <div className="question-navigation">
+
+              {questions.map(
+                (q, index) => (
+                  <button
+                    key={q.id}
+                    className={
+                      currentQuestion === index
+                        ? "question-number active"
+                        : "question-number"
+                    }
+                    onClick={() =>
+                      setCurrentQuestion(
+                        index
+                      )
+                    }
+                  >
+                    {index + 1}
+                  </button>
+                )
+              )}
+
+            </div>
+
+            {/* CURRENT QUESTION */}
+
+            <div className="question-editor">
+
+              <div className="question-editor-header">
+
+                <h3>
+                  Question{" "}
+                  {currentQuestion + 1}
+                </h3>
+
+                <button
+                  className="admin-btn danger"
+                  onClick={
+                    deleteQuestion
+                  }
+                >
+                  🗑️ Delete
+                </button>
+
+              </div>
+
+              {/* QUESTION */}
+
+              <div className="form-group">
+
+                <label>
+                  प्रश्न
+                </label>
+
+                <textarea
+                  rows="4"
+                  placeholder="यहाँ प्रश्न लिखें..."
+                  value={
+                    currentQuestionData.question
+                  }
+                  onChange={(e) =>
+                    updateQuestion(
+                      "question",
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              {/* OPTIONS */}
+
+              <div className="options-box">
+
+                <h3>
+                  चार Options
+                </h3>
+
+                {currentQuestionData.options.map(
+                  (option, index) => (
+                    <div
+                      className="option-row"
+                      key={index}
+                    >
+
+                      <span className="option-label">
+                        {String.fromCharCode(
+                          65 + index
+                        )}
+                      </span>
+
+                      <input
+                        type="text"
+                        placeholder={`Option ${
+                          index + 1
+                        }`}
+                        value={option}
+                        onChange={(e) =>
+                          updateOption(
+                            index,
+                            e.target.value
+                          )
+                        }
+                      />
+
+                    </div>
+                  )
+                )}
+
+              </div>
+
+              {/* ANSWER */}
+
+              <div className="form-group">
+
+                <label>
+                  ✅ सही उत्तर
+                </label>
+
+                <select
+                  value={
+                    currentQuestionData.answer
+                  }
+                  onChange={(e) =>
+                    updateQuestion(
+                      "answer",
+                      Number(
+                        e.target.value
+                      )
+                    )
+                  }
+                >
+                  <option value={0}>
+                    A
+                  </option>
+
+                  <option value={1}>
+                    B
+                  </option>
+
+                  <option value={2}>
+                    C
+                  </option>
+
+                  <option value={3}>
+                    D
+                  </option>
+
+                </select>
+
+              </div>
+
+              {/* EXPLANATION */}
+
+              <div className="form-group">
+
+                <label>
+                  💡 Explanation
+                </label>
+
+                <textarea
+                  rows="5"
+                  placeholder="सही उत्तर का explanation लिखें..."
+                  value={
+                    currentQuestionData.explanation
+                  }
+                  onChange={(e) =>
+                    updateQuestion(
+                      "explanation",
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              {/* IMAGE URL */}
+
+              <div className="form-group">
+
+                <label>
+                  🖼️ Explanation Image URL
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={
+                    currentQuestionData.explanationImage
+                  }
+                  onChange={(e) =>
+                    updateQuestion(
+                      "explanationImage",
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+            </div>
+
+            {/* QUESTION CONTROLS */}
+
+            <div className="question-controls">
+
+              <button
+                className="admin-btn secondary"
+                disabled={
+                  currentQuestion === 0
+                }
+                onClick={() =>
+                  setCurrentQuestion(
+                    (old) =>
+                      Math.max(
+                        0,
+                        old - 1
+                      )
+                  )
+                }
+              >
+                ← Previous
+              </button>
+
+              <span>
+                {currentQuestion + 1} /{" "}
+                {questions.length}
+              </span>
+
+              <button
+                className="admin-btn secondary"
+                disabled={
+                  currentQuestion ===
+                  questions.length - 1
+                }
+                onClick={() =>
+                  setCurrentQuestion(
+                    (old) =>
+                      Math.min(
+                        questions.length - 1,
+                        old + 1
+                      )
+                  )
+                }
+              >
+                Next →
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              SAVE
+          ================================================= */}
+
+          <div className="admin-card save-card">
+
             <div>
-              <h2>📚 Question Form</h2>
-              <p className="small-text">
-                कुल {questions.length} / 150 प्रश्न
+              <h3>
+                💾 Save Test
+              </h3>
+
+              <p>
+                Exam:{" "}
+                <strong>
+                  {
+                    exams.find(
+                      (e) =>
+                        e.id ===
+                        selectedExam
+                    )?.name
+                  }
+                </strong>
+                {" | "}
+                Test:{" "}
+                <strong>
+                  {testTitle ||
+                    `Test ${testNumber}`}
+                </strong>
+                {" | "}
+                Questions:{" "}
+                <strong>
+                  {questions.length}
+                </strong>
               </p>
             </div>
 
             <button
-              className="secondary-btn"
-              onClick={addQuestion}
-              disabled={questions.length >= 150}
+              className="admin-btn success"
+              onClick={saveTest}
+              disabled={saving}
             >
-              {questions.length >= 150
-                ? "✓ 150 Questions"
-                : "＋ Add Question"}
+              {saving
+                ? "⏳ Saving..."
+                : "💾 Save Test"}
             </button>
+
           </div>
 
-          {/* Question navigation */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 20,
-            }}
-          >
-            {questions.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setCurrentQuestion(index)}
-                style={{
-                  width: 40,
-                  height: 40,
-                  border: 0,
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  background:
-                    currentQuestion === index ? "#16a34a" : "#2563eb",
-                  color: "white",
-                  fontWeight: 800,
-                }}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
+          {/* =================================================
+              EXISTING TESTS
+          ================================================= */}
 
-          <div
-            style={{
-              border: "1px solid #dbeafe",
-              borderRadius: 14,
-              padding: 20,
-              background: "#f8fafc",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <h3 style={{ margin: 0 }}>
-                प्रश्न {currentQuestion + 1}
-              </h3>
+          <div className="admin-card">
 
-              <button
-                type="button"
-                className="danger-btn"
-                onClick={() => deleteQuestion(currentQuestion)}
-              >
-                🗑️ Delete Question
-              </button>
+            <div className="card-title">
+
+              <div>
+                <h2>
+                  📋 Existing Tests
+                </h2>
+
+                <p>
+                  Firebase में saved tests
+                </p>
+              </div>
+
             </div>
 
-            <label style={{ display: "block", marginTop: 18 }}>
-              प्रश्न
-            </label>
-            <textarea
-              value={question.question}
-              onChange={(e) =>
-                updateQuestion(currentQuestion, "question", e.target.value)
-              }
-              placeholder="यहाँ प्रश्न लिखें..."
-              style={{
-                width: "100%",
-                minHeight: 110,
-                marginTop: 8,
-                padding: 12,
-                boxSizing: "border-box",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                fontSize: 17,
-                fontFamily: "inherit",
-              }}
-            />
-
-            <h3 style={{ marginTop: 22 }}>विकल्प</h3>
-
-            {question.options.map((option, index) => (
-              <div key={index} style={{ marginBottom: 12 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <strong
-                    style={{
-                      minWidth: 32,
-                      fontSize: 18,
-                    }}
-                  >
-                    {String.fromCharCode(65 + index)}.
-                  </strong>
-
-                  <input
-                    value={option}
-                    onChange={(e) =>
-                      updateOption(
-                        currentQuestion,
-                        index,
-                        e.target.value
-                      )
-                    }
-                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "1px solid #cbd5e1",
-                      fontSize: 16,
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateQuestion(currentQuestion, "answer", index)
-                    }
-                    style={{
-                      padding: "10px 12px",
-                      border: 0,
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      background:
-                        Number(question.answer) === index
-                          ? "#16a34a"
-                          : "#e2e8f0",
-                      color:
-                        Number(question.answer) === index
-                          ? "#fff"
-                          : "#334155",
-                      fontWeight: 700,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {Number(question.answer) === index
-                      ? "✓ सही उत्तर"
-                      : "सही चुनें"}
-                  </button>
-                </div>
+            {testEntries.length === 0 ? (
+              <div className="empty-box">
+                अभी कोई Test नहीं है।
               </div>
-            ))}
+            ) : (
+              <div className="test-list">
 
-            <label style={{ display: "block", marginTop: 22 }}>
-              व्याख्या
-            </label>
-            <textarea
-              value={question.explanation}
-              onChange={(e) =>
-                updateQuestion(
-                  currentQuestion,
-                  "explanation",
-                  e.target.value
-                )
-              }
-              placeholder="सही उत्तर की व्याख्या लिखें..."
-              style={{
-                width: "100%",
-                minHeight: 120,
-                marginTop: 8,
-                padding: 12,
-                boxSizing: "border-box",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                fontSize: 16,
-                fontFamily: "inherit",
-              }}
-            />
+                {testEntries.map(
+                  ([id, test]) => {
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-                marginTop: 20,
-              }}
-            >
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={currentQuestion === 0}
-                onClick={() =>
-                  setCurrentQuestion((value) => Math.max(0, value - 1))
-                }
-              >
-                ← पिछला
-              </button>
+                    const exam =
+                      exams.find(
+                        (e) =>
+                          e.id ===
+                          test.exam
+                      );
 
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() => {
-                  if (currentQuestion < questions.length - 1) {
-                    setCurrentQuestion((value) => value + 1);
-                  } else {
-                    addQuestion();
+                    return (
+                      <div
+                        className="test-list-item"
+                        key={id}
+                      >
+
+                        <div className="test-info">
+
+                          <div className="test-icon">
+                            {exam?.icon ||
+                              "📝"}
+                          </div>
+
+                          <div>
+
+                            <h3>
+                              {test.title ||
+                                "Untitled Test"}
+                            </h3>
+
+                            <p>
+                              {exam?.name ||
+                                test.exam}{" "}
+                              • Test{" "}
+                              {test.testNumber ||
+                                "-"}{" "}
+                              •{" "}
+                              {test.totalQuestions ||
+                                test.questions
+                                  ?.length ||
+                                0}{" "}
+                              Questions
+                            </p>
+
+                            <small>
+                              💰 ₹
+                              {test.price ||
+                                0}
+                              {" • "}
+                              📢{" "}
+                              {test.status ||
+                                "draft"}
+                            </small>
+
+                          </div>
+
+                        </div>
+
+                        <div className="test-actions">
+
+                          <button
+                            className="admin-btn secondary"
+                            onClick={() =>
+                              loadTest(
+                                id,
+                                test
+                              )
+                            }
+                          >
+                            ✏️ Edit
+                          </button>
+
+                          <button
+                            className="admin-btn danger"
+                            onClick={() =>
+                              deleteTest(
+                                id,
+                                test.title ||
+                                  "Test"
+                              )
+                            }
+                          >
+                            🗑️ Delete
+                          </button>
+
+                        </div>
+
+                      </div>
+                    );
                   }
-                }}
+                )}
+
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* =================================================
+          RESOURCES
+      ================================================= */}
+
+      {activeSection ===
+        "resources" && (
+        <div className="admin-content">
+
+          <div className="admin-card">
+
+            <div className="card-title">
+
+              <div>
+                <h2>
+                  📚 Resources Manager
+                </h2>
+
+                <p>
+                  App के Resources manage करें
+                </p>
+              </div>
+
+              <button
+                className="admin-btn success"
+                onClick={saveResources}
+                disabled={saving}
               >
-                {currentQuestion < questions.length - 1
-                  ? "अगला →"
-                  : "＋ नया प्रश्न"}
+                {saving
+                  ? "⏳ Saving..."
+                  : "💾 Save Resources"}
               </button>
+
             </div>
-          </div>
-        </div>
-          )}
 
-        <div className="admin-actions">
-          <button className="save-btn" disabled={saving} onClick={saveTest}>
-            {saving ? "⏳ Saving..." : "💾 Save Test"}
-          </button>
-
-          <button className="secondary-btn" onClick={newTest}>
-            Clear / New
-          </button>
-        </div>
-
-        {message && <div className="success-message">{message}</div>}
-      </div>
-
-      <div className="admin-card resource-admin-card">
-          <div className="admin-title-row">
-            <div><h2>🎛️ Home Resource Manager</h2><p>Home के 6 cards को Admin Panel से control करें।</p></div>
-            <button className="save-btn" disabled={saving} onClick={saveResources}>{saving ? "⏳ Saving..." : "💾 Save Resources"}</button>
-          </div>
-          <div className="resource-admin-list">
-            {resourceDraft.map((item, index) => (
-              <div className="resource-admin-row" key={item.id || index}>
-                <div className="resource-admin-number">{index + 1}</div>
-                <div className="resource-admin-fields">
-                  <div><label>Icon</label><input value={item.icon || ""} onChange={(e) => updateResource(index,"icon",e.target.value)} /></div>
-                  <div><label>Title</label><input value={item.title || ""} onChange={(e) => updateResource(index,"title",e.target.value)} /></div>
-                  <div className="full"><label>Description</label><input value={item.text || ""} onChange={(e) => updateResource(index,"text",e.target.value)} /></div>
-                  <div><label>Open Page</label><select value={item.page || "resources"} onChange={(e) => updateResource(index,"page",e.target.value)}><option value="resources">Study Resources</option><option value="current">Current Affairs</option><option value="mcq">MCQ / AI MCQ</option><option value="tests">Test Series</option></select></div>
-                  <label className="resource-admin-toggle"><input type="checkbox" checked={item.enabled !== false} onChange={(e) => updateResource(index,"enabled",e.target.checked)} /> Home पर दिखाएँ</label>
-                </div>
+            {siteResources.length ===
+            0 ? (
+              <div className="empty-box">
+                कोई Resource उपलब्ध नहीं है।
               </div>
-            ))}
-          </div>
-        </div>
+            ) : (
+              <div className="resources-editor">
 
-        <div className="admin-card">
-        <h2>📚 सभी Saved Tests</h2>
-        <p className="small-text">
-          यहाँ से किसी भी Test को Edit, Delete या उसका Status बदल सकते हैं।
-        </p>
+                {siteResources.map(
+                  (resource, index) => (
+                    <div
+                      className="resource-editor-item"
+                      key={index}
+                    >
 
-        {testList.length === 0 ? (
-          <div className="admin-empty">
-            <div>📭</div>
-            <h3>अभी कोई Test नहीं है।</h3>
-            <p>ऊपर New Test से शुरुआत करें।</p>
-          </div>
-        ) : (
-          <div className="admin-test-list">
-            {testList.map(([id, data]) => (
-              <div className="admin-test-row" key={id}>
-                <div className="admin-test-info">
-                  <div className="test-status">
-                    {data.status === "public"
-                      ? "🌐 PUBLIC"
-                      : data.status === "unlisted"
-                      ? "🔗 UNLISTED"
-                      : "📝 DRAFT"}
-                  </div>
+                      <div className="form-group">
 
-                  <h3>{data.title}</h3>
-                  <p>
-                    {data.exam?.toUpperCase()} • Test {data.testNumber} • {data.questions?.length || 0} Questions
-                  </p>
-                  <small>ID: {id}</small>
-                </div>
+                        <label>
+                          Icon
+                        </label>
 
-                <div className="admin-test-buttons">
-                  <button onClick={() => loadTest(id, data)}>✏️ Edit</button>
-                  <button className="danger-btn" onClick={() => deleteTest(id)}>
-                    🗑️ Delete
-                  </button>
-                </div>
+                        <input
+                          type="text"
+                          value={
+                            resource.icon ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            updateResource(
+                              index,
+                              "icon",
+                              e.target.value
+                            )
+                          }
+                        />
+
+                      </div>
+
+                      <div className="form-group">
+
+                        <label>
+                          Title
+                        </label>
+
+                        <input
+                          type="text"
+                          value={
+                            resource.title ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            updateResource(
+                              index,
+                              "title",
+                              e.target.value
+                            )
+                          }
+                        />
+
+                      </div>
+
+                      <div className="form-group">
+
+                        <label>
+                          Description
+                        </label>
+
+                        <textarea
+                          rows="3"
+                          value={
+                            resource.text ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            updateResource(
+                              index,
+                              "text",
+                              e.target.value
+                            )
+                          }
+                        />
+
+                      </div>
+
+                      <div className="form-group">
+
+                        <label>
+                          Page
+                        </label>
+
+                        <input
+                          type="text"
+                          value={
+                            resource.page ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            updateResource(
+                              index,
+                              "page",
+                              e.target.value
+                            )
+                          }
+                        />
+
+                      </div>
+
+                      <label className="resource-enabled">
+
+                        <input
+                          type="checkbox"
+                          checked={
+                            resource.enabled !==
+                            false
+                          }
+                          onChange={(e) =>
+                            updateResource(
+                              index,
+                              "enabled",
+                              e.target.checked
+                            )
+                          }
+                        />
+
+                        Active / Visible
+
+                      </label>
+
+                    </div>
+                  )
+                )}
+
               </div>
-            ))}
+            )}
+
           </div>
-        )}
-      </div>
+
+        </div>
+      )}
+
     </div>
   );
 }
-
-
-// ========================================================
-// CSS
-// ========================================================
-
-const styles = `
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
-  background: #eef5ff;
-  color: #172033;
-}
-
-button,
-input,
-select,
-textarea {
-  font-family: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: .55;
-}
-
-
-/* HEADER */
-
-.header {
-  background: white;
-  border-bottom:
-    1px solid #dbe5f1;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-inner {
-  max-width: 1200px;
-  margin: auto;
-  min-height: 68px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  gap: 20px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.logo-icon {
-  font-size: 34px;
-}
-
-.logo-text h2 {
-  margin: 0;
-  color: #1264d8;
-  font-size: 21px;
-}
-
-.logo-text span {
-  color: #64748b;
-  font-size: 11px;
-}
-
-.nav {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.nav button {
-  background: transparent;
-  border: none;
-  padding: 9px 12px;
-  color: #334155;
-  font-weight: 600;
-  border-radius: 8px;
-}
-
-.nav button:hover {
-  background: #eff6ff;
-  color: #1264d8;
-}
-
-.login-btn {
-  background: #1264d8 !important;
-  color: white !important;
-}
-
-.admin-btn {
-  background:
-    linear-gradient(
-      135deg,
-      #7c3aed,
-      #4f46e5
-    ) !important;
-  color: white !important;
-}
-
-
-/* MAIN */
-
-.app {
-  min-height: 100vh;
-}
-
-.container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 20px;
-}
-
-
-/* HERO */
-
-.hero {
-  background:
-    linear-gradient(
-      135deg,
-      #e5f1ff,
-      #dbeafe
-    );
-  border:
-    1px solid #c9def8;
-  border-radius: 18px;
-  padding: 35px 25px;
-  text-align: center;
-  margin-bottom: 28px;
-}
-
-.hero h1 {
-  font-size: 42px;
-  margin: 0 0 10px;
-}
-
-.hero h1 span:first-child {
-  color: #111827;
-}
-
-.hero h1 span:last-child {
-  color: #ef3030;
-}
-
-.hero p {
-  color: #475569;
-  margin-bottom: 20px;
-}
-
-.search {
-  max-width: 620px;
-  margin: auto;
-  display: flex;
-  background: white;
-  padding: 5px;
-  border-radius: 12px;
-  box-shadow:
-    0 4px 15px
-    rgba(0,0,0,.08);
-}
-
-.search input {
-  flex: 1;
-  border: none;
-  outline: none;
-  padding: 13px;
-}
-
-.search button {
-  border: none;
-  background: #1264d8;
-  color: white;
-  border-radius: 8px;
-  padding: 0 20px;
-  font-weight: bold;
-}
-
-
-/* TITLES */
-
-.section-title {
-  text-align: center;
-  margin: 30px 0 18px;
-}
-
-.section-title h2 {
-  font-size: 27px;
-}
-
-.section-title p {
-  color: #64748b;
-  font-size: 14px;
-}
-
-
-/* EXAMS */
-
-.exam-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(4, 1fr);
-  gap: 14px;
-}
-
-.exam-card {
-  border:
-    1px solid #d8e1ed;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  transition: .2s;
-  background: white;
-  box-shadow:
-    0 2px 8px
-    rgba(0,0,0,.04);
-}
-
-.exam-card:hover {
-  transform:
-    translateY(-3px);
-  box-shadow:
-    0 7px 18px
-    rgba(0,0,0,.09);
-}
-
-.exam-icon {
-  font-size: 30px;
-  margin-bottom: 7px;
-}
-
-.exam-card h3 {
-  font-size: 17px;
-  margin-bottom: 4px;
-}
-
-.exam-card p {
-  font-size: 11px;
-  color: #64748b;
-  min-height: 28px;
-}
-
-.paid {
-  display: inline-block;
-  margin-top: 9px;
-  background: #ef3340;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.open-btn {
-  margin-top: 10px;
-  width: 100%;
-  border: none;
-  background: #1264d8;
-  color: white;
-  padding: 8px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-
-/* RESOURCES */
-
-.resource-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(3, 1fr);
-  gap: 16px;
-}
-
-.resource-card {
-  background: white;
-  border:
-    1px solid #dbe3ee;
-  border-radius: 12px;
-  padding: 22px;
-  text-align: center;
-  box-shadow:
-    0 2px 8px
-    rgba(0,0,0,.04);
-}
-
-.resource-card .icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.resource-card h3 {
-  color: #1e3a8a;
-  font-size: 17px;
-}
-
-.resource-card p {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-
-/* BLUE BOX */
-
-.blue-box {
-  background:
-    linear-gradient(
-      135deg,
-      #e0f2fe,
-      #dbeafe
-    );
-  border:
-    1px solid #93c5fd;
-  border-radius: 15px;
-  padding: 24px;
-  margin-top: 28px;
-  text-align: center;
-}
-
-.primary {
-  border: none;
-  background: #1264d8;
-  color: white;
-  padding: 11px 20px;
-  border-radius: 8px;
-  font-weight: bold;
-  margin-top: 15px;
-}
-
-
-/* PAGE TITLE */
-
-.page-title {
-  background: white;
-  border-radius: 15px;
-  padding: 25px;
-  text-align: center;
-  margin-bottom: 20px;
-  border:
-    1px solid #dbe3ee;
-}
-
-.big-icon {
-  font-size: 45px;
-}
-
-.page-title h1 {
-  margin: 8px 0;
-}
-
-.page-title p {
-  color: #64748b;
-}
-
-.back {
-  border: none;
-  background: #e2e8f0;
-  padding: 10px 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-weight: bold;
-}
-
-
-/* TESTS */
-
-.test-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(5, 1fr);
-  gap: 14px;
-}
-
-.test-card {
-  background: white;
-  border:
-    1px solid #dbe3ee;
-  border-radius: 12px;
-  padding: 17px 10px;
-  text-align: center;
-}
-
-.test-card h3 {
-  color: #1e3a8a;
-  font-size: 15px;
-}
-
-.test-card p {
-  font-size: 12px;
-  color: #64748b;
-  margin: 7px 0;
-}
-
-.test-card button {
-  width: 100%;
-  border: none;
-  background: #1264d8;
-  color: white;
-  padding: 8px;
-  border-radius: 7px;
-  font-weight: bold;
-}
-
-.price {
-  color: #e11d48;
-  font-weight: bold;
-  font-size: 13px;
-}
-
-
-/* EMPTY */
-
-.empty-box {
-  background: white;
-  border:
-    1px solid #dbe3ee;
-  border-radius: 16px;
-  padding: 50px 20px;
-  text-align: center;
-  margin-top: 20px;
-}
-
-.empty-box div {
-  font-size: 50px;
-  margin-bottom: 10px;
-}
-
-.empty-box p {
-  color: #64748b;
-}
-
-
-/* QUESTIONS */
-
-.question-box {
-  max-width: 850px;
-  margin: auto;
-  background: white;
-  border-radius: 15px;
-  border:
-    1px solid #dbe3ee;
-  padding: 25px;
-}
-
-.question-header {
-  display: flex;
-  justify-content: space-between;
-  border-bottom:
-    1px solid #e2e8f0;
-  padding-bottom: 15px;
-  margin-bottom: 20px;
-}
-
-.question-box h2 {
-  line-height: 1.6;
-}
-
-.options-list {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 12px;
-}
-
-.option {
-  display: flex !important;
-  position: static !important;
-  float: none !important;
-  align-items: flex-start;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box;
-  flex: 0 0 auto;
-  text-align: left;
-  padding: 14px 16px;
-  margin: 0 !important;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  border-radius: 8px;
-  font-size: 17px;
-  line-height: 1.5;
-  white-space: normal !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.option-label {
-  flex: 0 0 32px;
-}
-
-.option-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.option:hover {
-  background: #eff6ff;
-  border-color: #60a5fa;
-}
-
-.option.selected {
-  background: #dbeafe;
-  border: 2px solid #2563eb;
-}
-
-.test-navigation {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-top: 25px;
-}
-
-
-/* RESULT */
-
-.result-box {
-  max-width: 700px;
-  margin: 50px auto;
-  background: white;
-  border-radius: 20px;
-  padding: 40px;
-  text-align: center;
-  box-shadow:
-    0 10px 35px
-    rgba(0,0,0,.10);
-}
-
-.result-icon {
-  font-size: 55px;
-}
-
-.result-box h1 {
-  color: #1d4ed8;
-}
-
-.score {
-  font-size: 44px;
-  font-weight: bold;
-  color: #16a34a;
-  margin: 25px 0;
-}
-
-.result-actions {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-
-/* NOTICE */
-
-.notice {
-  background: #fff7ed;
-  border:
-    1px solid #fed7aa;
-  color: #9a3412;
-  padding: 15px;
-  border-radius: 10px;
-  margin-top: 20px;
-}
-
-
-/* FOOTER */
-
-.footer {
-  background: #071b3a;
-  color: white;
-  margin-top: 50px;
-  padding: 35px 20px;
-  text-align: center;
-}
-
-.footer h2 {
-  margin-bottom: 8px;
-}
-
-.footer p {
-  color: #cbd5e1;
-  font-size: 12px;
-}
-
-
-
-.access-rule-note {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #ecfdf5;
-  border: 1px solid #86efac;
-  color: #166534;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-/* ADMIN */
-
-.admin-container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 25px 20px 50px;
-}
-
-.admin-header {
-  background:
-    linear-gradient(
-      135deg,
-      #1d4ed8,
-      #7c3aed
-    );
-  color: white;
-  padding: 25px;
-  border-radius: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.admin-header h1 {
-  margin: 0 0 8px;
-}
-
-.admin-header p {
-  margin: 0;
-}
-
-.admin-crown {
-  font-size: 40px;
-}
-
-.admin-close {
-  border: none;
-  background: white;
-  color: #1d4ed8;
-  padding: 12px 18px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-
-.admin-card {
-  background: white;
-  padding: 25px;
-  border-radius: 18px;
-  box-shadow:
-    0 8px 25px
-    rgba(0,0,0,.08);
-  margin-bottom: 20px;
-}
-
-.admin-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.admin-title-row h2 {
-  margin-bottom: 5px;
-}
-
-.admin-title-row p {
-  color: #64748b;
-  margin: 0;
-}
-
-.admin-form {
-  display: grid;
-  grid-template-columns:
-    repeat(2, 1fr);
-  gap: 15px;
-}
-
-.admin-form .full {
-  grid-column: 1 / -1;
-}
-
-.admin-form label,
-.questions-editor label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 7px;
-}
-
-.admin-form input,
-.admin-form select,
-.full-input {
-  width: 100%;
-  padding: 12px;
-  border:
-    1px solid #cbd5e1;
-  border-radius: 9px;
-  font-size: 15px;
-  background: white;
-}
-
-.status-help {
-  background: #f8fafc;
-  padding: 12px;
-  border-radius: 10px;
-  margin-top: 10px;
-  line-height: 1.8;
-  font-size: 13px;
-}
-
-.questions-editor {
-  margin-top: 20px;
-}
-
-.small-text {
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.questions-editor textarea {
-  width: 100%;
-  min-height: 430px;
-  resize: vertical;
-  padding: 15px;
-  border:
-    1px solid #cbd5e1;
-  border-radius: 12px;
-  font-family:
-    Consolas,
-    monospace;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.admin-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 15px;
-}
-
-.save-btn,
-.secondary-btn,
-.admin-test-buttons button {
-  border: none;
-  padding: 11px 18px;
-  border-radius: 9px;
-  font-weight: bold;
-}
-
-.save-btn {
-  background: #16a34a;
-  color: white;
-}
-
-.secondary-btn {
-  background: #64748b;
-  color: white;
-}
-
-.success-message {
-  background: #ecfdf5;
-  color: #166534;
-  border:
-    1px solid #86efac;
-  padding: 14px;
-  border-radius: 10px;
-  margin-top: 15px;
-  font-weight: bold;
-}
-
-.admin-empty {
-  text-align: center;
-  padding: 35px;
-  color: #64748b;
-}
-
-.admin-empty div {
-  font-size: 45px;
-}
-
-.admin-test-list {
-  margin-top: 20px;
-}
-
-.admin-test-row {
-  border:
-    1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.admin-test-info h3 {
-  margin: 5px 0;
-}
-
-.admin-test-info p {
-  margin: 5px 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.admin-test-info small {
-  color: #94a3b8;
-}
-
-.test-status {
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.admin-test-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.admin-test-buttons button {
-  background: #2563eb;
-  color: white;
-}
-
-.admin-test-buttons .danger-btn {
-  background: #dc2626;
-}
-
-
-/* MOBILE */
-
-@media(max-width: 900px) {
-
-  .exam-grid {
-    grid-template-columns:
-      repeat(3, 1fr);
-  }
-
-  .test-grid {
-    grid-template-columns:
-      repeat(3, 1fr);
-  }
-
-}
-
-@media(max-width: 650px) {
-
-  .header-inner {
-    flex-direction: column;
-  }
-
-  .hero h1 {
-    font-size: 30px;
-  }
-
-  .exam-grid {
-    grid-template-columns:
-      repeat(2, 1fr);
-  }
-
-  .resource-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .test-grid {
-    grid-template-columns:
-      repeat(2, 1fr);
-  }
-
-  .search {
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .search button {
-    padding: 12px;
-  }
-
-  .admin-form {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-form .full {
-    grid-column: auto;
-  }
-
-  .admin-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-}
-
-
-/* =========================================================
-   FINAL RESPONSIVE FIX - EXAM TEST SERIES
-   ========================================================= */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  margin: 0;
-  overflow-x: hidden;
-}
-
-.app {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: hidden;
-}
-
-.container {
-  width: 100%;
-  max-width: 1200px;
-  min-width: 0;
-  margin: 0 auto;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.exam-grid {
-  display: grid !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 14px !important;
-  box-sizing: border-box;
-}
-
-.exam-card {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow: hidden;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.exam-card h3,
-.exam-card p,
-.exam-card .exam-icon,
-.exam-card .paid,
-.exam-card .open-btn {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.exam-card h3,
-.exam-card p {
-  width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.exam-card p {
-  min-height: 32px;
-}
-
-.exam-card .open-btn {
-  width: 100%;
-  margin-top: 10px;
-}
-
-/*
-   1200px viewport पर 4 cards रखने से आखिरी card कट रहा था।
-   इसलिए 1300px से नीचे 3 columns रखें।
-*/
-@media (max-width: 1300px) {
-  .container {
-    max-width: 100%;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .exam-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 900px) {
-  .exam-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 600px) {
-  .container {
-    padding: 12px;
-  }
-
-  .exam-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-}
-/* =========================================================
-   TEST PAGE RESPONSIVE / OVERFLOW FIX
-   ========================================================= */
-
-html,
-body,
-#root,
-.app {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: hidden !important;
-}
-
-.test-page-app {
-  width: 100%;
-  min-width: 0;
-  overflow-x: hidden !important;
-}
-
-.test-page-container {
-  width: 100%;
-  max-width: 1200px;
-  min-width: 0;
-  margin: 0 auto;
-  padding: 20px;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.test-runner-page {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  margin: 0 auto;
-  padding: 0;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.test-runner-shell {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  background: #fff;
-  border: 1px solid #dbe3ee;
-  border-radius: 18px;
-  padding: 30px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.test-header-block,
-.test-question-block,
-.test-options-list,
-.test-navigation {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-.test-header-block {
-  display: block;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 18px;
-  margin-bottom: 28px;
-}
-
-.test-exam-name,
-.test-title-name,
-.test-progress-text,
-.test-question-text {
-  max-width: 100%;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.test-exam-name {
-  font-size: 22px;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.3;
-}
-
-.test-title-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: #0f172a;
-  line-height: 1.4;
-  margin-top: 4px;
-}
-
-.test-progress-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: #334155;
-  margin-top: 6px;
-}
-
-.test-question-block {
-  display: block;
-  margin-bottom: 28px;
-}
-
-.test-question-text {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  color: #111827;
-  text-align: left;
-  font-size: clamp(20px, 3vw, 28px);
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.test-options-list {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
-  clear: both;
-}
-
-.test-options-list > button {
-  min-width: 0 !important;
-  max-width: 100% !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-}
-
-.test-options-list > button > span {
-  min-width: 0 !important;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.test-navigation {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 30px;
-}
-
-.test-navigation > button {
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-.test-result-card {
-  width: 100%;
-  max-width: 760px;
-  min-width: 0;
-  margin: 30px auto;
-  background: #fff;
-  border-radius: 18px;
-  padding: 35px;
-  text-align: center;
-  box-sizing: border-box;
-  box-shadow: 0 10px 35px rgba(0,0,0,.10);
-  overflow: hidden;
-}
-
-.test-empty-card {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  background: #fff;
-  border: 1px solid #dbe3ee;
-  border-radius: 16px;
-  padding: 50px 20px;
-  text-align: center;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.test-result-card h1,
-.test-result-card h2,
-.test-result-card p,
-.test-result-card div {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.test-runner-page .back {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.test-runner-page button {
-  max-width: 100%;
-}
-
-@media (max-width: 700px) {
-  .test-page-container {
-    padding: 12px;
-  }
-
-  .test-runner-shell {
-    padding: 18px 14px;
-    border-radius: 14px;
-  }
-
-  .test-header-block {
-    margin-bottom: 20px;
-    padding-bottom: 14px;
-  }
-
-  .test-exam-name {
-    font-size: 19px;
-  }
-
-  .test-title-name {
-    font-size: 17px;
-  }
-
-  .test-progress-text {
-    font-size: 15px;
-  }
-
-  .test-question-block {
-    margin-bottom: 20px;
-  }
-
-  .test-question-text {
-    font-size: 20px;
-    line-height: 1.5;
-  }
-
-  .test-options-list {
-    gap: 10px;
-  }
-
-  .test-options-list > button {
-    min-height: 56px !important;
-    padding: 13px 12px !important;
-    font-size: 16px !important;
-  }
-
-  .test-options-list > button > span:first-child {
-    flex: 0 0 32px !important;
-    width: 32px !important;
-    font-size: 17px !important;
-  }
-
-  .test-navigation {
-    align-items: stretch;
-  }
-
-  .test-navigation > button {
-    flex: 1 1 140px;
-    padding: 11px 12px !important;
-    font-size: 15px !important;
-  }
-
-  .test-navigation > div {
-    width: 100%;
-    text-align: center;
-    order: 3;
-  }
-
-  .test-result-card {
-    padding: 24px 15px;
-    margin: 15px auto;
-  }
-}
-
-@media (max-width: 420px) {
-  .test-page-container {
-    padding: 8px;
-  }
-
-  .test-runner-shell {
-    padding: 14px 10px;
-  }
-
-  .test-options-list > button {
-    padding: 12px 10px !important;
-    font-size: 15px !important;
-  }
-
-  .test-navigation > button {
-    flex-basis: 100%;
-  }
-}
-
-
-.test-card {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.test-card h3,
-.test-card p,
-.test-card .price,
-.test-card button {
-  max-width: 100%;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  box-sizing: border-box;
-}
-
-.test-card button {
-  width: 100%;
-}
-
-.resource-admin-list{display:flex;flex-direction:column;gap:14px}.resource-admin-row{display:flex;gap:14px;align-items:flex-start;border:1px solid #dbe3ee;border-radius:14px;padding:15px;background:#f8fafc}.resource-admin-number{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:#2563eb;color:#fff;font-weight:800}.resource-admin-fields{flex:1;min-width:0;display:grid;grid-template-columns:90px minmax(0,1fr) minmax(220px,260px);gap:12px;align-items:end}.resource-admin-fields .full{grid-column:1/-1}.resource-admin-fields input:not([type=checkbox]),.resource-admin-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.resource-admin-toggle{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.resource-admin-toggle input{width:18px;height:18px}@media(max-width:760px){.resource-admin-row{flex-direction:column}.resource-admin-fields{width:100%;grid-template-columns:1fr}.resource-admin-fields .full{grid-column:auto}.resource-admin-toggle{white-space:normal}}
-
-
-/* ======================================================
-   PROFESSIONAL ADMIN DASHBOARD
-====================================================== */
-
-.dashboard-shell {
-  min-height: 100vh;
-  background: #f4f7fb;
-  color: #172033;
-}
-
-.dashboard-header {
-  min-height: 86px;
-  background: #fff;
-  border-bottom: 1px solid #dbe3ee;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 24px;
-  gap: 20px;
-}
-
-.dashboard-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 270px;
-}
-
-.dashboard-logo {
-  width: 55px;
-  height: 55px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  font-size: 34px;
-  background: #eef5ff;
-}
-
-.dashboard-brand h1 {
-  margin: 0;
-  font-size: 27px;
-  color: #0b2d6b;
-}
-
-.dashboard-brand h1 span {
-  color: #ef4444;
-}
-
-.dashboard-brand p {
-  margin: 2px 0 0;
-  color: #2563eb;
-  font-size: 13px;
-}
-
-.dashboard-tagline {
-  font-size: 24px;
-  color: #173c82;
-  text-align: center;
-}
-
-.dashboard-admin {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.notification-icon {
-  position: relative;
-  font-size: 26px;
-  margin-right: 8px;
-}
-
-.notification-icon span {
-  position: absolute;
-  top: -7px;
-  right: -8px;
-  background: #ef233c;
-  color: #fff;
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.admin-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #e8eef8;
-  font-size: 27px;
-}
-
-.admin-user-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.admin-user-info strong {
-  font-size: 16px;
-}
-
-.admin-user-info small {
-  color: #64748b;
-}
-
-.admin-arrow {
-  font-size: 22px;
-  color: #475569;
-}
-
-.dashboard-layout {
-  display: flex;
-  min-height: calc(100vh - 86px);
-}
-
-.dashboard-sidebar {
-  width: 225px;
-  flex: 0 0 225px;
-  background: linear-gradient(180deg, #06285e, #031a3e);
-  padding: 10px 9px 20px;
-  overflow-y: auto;
-}
-
-.sidebar-item {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: #fff;
-  padding: 11px 12px;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  font-size: 14px;
-  margin-bottom: 2px;
-  transition: .2s;
-}
-
-.sidebar-item span {
-  width: 22px;
-  text-align: center;
-  font-size: 18px;
-}
-
-.sidebar-item:hover {
-  background: rgba(255,255,255,.12);
-}
-
-.sidebar-item.active {
-  background: linear-gradient(90deg, #0878ff, #1165df);
-  box-shadow: 0 4px 12px rgba(0,0,0,.18);
-}
-
-.sidebar-quote {
-  margin: 20px 3px 0;
-  background: #dcecff;
-  color: #09295b;
-  padding: 16px 10px;
-  border-radius: 8px;
-  text-align: center;
-  line-height: 1.7;
-}
-
-.sidebar-quote small {
-  display: block;
-  margin-top: 7px;
-  font-weight: bold;
-}
-
-.dashboard-main {
-  flex: 1;
-  min-width: 0;
-  padding: 20px;
-  overflow: hidden;
-}
-
-.dashboard-main-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-
-.dashboard-main-top h2 {
-  margin: 0 0 4px;
-  color: #0b1740;
-  font-size: 28px;
-}
-
-.dashboard-main-top p {
-  margin: 0;
-  color: #52637a;
-}
-
-.dashboard-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.dashboard-date {
-  background: #fff;
-  border: 1px solid #dbe3ee;
-  padding: 11px 16px;
-  border-radius: 9px;
-  font-weight: 700;
-}
-
-.website-view-btn {
-  border: none;
-  background: #0868ed;
-  color: #fff;
-  padding: 12px 22px;
-  border-radius: 8px;
-  font-weight: 800;
-}
-
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.stat-card {
-  min-height: 120px;
-  border: 1px solid #dce5ef;
-  border-radius: 11px;
-  padding: 13px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.stat-blue { background: #eaf5ff; }
-.stat-green { background: #e8fff4; }
-.stat-red { background: #fff0f3; }
-.stat-purple { background: #f3edff; }
-.stat-yellow { background: #fff8dc; }
-.stat-cyan { background: #e9fbff; }
-
-.stat-icon {
-  width: 45px;
-  height: 45px;
-  border-radius: 11px;
-  background: rgba(255,255,255,.65);
-  display: grid;
-  place-items: center;
-  font-size: 24px;
-  flex: 0 0 45px;
-}
-
-.stat-content {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.stat-content span {
-  font-size: 13px;
-  color: #334155;
-}
-
-.stat-content strong {
-  font-size: 24px;
-  color: #071c45;
-  margin: 3px 0;
-}
-
-.stat-content small {
-  color: #15803d;
-  font-weight: 700;
-  font-size: 11px;
-}
-
-.dashboard-row {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr) minmax(210px, .75fr);
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.dashboard-panel {
-  background: #fff;
-  border: 1px solid #dbe3ee;
-  border-radius: 10px;
-  padding: 13px;
-  box-shadow: 0 2px 8px rgba(15,23,42,.04);
-  min-width: 0;
-}
-
-.panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.panel-heading h3 {
-  margin: 0;
-  font-size: 17px;
-  color: #0c183c;
-}
-
-.panel-heading button {
-  border: none;
-  background: transparent;
-  color: #0868ed;
-  font-weight: 700;
-}
-
-.chart-switch {
-  display: flex;
-  border: 1px solid #dbe3ee;
-  border-radius: 7px;
-  overflow: hidden;
-}
-
-.chart-switch button {
-  padding: 7px 13px;
-  background: #fff;
-  color: #334155;
-}
-
-.chart-switch .selected {
-  background: #0868ed;
-  color: #fff;
-}
-
-.chart-legend {
-  display: flex;
-  justify-content: center;
-  gap: 25px;
-  font-size: 12px;
-  margin: 8px 0;
-}
-
-.chart-area {
-  height: 170px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  gap: 7px;
-  padding: 15px 8px 0;
-  border-top: 1px solid #edf2f7;
-  border-bottom: 1px solid #edf2f7;
-}
-
-.chart-column {
-  height: 100%;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 7px;
-}
-
-.chart-bar {
-  width: min(35px, 70%);
-  min-height: 15px;
-  border-radius: 5px 5px 0 0;
-  background: #4285ed;
-}
-
-.chart-column span {
-  font-size: 10px;
-  color: #475569;
-}
-
-.test-overview {
-  min-height: 190px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-}
-
-.donut-chart {
-  width: 135px;
-  height: 135px;
-  border-radius: 50%;
-  background: conic-gradient(
-    #2563eb 0 45%,
-    #22c55e 45% 70%,
-    #f59e0b 70% 85%,
-    #8b5cf6 85% 100%
-  );
-  display: grid;
-  place-items: center;
-}
-
-.donut-chart > div {
-  width: 88px;
-  height: 88px;
-  background: #fff;
-  border-radius: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.donut-chart strong {
-  font-size: 25px;
-  color: #0b1740;
-}
-
-.donut-chart span {
-  font-size: 10px;
-  color: #64748b;
-}
-
-.overview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-}
-
-.overview-list div {
-  display: flex;
-  justify-content: space-between;
-  gap: 25px;
-  min-width: 110px;
-}
-
-.quick-btn {
-  width: 100%;
-  border: none;
-  color: #fff;
-  border-radius: 7px;
-  padding: 9px 12px;
-  text-align: left;
-  margin-bottom: 7px;
-  font-weight: 700;
-}
-
-.quick-btn.blue { background: #0878ef; }
-.quick-btn.green { background: #10a765; }
-.quick-btn.purple { background: #8b4de8; }
-.quick-btn.orange { background: #f59e0b; }
-.quick-btn.red { background: #ef3038; }
-.quick-btn.cyan { background: #10b9c8; }
-
-.dashboard-table-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1.1fr 1fr;
-  gap: 10px;
-}
-
-.table-panel {
-  overflow: hidden;
-}
-
-.table-panel table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.table-panel th {
-  background: #f1f6fc;
-  color: #172554;
-  padding: 8px 6px;
-  text-align: left;
-}
-
-.table-panel td {
-  padding: 9px 6px;
-  border-bottom: 1px solid #edf2f7;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 20px;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.status-badge.public {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.draft {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-badge.unlisted {
-  background: #ede9fe;
-  color: #5b21b6;
-}
-
-.table-empty {
-  padding: 35px 10px;
-  text-align: center;
-  color: #64748b;
-}
-
-.announcement-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.announcement-item {
-  display: flex;
-  gap: 9px;
-  align-items: flex-start;
-  padding: 10px 0;
-  border-bottom: 1px solid #edf2f7;
-}
-
-.announcement-item > span {
-  font-size: 15px;
-}
-
-.announcement-item div {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.announcement-item strong {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.announcement-item small {
-  color: #64748b;
-  font-size: 10px;
-}
-
-.dashboard-footer {
-  margin-top: 12px;
-  padding: 17px;
-  background: #fff;
-  border-top: 1px solid #dbe3ee;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  color: #1e3a8a;
-}
-
-.dashboard-footer div {
-  margin-left: auto;
-  color: #1e3a8a;
-}
-
-.admin-manager-wrapper {
-  min-height: 100vh;
-  background: #eef5ff;
-  padding: 12px;
-}
-
-.back-dashboard-btn {
-  border: none;
-  background: #0b65df;
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-
-/* ================= DASHBOARD RESPONSIVE ================= */
-
-@media (max-width: 1200px) {
-  .stat-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .dashboard-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .quick-panel {
-    grid-column: 1 / -1;
-  }
-
-  .dashboard-table-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-tagline {
-    display: none;
-  }
-}
-
-@media (max-width: 800px) {
-  .dashboard-header {
-    height: auto;
-    padding: 12px;
-    flex-wrap: wrap;
-  }
-
-  .dashboard-layout {
-    flex-direction: column;
-  }
-
-  .dashboard-sidebar {
-    width: 100%;
-    flex: none;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
-  }
-
-  .sidebar-quote {
-    grid-column: 1 / -1;
-  }
-
-  .dashboard-main {
-    padding: 12px;
-  }
-
-  .dashboard-main-top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .dashboard-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .dashboard-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 520px) {
-  .stat-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-sidebar {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .dashboard-date,
-  .website-view-btn {
-    width: 100%;
-  }
-
-  .dashboard-brand h1 {
-    font-size: 21px;
-  }
-
-  .dashboard-footer div {
-    margin-left: 0;
-  }
-}
-
-
-`;
