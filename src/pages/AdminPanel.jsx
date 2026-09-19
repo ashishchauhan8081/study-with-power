@@ -7,7 +7,6 @@ import {
   ref,
   onValue,
   set,
-  update,
   remove,
 } from "firebase/database";
 
@@ -16,8 +15,11 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 
-import firebaseConfig from "../firebase-config.json";
 import { initializeApp } from "firebase/app";
+
+import firebaseConfig from "../firebase-config.json";
+
+import QuestionManager from "./QuestionManager";
 
 // ======================================================
 // FIREBASE
@@ -34,7 +36,7 @@ const db = getDatabase(firebaseApp);
 const auth = getAuth(firebaseApp);
 
 // ======================================================
-// ADMIN EMAIL
+// ADMIN
 // ======================================================
 
 const ADMIN_EMAIL = "cciashish@gmail.com";
@@ -74,7 +76,7 @@ function createQuestion(id = 1) {
 }
 
 // ======================================================
-// COMPONENT
+// ADMIN PANEL
 // ======================================================
 
 export default function AdminPanel({
@@ -94,7 +96,7 @@ export default function AdminPanel({
     useState(!user);
 
   // ====================================================
-  // ADMIN DATA
+  // FIREBASE DATA
   // ====================================================
 
   const [cloudTests, setCloudTests] =
@@ -104,7 +106,7 @@ export default function AdminPanel({
     useState(resources || []);
 
   // ====================================================
-  // TEST FORM
+  // TEST DETAILS
   // ====================================================
 
   const [selectedExam, setSelectedExam] =
@@ -130,7 +132,7 @@ export default function AdminPanel({
   // ====================================================
 
   const [questions, setQuestions] =
-    useState([]);
+    useState([createQuestion(1)]);
 
   const [currentQuestion, setCurrentQuestion] =
     useState(0);
@@ -149,7 +151,7 @@ export default function AdminPanel({
     useState("");
 
   // ====================================================
-  // LOAD AUTH
+  // AUTH LISTENER
   // ====================================================
 
   useEffect(() => {
@@ -170,17 +172,15 @@ export default function AdminPanel({
   // ====================================================
 
   useEffect(() => {
-    const testsRef =
-      ref(db, "tests");
+    const testsRef = ref(db, "tests");
 
     const unsubscribe =
       onValue(
         testsRef,
         (snapshot) => {
-          const value =
-            snapshot.val() || {};
-
-          setCloudTests(value);
+          setCloudTests(
+            snapshot.val() || {}
+          );
         },
         (error) => {
           console.error(
@@ -198,11 +198,10 @@ export default function AdminPanel({
   // ====================================================
 
   useEffect(() => {
-    const resourceRef =
-      ref(
-        db,
-        "siteContent/resources"
-      );
+    const resourceRef = ref(
+      db,
+      "siteContent/resources"
+    );
 
     const unsubscribe =
       onValue(
@@ -221,6 +220,12 @@ export default function AdminPanel({
               Object.values(value)
             );
           }
+        },
+        (error) => {
+          console.error(
+            "Resource error:",
+            error
+          );
         }
       );
 
@@ -247,7 +252,9 @@ export default function AdminPanel({
   ) {
     return (
       <div className="admin-page">
+
         <div className="admin-denied">
+
           <div className="denied-icon">
             🔐
           </div>
@@ -267,7 +274,9 @@ export default function AdminPanel({
           >
             ← वापस जाएँ
           </button>
+
         </div>
+
       </div>
     );
   }
@@ -281,7 +290,7 @@ export default function AdminPanel({
   };
 
   // ====================================================
-  // RESET FORM
+  // RESET TEST
   // ====================================================
 
   const resetTestForm = () => {
@@ -297,11 +306,17 @@ export default function AdminPanel({
     ]);
 
     setCurrentQuestion(0);
+
     setMessage("");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   // ====================================================
-  // LOAD TEST INTO EDITOR
+  // LOAD TEST
   // ====================================================
 
   const loadTest = (id, test) => {
@@ -314,7 +329,9 @@ export default function AdminPanel({
     );
 
     setTestNumber(
-      Number(test.testNumber || 1)
+      Number(
+        test.testNumber || 1
+      )
     );
 
     setTestTitle(
@@ -326,11 +343,15 @@ export default function AdminPanel({
     );
 
     setTestDuration(
-      Number(test.duration || 30)
+      Number(
+        test.duration || 30
+      )
     );
 
     setTestPrice(
-      Number(test.price || 0)
+      Number(
+        test.price || 0
+      )
     );
 
     const loadedQuestions =
@@ -338,41 +359,50 @@ export default function AdminPanel({
         ? test.questions
         : [];
 
-    if (loadedQuestions.length) {
+    if (
+      loadedQuestions.length
+    ) {
       setQuestions(
         loadedQuestions.map(
           (q, index) => ({
             id:
-              q.id ??
+              q?.id ??
               index + 1,
 
             question:
-              q.question ||
-              q.questionText ||
+              q?.question ||
+              q?.questionText ||
+              q?.text ||
               "",
 
             options:
-              Array.isArray(q.options)
+              Array.isArray(
+                q?.options
+              )
                 ? [
                     q.options[0] || "",
                     q.options[1] || "",
                     q.options[2] || "",
                     q.options[3] || "",
                   ]
-                : ["", "", "", ""],
+                : [
+                    "",
+                    "",
+                    "",
+                    "",
+                  ],
 
             answer:
-              Number.isInteger(
-                q.answer
-              )
-                ? q.answer
-                : 0,
+              normalizeAnswer(
+                q?.answer
+              ),
 
             explanation:
-              q.explanation || "",
+              q?.explanation ||
+              "",
 
             explanationImage:
-              q.explanationImage ||
+              q?.explanationImage ||
               "",
           })
         )
@@ -385,6 +415,10 @@ export default function AdminPanel({
 
     setCurrentQuestion(0);
 
+    setMessage(
+      `✏️ ${test.title || "Test"} edit mode में खुल गया।`
+    );
+
     window.scrollTo({
       top: 0,
       behavior: "smooth",
@@ -392,143 +426,23 @@ export default function AdminPanel({
   };
 
   // ====================================================
-  // NEW QUESTION
-  // ====================================================
-
-  const addQuestion = () => {
-    if (questions.length >= 150) {
-      alert(
-        "अधिकतम 150 Questions रख सकते हैं।"
-      );
-      return;
-    }
-
-    const newQuestion =
-      createQuestion(
-        questions.length + 1
-      );
-
-    setQuestions((old) => [
-      ...old,
-      newQuestion,
-    ]);
-
-    setCurrentQuestion(
-      questions.length
-    );
-  };
-
-  // ====================================================
-  // UPDATE QUESTION
-  // ====================================================
-
-  const updateQuestion = (
-    field,
-    value
-  ) => {
-    setQuestions((old) =>
-      old.map((q, index) =>
-        index === currentQuestion
-          ? {
-              ...q,
-              [field]: value,
-            }
-          : q
-      )
-    );
-  };
-
-  // ====================================================
-  // UPDATE OPTION
-  // ====================================================
-
-  const updateOption = (
-    optionIndex,
-    value
-  ) => {
-    setQuestions((old) =>
-      old.map((q, index) => {
-        if (
-          index !== currentQuestion
-        ) {
-          return q;
-        }
-
-        const newOptions = [
-          ...q.options,
-        ];
-
-        newOptions[
-          optionIndex
-        ] = value;
-
-        return {
-          ...q,
-          options: newOptions,
-        };
-      })
-    );
-  };
-
-  // ====================================================
-  // DELETE QUESTION
-  // ====================================================
-
-  const deleteQuestion = () => {
-    if (questions.length === 1) {
-      alert(
-        "कम से कम 1 Question होना चाहिए।"
-      );
-      return;
-    }
-
-    const ok = window.confirm(
-      `Question ${
-        currentQuestion + 1
-      } delete करें?`
-    );
-
-    if (!ok) return;
-
-    setQuestions((old) =>
-      old
-        .filter(
-          (_, index) =>
-            index !==
-            currentQuestion
-        )
-        .map((q, index) => ({
-          ...q,
-          id: index + 1,
-        }))
-    );
-
-    setCurrentQuestion((old) =>
-      Math.max(
-        0,
-        Math.min(
-          old,
-          questions.length - 2
-        )
-      )
-    );
-  };
-
-  // ====================================================
-  // VALIDATE
+  // VALIDATE TEST
   // ====================================================
 
   const validateTest = () => {
     if (!selectedExam) {
       alert(
-        "Exam select करें।"
+        "कृपया Exam select करें।"
       );
       return false;
     }
 
-    if (!testNumber) {
+    if (
+      !testNumber ||
+      Number(testNumber) < 1
+    ) {
       alert(
-        "Test Number डालें।"
+        "सही Test Number डालें।"
       );
       return false;
     }
@@ -542,7 +456,7 @@ export default function AdminPanel({
 
     if (!questions.length) {
       alert(
-        "कम से कम 1 Question डालें।"
+        "कम से कम 1 Question होना चाहिए।"
       );
       return false;
     }
@@ -556,44 +470,76 @@ export default function AdminPanel({
         questions[i];
 
       if (
-        !q.question.trim()
+        !String(
+          q.question || ""
+        ).trim()
       ) {
         alert(
           `Question ${
             i + 1
           } खाली है।`
         );
+
         setCurrentQuestion(i);
+
         return false;
       }
 
       if (
-        q.options.some(
-          (option) =>
-            !String(
-              option || ""
-            ).trim()
-        )
+        !Array.isArray(
+          q.options
+        ) ||
+        q.options.length < 4
       ) {
         alert(
           `Question ${
             i + 1
-          } के सभी 4 options भरें।`
+          } के 4 Options जरूरी हैं।`
         );
+
         setCurrentQuestion(i);
+
         return false;
       }
 
+      for (
+        let j = 0;
+        j < 4;
+        j++
+      ) {
+        if (
+          !String(
+            q.options[j] || ""
+          ).trim()
+        ) {
+          alert(
+            `Question ${
+              i + 1
+            } का Option ${
+              String.fromCharCode(
+                65 + j
+              )
+            } खाली है।`
+          );
+
+          setCurrentQuestion(i);
+
+          return false;
+        }
+      }
+
       if (
-        q.answer < 0 ||
-        q.answer > 3
+        Number(q.answer) < 0 ||
+        Number(q.answer) > 3
       ) {
         alert(
           `Question ${
             i + 1
-          } का सही उत्तर select करें।`
+          } का सही Answer select करें।`
         );
+
         setCurrentQuestion(i);
+
         return false;
       }
     }
@@ -620,18 +566,23 @@ export default function AdminPanel({
       const cleanQuestions =
         questions.map(
           (q, index) => ({
-            id: index + 1,
+            id:
+              index + 1,
 
             question:
-              q.question.trim(),
+              String(
+                q.question || ""
+              ).trim(),
 
             options:
-              q.options.map(
-                (option) =>
-                  String(
-                    option || ""
-                  ).trim()
-              ),
+              q.options
+                .slice(0, 4)
+                .map(
+                  (option) =>
+                    String(
+                      option || ""
+                    ).trim()
+                ),
 
             answer:
               Number(q.answer),
@@ -685,12 +636,11 @@ export default function AdminPanel({
       };
 
       await set(
-        ref(db, `tests/${id}`),
+        ref(
+          db,
+          `tests/${id}`
+        ),
         testData
-      );
-
-      setMessage(
-        `✅ ${testTitle} successfully save हो गया।`
       );
 
       setCloudTests(
@@ -700,13 +650,18 @@ export default function AdminPanel({
         })
       );
 
+      setMessage(
+        `✅ ${testTitle} successfully save हो गया।`
+      );
+
       window.scrollTo({
         top: 0,
         behavior: "smooth",
       });
+
     } catch (error) {
       console.error(
-        "Save test error:",
+        "Save Test Error:",
         error
       );
 
@@ -736,11 +691,22 @@ export default function AdminPanel({
 
     try {
       await remove(
-        ref(db, `tests/${id}`)
+        ref(
+          db,
+          `tests/${id}`
+        )
       );
 
-      alert(
-        "✅ Test delete हो गया।"
+      setCloudTests(
+        (old) => {
+          const copy = {
+            ...old,
+          };
+
+          delete copy[id];
+
+          return copy;
+        }
       );
 
       if (
@@ -748,13 +714,19 @@ export default function AdminPanel({
       ) {
         resetTestForm();
       }
+
+      alert(
+        "✅ Test delete हो गया।"
+      );
+
     } catch (error) {
       console.error(
+        "Delete error:",
         error
       );
 
       alert(
-        "Delete error:\n" +
+        "❌ Test delete नहीं हुआ:\n" +
           error.message
       );
     }
@@ -764,22 +736,25 @@ export default function AdminPanel({
   // RESOURCE UPDATE
   // ====================================================
 
-  const updateResource =
-    (index, field, value) => {
-      setSiteResources(
-        (old) =>
-          old.map(
-            (item, i) =>
-              i === index
-                ? {
-                    ...item,
-                    [field]:
-                      value,
-                  }
-                : item
-          )
-      );
-    };
+  const updateResource = (
+    index,
+    field,
+    value
+  ) => {
+    setSiteResources(
+      (old) =>
+        old.map(
+          (item, i) =>
+            i === index
+              ? {
+                  ...item,
+                  [field]:
+                    value,
+                }
+              : item
+        )
+    );
+  };
 
   // ====================================================
   // SAVE RESOURCES
@@ -801,15 +776,62 @@ export default function AdminPanel({
         alert(
           "✅ Resources save हो गए।"
         );
+
       } catch (error) {
+        console.error(
+          error
+        );
+
         alert(
-          "Resources save error:\n" +
+          "❌ Resources save error:\n" +
             error.message
         );
       } finally {
         setSaving(false);
       }
     };
+
+  // ====================================================
+  // ADD RESOURCE
+  // ====================================================
+
+  const addResource = () => {
+    setSiteResources(
+      (old) => [
+        ...old,
+        {
+          icon: "📚",
+          title: "New Resource",
+          text: "",
+          page: "resources",
+          enabled: true,
+        },
+      ]
+    );
+  };
+
+  // ====================================================
+  // DELETE RESOURCE
+  // ====================================================
+
+  const deleteResource = (
+    index
+  ) => {
+    const ok =
+      window.confirm(
+        "यह Resource delete करें?"
+      );
+
+    if (!ok) return;
+
+    setSiteResources(
+      (old) =>
+        old.filter(
+          (_, i) =>
+            i !== index
+        )
+    );
+  };
 
   // ====================================================
   // TEST LIST
@@ -827,11 +849,6 @@ export default function AdminPanel({
           b[1]?.testNumber || 0
         )
     );
-
-  const currentQuestionData =
-    questions[
-      currentQuestion
-    ] || createQuestion(1);
 
   // ====================================================
   // RENDER
@@ -885,7 +902,7 @@ export default function AdminPanel({
       )}
 
       {/* ==================================================
-          NAVIGATION
+          TABS
       ================================================== */}
 
       <div className="admin-tabs">
@@ -937,14 +954,15 @@ export default function AdminPanel({
           <div className="admin-card">
 
             <div className="card-title">
+
               <div>
                 <h2>
                   📝 Test Manager
                 </h2>
 
                 <p>
-                  Test और Questions
-                  manage करें
+                  Test की basic details
+                  भरें
                 </p>
               </div>
 
@@ -956,11 +974,15 @@ export default function AdminPanel({
               >
                 ＋ New Test
               </button>
+
             </div>
 
             <div className="form-grid">
 
+              {/* EXAM */}
+
               <div className="form-group">
+
                 <label>
                   Exam
                 </label>
@@ -975,9 +997,14 @@ export default function AdminPanel({
                     )
                   }
                 >
+
                   {exams.map(
                     (exam) => (
                       <option
                         key={
                           exam.id
-         
+                        }
+                        value={
+                          exam.id
+                        }
+    
