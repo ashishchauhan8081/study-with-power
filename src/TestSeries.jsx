@@ -34,16 +34,12 @@ function TestSeries({ exam, onBack }) {
     },
   ];
 
-  // ==============================
-  // TEST START
-  // ==============================
-
   const startTest = (test) => {
     setSelectedTest(test);
   };
 
   // ==============================
-  // TEST PAGE
+  // SELECTED TEST PAGE
   // ==============================
 
   if (selectedTest) {
@@ -67,6 +63,7 @@ function TestSeries({ exam, onBack }) {
           }}
         >
           <button
+            type="button"
             onClick={() => setSelectedTest(null)}
             style={{
               border: "none",
@@ -99,7 +96,7 @@ function TestSeries({ exam, onBack }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "repeat(auto-fit,minmax(140px,1fr))",
+                "repeat(auto-fit, minmax(140px, 1fr))",
               gap: "15px",
               marginTop: "25px",
             }}
@@ -145,6 +142,7 @@ function TestSeries({ exam, onBack }) {
           </div>
 
           <button
+            type="button"
             onClick={() => {
               alert(
                 `${selectedTest.title} जल्द ही शुरू होगा।`
@@ -197,11 +195,11 @@ function TestSeries({ exam, onBack }) {
             borderRadius: "20px",
             padding: "25px",
             marginBottom: "25px",
-            boxShadow:
-              "0 8px 25px rgba(0,0,0,0.07)",
+            boxShadow: "0 8px 25px rgba(0,0,0,0.07)",
           }}
         >
           <button
+            type="button"
             onClick={onBack}
             style={{
               border: "none",
@@ -242,7 +240,7 @@ function TestSeries({ exam, onBack }) {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "repeat(auto-fit,minmax(260px,1fr))",
+              "repeat(auto-fit, minmax(260px, 1fr))",
             gap: "20px",
           }}
         >
@@ -253,8 +251,7 @@ function TestSeries({ exam, onBack }) {
                 background: "#ffffff",
                 borderRadius: "18px",
                 padding: "22px",
-                boxShadow:
-                  "0 8px 25px rgba(0,0,0,0.07)",
+                boxShadow: "0 8px 25px rgba(0,0,0,0.07)",
               }}
             >
               <div
@@ -304,6 +301,7 @@ function TestSeries({ exam, onBack }) {
               </div>
 
               <button
+                type="button"
                 onClick={() => startTest(test)}
                 style={{
                   width: "100%",
