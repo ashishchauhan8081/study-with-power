@@ -1,31 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-/*
-  ======================================================
-  Study With Power
-  Subscription System
-  ======================================================
-
-  PRICING
-  ------------------------------------------------------
-  Single Exam/Test Series = ₹19 / 365 Days
-  Complete Combo          = ₹199 / 365 Days
-
-  Single Example:
-  UP PET = ₹19
-  UPPCS = ₹19
-  SSC = ₹19
-  Railway = ₹19
-  etc.
-
-  Combo:
-  सभी Exam/Test Series = ₹199
-
-  IMPORTANT:
-  Payment verification बाद में secure backend /
-  Razorpay से करना है.
-*/
-
 // ======================================================
 // SUBSCRIPTION PLANS
 // ======================================================
@@ -47,80 +21,29 @@ export const SUBSCRIPTION_PLANS = {
 };
 
 // ======================================================
-// EXAM LIST
+// EXAMS
 // ======================================================
 
 export const EXAMS = [
-  {
-    id: "upsc",
-    name: "UPSC",
-    icon: "🇮🇳",
-  },
-  {
-    id: "uppcs",
-    name: "UPPCS",
-    icon: "🏛️",
-  },
-  {
-    id: "uppet",
-    name: "UP PET",
-    icon: "🎯",
-  },
-  {
-    id: "bpsc",
-    name: "BPSC",
-    icon: "🏛️",
-  },
-  {
-    id: "mppsc",
-    name: "MPPSC",
-    icon: "📚",
-  },
-  {
-    id: "ssc",
-    name: "SSC",
-    icon: "📝",
-  },
-  {
-    id: "railway",
-    name: "Railway",
-    icon: "🚆",
-  },
-  {
-    id: "banking",
-    name: "Banking",
-    icon: "🏦",
-  },
-  {
-    id: "upsssc",
-    name: "UPSSSC",
-    icon: "📖",
-  },
-  {
-    id: "roaro",
-    name: "RO/ARO",
-    icon: "📜",
-  },
-  {
-    id: "police",
-    name: "Police",
-    icon: "👮",
-  },
-  {
-    id: "teaching",
-    name: "Teaching",
-    icon: "👨‍🏫",
-  },
+  { id: "upsc", name: "UPSC", icon: "🇮🇳" },
+  { id: "uppcs", name: "UPPCS", icon: "🏛️" },
+  { id: "uppet", name: "UP PET", icon: "🎯" },
+  { id: "bpsc", name: "BPSC", icon: "🏛️" },
+  { id: "mppsc", name: "MPPSC", icon: "📚" },
+  { id: "ssc", name: "SSC", icon: "📝" },
+  { id: "railway", name: "Railway", icon: "🚆" },
+  { id: "banking", name: "Banking", icon: "🏦" },
+  { id: "upsssc", name: "UPSSSC", icon: "📖" },
+  { id: "roaro", name: "RO/ARO", icon: "📜" },
+  { id: "police", name: "Police", icon: "👮" },
+  { id: "teaching", name: "Teaching", icon: "👨‍🏫" },
 ];
 
 // ======================================================
-// DATE UTILITIES
+// DATE
 // ======================================================
 
-export function getExpiryDate(
-  startDate,
-  validityDays = 365
-) {
+export function getExpiryDate(startDate, validityDays = 365) {
   const start = new Date(startDate);
 
   if (Number.isNaN(start.getTime())) {
@@ -129,20 +52,16 @@ export function getExpiryDate(
 
   const expiry = new Date(start);
 
-  expiry.setDate(
-    expiry.getDate() + validityDays
-  );
+  expiry.setDate(expiry.getDate() + validityDays);
 
   return expiry;
 }
 
 // ======================================================
-// CHECK ACTIVE
+// ACTIVE
 // ======================================================
 
-export function isSubscriptionActive(
-  expiryDate
-) {
+export function isSubscriptionActive(expiryDate) {
   if (!expiryDate) {
     return false;
   }
@@ -160,9 +79,7 @@ export function isSubscriptionActive(
 // REMAINING DAYS
 // ======================================================
 
-export function getRemainingDays(
-  expiryDate
-) {
+export function getRemainingDays(expiryDate) {
   if (!expiryDate) {
     return 0;
   }
@@ -174,17 +91,14 @@ export function getRemainingDays(
     return 0;
   }
 
-  const difference =
-    expiry.getTime() -
-    now.getTime();
+  const difference = expiry.getTime() - now.getTime();
 
   if (difference <= 0) {
     return 0;
   }
 
   return Math.ceil(
-    difference /
-      (1000 * 60 * 60 * 24)
+    difference / (1000 * 60 * 60 * 24)
   );
 }
 
@@ -203,51 +117,33 @@ export function formatDate(date) {
     return "-";
   }
 
-  return value.toLocaleDateString(
-    "en-IN",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }
-  );
+  return value.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 // ======================================================
-// CHECK EXAM ACCESS
+// ACCESS CHECK
 // ======================================================
 
-export function hasSeriesAccess(
-  subscription,
-  seriesId
-) {
+export function hasSeriesAccess(subscription, seriesId) {
   if (!subscription) {
     return false;
   }
 
-  // ------------------------------------------
-  // COMBO
-  // ------------------------------------------
-
   if (
     subscription.plan === "combo" &&
-    isSubscriptionActive(
-      subscription.expiryDate
-    )
+    isSubscriptionActive(subscription.expiryDate)
   ) {
     return true;
   }
 
-  // ------------------------------------------
-  // SINGLE
-  // ------------------------------------------
-
   if (
     subscription.plan === "single" &&
     subscription.seriesId === seriesId &&
-    isSubscriptionActive(
-      subscription.expiryDate
-    )
+    isSubscriptionActive(subscription.expiryDate)
   ) {
     return true;
   }
@@ -256,20 +152,39 @@ export function hasSeriesAccess(
 }
 
 // ======================================================
-// GET EXAM NAME
+// EXAM NAME
 // ======================================================
 
-export function getExamName(
-  examId
-) {
+export function getExamName(examId) {
   const exam = EXAMS.find(
-    (item) =>
-      item.id === examId
+    (item) => item.id === examId
   );
 
-  return exam
-    ? exam.name
-    : examId || "Test Series";
+  return exam ? exam.name : examId || "Test Series";
+}
+
+// ======================================================
+// RAZORPAY SCRIPT
+// ======================================================
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+
+    script.src =
+      "https://checkout.razorpay.com/v1/checkout.js";
+
+    script.onload = () => resolve(true);
+
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
 }
 
 // ======================================================
@@ -278,35 +193,20 @@ export function getExamName(
 
 export default function Subscription({
   user = null,
-
-  // Current exam
   examId = "",
   examName = "",
-
-  // Current subscription
   subscription = null,
-
-  // Payment callback
   onPurchase = null,
 }) {
-  const [
-    currentSubscription,
-    setCurrentSubscription,
-  ] = useState(subscription);
+  const [currentSubscription, setCurrentSubscription] =
+    useState(subscription);
 
-  // ====================================================
-  // UPDATE SUBSCRIPTION
-  // ====================================================
+  const [paymentLoading, setPaymentLoading] =
+    useState(false);
 
   useEffect(() => {
-    setCurrentSubscription(
-      subscription
-    );
+    setCurrentSubscription(subscription);
   }, [subscription]);
-
-  // ====================================================
-  // ACTIVE STATUS
-  // ====================================================
 
   const active =
     currentSubscription &&
@@ -314,19 +214,11 @@ export default function Subscription({
       currentSubscription.expiryDate
     );
 
-  // ====================================================
-  // REMAINING DAYS
-  // ====================================================
-
   const remainingDays = active
     ? getRemainingDays(
         currentSubscription.expiryDate
       )
     : 0;
-
-  // ====================================================
-  // CURRENT EXAM NAME
-  // ====================================================
 
   const currentExamName =
     examName ||
@@ -334,86 +226,216 @@ export default function Subscription({
     "Test Series";
 
   // ====================================================
-  // PURCHASE
+  // BUY
   // ====================================================
 
-  const handlePurchase = (
-    plan
-  ) => {
-    // ------------------------------------------
-    // LOGIN CHECK
-    // ------------------------------------------
-
+  const handlePurchase = async (plan) => {
     if (!user) {
-      alert(
-        "कृपया पहले Login करें।"
+      alert("कृपया पहले Login करें।");
+      return;
+    }
+
+    if (plan.id === "single" && !examId) {
+      alert("कृपया पहले Exam/Test Series चुनें।");
+      return;
+    }
+
+    try {
+      setPaymentLoading(true);
+
+      const loaded = await loadRazorpayScript();
+
+      if (!loaded) {
+        alert(
+          "Razorpay Checkout load नहीं हुआ। Internet connection check करें।"
+        );
+        return;
+      }
+
+      // ------------------------------------------
+      // CREATE ORDER
+      // ------------------------------------------
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/payment/create-order`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            planId: plan.id,
+            amount: plan.price,
+            userId: user.uid,
+            userEmail: user.email || "",
+            seriesId:
+              plan.id === "single"
+                ? examId
+                : null,
+            seriesName:
+              plan.id === "single"
+                ? currentExamName
+                : "All Test Series",
+          }),
+        }
       );
 
-      return;
-    }
+      const orderData = await response.json();
 
-    // ------------------------------------------
-    // SINGLE EXAM
-    // ------------------------------------------
+      if (!response.ok) {
+        throw new Error(
+          orderData.message ||
+            "Order create नहीं हुआ।"
+        );
+      }
 
-    if (
-      plan.id === "single" &&
-      !examId
-    ) {
-      alert(
-        "कृपया पहले Exam/Test Series चुनें।"
+      // ------------------------------------------
+      // RAZORPAY
+      // ------------------------------------------
+
+      const options = {
+        key: orderData.keyId,
+
+        amount: orderData.amount,
+
+        currency: "INR",
+
+        name: "Study With Power",
+
+        description: plan.name,
+
+        order_id: orderData.orderId,
+
+        prefill: {
+          name:
+            user.displayName ||
+            "Study With Power User",
+
+          email: user.email || "",
+        },
+
+        theme: {
+          color: "#2563eb",
+        },
+
+        handler: async function (paymentResponse) {
+          try {
+            const verifyResponse = await fetch(
+              `${import.meta.env.VITE_API_URL}/api/payment/verify`,
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body: JSON.stringify({
+                  ...paymentResponse,
+
+                  userId: user.uid,
+
+                  userEmail:
+                    user.email || "",
+
+                  planId: plan.id,
+
+                  seriesId:
+                    plan.id === "single"
+                      ? examId
+                      : null,
+
+                  seriesName:
+                    plan.id === "single"
+                      ? currentExamName
+                      : "All Test Series",
+
+                  validityDays:
+                    plan.validityDays,
+                }),
+              }
+            );
+
+            const result =
+              await verifyResponse.json();
+
+            if (!verifyResponse.ok) {
+              throw new Error(
+                result.message ||
+                  "Payment verification failed."
+              );
+            }
+
+            alert(
+              "🎉 Payment सफल हुआ!\n\n" +
+                `${plan.name} अब Active है।`
+            );
+
+            if (
+              typeof onPurchase ===
+              "function"
+            ) {
+              onPurchase(result.subscription);
+            }
+
+            window.location.reload();
+          } catch (error) {
+            console.error(
+              "Payment verification error:",
+              error
+            );
+
+            alert(
+              "Payment हो गया लेकिन verification में समस्या आई।\n\n" +
+                error.message
+            );
+          }
+        },
+
+        modal: {
+          ondismiss: function () {
+            setPaymentLoading(false);
+          },
+        },
+      };
+
+      const razorpay =
+        new window.Razorpay(options);
+
+      razorpay.on(
+        "payment.failed",
+        function (response) {
+          console.error(
+            "Payment failed:",
+            response.error
+          );
+
+          alert(
+            "❌ Payment Failed\n\n" +
+              (response.error?.description ||
+                "Payment failed")
+          );
+
+          setPaymentLoading(false);
+        }
       );
 
-      return;
+      razorpay.open();
+    } catch (error) {
+      console.error(
+        "Payment error:",
+        error
+      );
+
+      alert(
+        "❌ Payment शुरू नहीं हुआ:\n" +
+          error.message
+      );
+    } finally {
+      setPaymentLoading(false);
     }
-
-    // ------------------------------------------
-    // PAYMENT CALLBACK
-    // ------------------------------------------
-
-    if (
-      typeof onPurchase ===
-      "function"
-    ) {
-      onPurchase({
-        planId: plan.id,
-
-        amount: plan.price,
-
-        validityDays:
-          plan.validityDays,
-
-        seriesId:
-          plan.id === "single"
-            ? examId
-            : null,
-
-        seriesName:
-          plan.id === "single"
-            ? currentExamName
-            : "All Test Series",
-
-        userId:
-          user?.uid || null,
-
-        userEmail:
-          user?.email || null,
-
-        createdAt:
-          Date.now(),
-      });
-
-      return;
-    }
-
-    // ------------------------------------------
-    // PAYMENT NOT CONNECTED
-    // ------------------------------------------
-
-    alert(
-      `₹${plan.price} का Payment System अभी Connect नहीं है।\n\n` +
-        `Plan: ${plan.name}`
-    );
   };
 
   // ====================================================
@@ -432,10 +454,6 @@ export default function Subscription({
           "Arial, Helvetica, sans-serif",
       }}
     >
-      {/* =================================================
-          HEADING
-      ================================================= */}
-
       <div
         style={{
           textAlign: "center",
@@ -445,7 +463,6 @@ export default function Subscription({
         <div
           style={{
             fontSize: "42px",
-            marginBottom: "5px",
           }}
         >
           💎
@@ -464,8 +481,6 @@ export default function Subscription({
         <p
           style={{
             color: "#6b7280",
-            marginTop: "8px",
-            fontSize: "15px",
           }}
         >
           अपनी पसंद की Test Series चुनें
@@ -474,7 +489,6 @@ export default function Subscription({
         <div
           style={{
             display: "inline-block",
-            marginTop: "5px",
             padding: "7px 14px",
             borderRadius: "20px",
             background: "#eff6ff",
@@ -486,10 +500,6 @@ export default function Subscription({
         </div>
       </div>
 
-      {/* =================================================
-          CURRENT ACTIVE SUBSCRIPTION
-      ================================================= */}
-
       {active && (
         <div
           style={{
@@ -497,10 +507,7 @@ export default function Subscription({
             padding: "20px",
             borderRadius: "16px",
             background: "#ecfdf5",
-            border:
-              "1px solid #86efac",
-            boxShadow:
-              "0 4px 15px rgba(0,0,0,0.05)",
+            border: "1px solid #86efac",
           }}
         >
           <h3
@@ -544,27 +551,12 @@ export default function Subscription({
             )}
           </p>
 
-          <p
-            style={{
-              marginBottom: 0,
-            }}
-          >
+          <p>
             <strong>Remaining:</strong>{" "}
-            <span
-              style={{
-                color: "#15803d",
-                fontWeight: "800",
-              }}
-            >
-              {remainingDays} दिन
-            </span>
+            <b>{remainingDays} दिन</b>
           </p>
         </div>
       )}
-
-      {/* =================================================
-          CURRENT EXAM
-      ================================================= */}
 
       {examId && (
         <div
@@ -576,11 +568,7 @@ export default function Subscription({
             textAlign: "center",
           }}
         >
-          <span
-            style={{
-              color: "#6b7280",
-            }}
-          >
+          <span>
             Selected Exam
           </span>
 
@@ -589,17 +577,12 @@ export default function Subscription({
               marginTop: "5px",
               fontSize: "21px",
               fontWeight: "800",
-              color: "#111827",
             }}
           >
             🎯 {currentExamName}
           </div>
         </div>
       )}
-
-      {/* =================================================
-          PLANS
-      ================================================= */}
 
       <div
         style={{
@@ -609,14 +592,11 @@ export default function Subscription({
           gap: "20px",
         }}
       >
-        {/* =================================================
-            SINGLE ₹19
-        ================================================= */}
+        {/* SINGLE */}
 
         <div
           style={{
-            border:
-              "1px solid #dbeafe",
+            border: "1px solid #dbeafe",
             borderRadius: "20px",
             padding: "25px",
             background: "#ffffff",
@@ -624,22 +604,11 @@ export default function Subscription({
               "0 6px 22px rgba(0,0,0,0.08)",
           }}
         >
-          <div
-            style={{
-              fontSize: "19px",
-              fontWeight: "800",
-              color: "#111827",
-            }}
-          >
+          <h3>
             📖 Single Exam
-          </div>
+          </h3>
 
-          <p
-            style={{
-              color: "#6b7280",
-              marginTop: "8px",
-            }}
-          >
+          <p>
             केवल चुने हुए Exam की Test Series
           </p>
 
@@ -648,8 +617,6 @@ export default function Subscription({
               fontSize: "38px",
               fontWeight: "900",
               color: "#2563eb",
-              margin:
-                "18px 0",
             }}
           >
             ₹19
@@ -657,29 +624,20 @@ export default function Subscription({
 
           <div
             style={{
-              color: "#374151",
               lineHeight: "1.8",
-              fontSize: "15px",
             }}
           >
-            <div>
-              ✓ केवल चुने हुए Exam का Access
-            </div>
-
-            <div>
-              ✓ सभी उपलब्ध Tests
-            </div>
-
-            <div>
-              ✓ 365 दिन Validity
-            </div>
-
-            <div>
-              ✓ 365 दिन बाद ₹19 Renewal
-            </div>
+            ✓ चुने हुए Exam का Access
+            <br />
+            ✓ सभी उपलब्ध Tests
+            <br />
+            ✓ 365 दिन Validity
+            <br />
+            ✓ 365 दिन बाद ₹19 Renewal
           </div>
 
           <button
+            disabled={paymentLoading}
             onClick={() =>
               handlePurchase(
                 SUBSCRIPTION_PLANS.SINGLE
@@ -691,74 +649,47 @@ export default function Subscription({
               padding: "15px",
               border: "none",
               borderRadius: "12px",
-              background:
-                "#2563eb",
+              background: "#2563eb",
               color: "#ffffff",
               fontSize: "17px",
               fontWeight: "800",
-              cursor: "pointer",
             }}
           >
-            🔓 Buy ₹19
+            {paymentLoading
+              ? "⏳ Processing..."
+              : "🔓 Buy ₹19"}
           </button>
         </div>
 
-        {/* =================================================
-            COMBO ₹199
-        ================================================= */}
+        {/* COMBO */}
 
         <div
           style={{
-            border:
-              "2px solid #f59e0b",
+            border: "2px solid #f59e0b",
             borderRadius: "20px",
             padding: "25px",
             background:
               "linear-gradient(180deg,#fffdf5,#ffffff)",
-            boxShadow:
-              "0 8px 28px rgba(245,158,11,0.18)",
-            position: "relative",
           }}
         >
-          {/* Badge */}
-
           <div
             style={{
-              display:
-                "inline-block",
-              padding:
-                "6px 12px",
-              borderRadius:
-                "20px",
-              background:
-                "#fef3c7",
-              color:
-                "#92400e",
-              fontSize: "13px",
+              display: "inline-block",
+              padding: "6px 12px",
+              borderRadius: "20px",
+              background: "#fef3c7",
+              color: "#92400e",
               fontWeight: "800",
-              marginBottom:
-                "12px",
             }}
           >
             ⭐ COMPLETE COMBO
           </div>
 
-          <div
-            style={{
-              fontSize: "19px",
-              fontWeight: "800",
-              color: "#111827",
-            }}
-          >
+          <h3>
             🏆 Complete Test Series
-          </div>
+          </h3>
 
-          <p
-            style={{
-              color: "#6b7280",
-              marginTop: "8px",
-            }}
-          >
+          <p>
             सभी Exams की Test Series
           </p>
 
@@ -767,8 +698,6 @@ export default function Subscription({
               fontSize: "38px",
               fontWeight: "900",
               color: "#d97706",
-              margin:
-                "18px 0",
             }}
           >
             ₹199
@@ -776,33 +705,22 @@ export default function Subscription({
 
           <div
             style={{
-              color: "#374151",
               lineHeight: "1.8",
-              fontSize: "15px",
             }}
           >
-            <div>
-              ✓ सभी Exams का Access
-            </div>
-
-            <div>
-              ✓ सभी उपलब्ध Tests
-            </div>
-
-            <div>
-              ✓ UPSC, UPPCS, UP PET आदि
-            </div>
-
-            <div>
-              ✓ 365 दिन Validity
-            </div>
-
-            <div>
-              ✓ 365 दिन बाद ₹199 Renewal
-            </div>
+            ✓ सभी Exams का Access
+            <br />
+            ✓ सभी उपलब्ध Tests
+            <br />
+            ✓ UPSC, UPPCS, UP PET आदि
+            <br />
+            ✓ 365 दिन Validity
+            <br />
+            ✓ 365 दिन बाद ₹199 Renewal
           </div>
 
           <button
+            disabled={paymentLoading}
             onClick={() =>
               handlePurchase(
                 SUBSCRIPTION_PLANS.COMBO
@@ -814,22 +732,20 @@ export default function Subscription({
               padding: "15px",
               border: "none",
               borderRadius: "12px",
-              background:
-                "#f59e0b",
+              background: "#f59e0b",
               color: "#111827",
               fontSize: "17px",
               fontWeight: "900",
-              cursor: "pointer",
             }}
           >
-            🏆 Buy Complete Combo ₹199
+            {paymentLoading
+              ? "⏳ Processing..."
+              : "🏆 Buy Complete Combo ₹199"}
           </button>
         </div>
       </div>
 
-      {/* =================================================
-          EXAM PRICE LIST
-      ================================================= */}
+      {/* PRICE LIST */}
 
       <div
         style={{
@@ -837,15 +753,11 @@ export default function Subscription({
           padding: "20px",
           borderRadius: "16px",
           background: "#ffffff",
-          border:
-            "1px solid #e5e7eb",
-          boxShadow:
-            "0 4px 15px rgba(0,0,0,0.05)",
+          border: "1px solid #e5e7eb",
         }}
       >
         <h3
           style={{
-            marginTop: 0,
             textAlign: "center",
           }}
         >
@@ -865,12 +777,9 @@ export default function Subscription({
               key={exam.id}
               style={{
                 padding: "12px",
-                borderRadius:
-                  "10px",
-                background:
-                  "#f8fafc",
-                textAlign:
-                  "center",
+                borderRadius: "10px",
+                background: "#f8fafc",
+                textAlign: "center",
                 border:
                   "1px solid #e5e7eb",
               }}
@@ -885,10 +794,7 @@ export default function Subscription({
 
               <div
                 style={{
-                  fontWeight:
-                    "700",
-                  marginTop:
-                    "4px",
+                  fontWeight: "700",
                 }}
               >
                 {exam.name}
@@ -896,12 +802,8 @@ export default function Subscription({
 
               <div
                 style={{
-                  color:
-                    "#2563eb",
-                  fontWeight:
-                    "800",
-                  marginTop:
-                    "4px",
+                  color: "#2563eb",
+                  fontWeight: "800",
                 }}
               >
                 ₹19
@@ -914,33 +816,23 @@ export default function Subscription({
           style={{
             marginTop: "15px",
             padding: "12px",
-            borderRadius:
-              "10px",
-            background:
-              "#fffbeb",
-            textAlign:
-              "center",
-            fontWeight:
-              "800",
-            color:
-              "#92400e",
+            borderRadius: "10px",
+            background: "#fffbeb",
+            textAlign: "center",
+            fontWeight: "800",
+            color: "#92400e",
           }}
         >
           🏆 सभी Exams का Combo = ₹199
         </div>
       </div>
 
-      {/* =================================================
-          RENEWAL INFORMATION
-      ================================================= */}
-
       <div
         style={{
           marginTop: "25px",
           padding: "18px",
           borderRadius: "14px",
-          background:
-            "#f3f4f6",
+          background: "#f3f4f6",
           color: "#374151",
           fontSize: "14px",
           lineHeight: "1.8",
@@ -952,4 +844,16 @@ export default function Subscription({
 
         <br />
 
-        •
+        • Single Exam = ₹19 / 365 दिन
+        <br />
+        • Complete Combo = ₹199 / 365 दिन
+        <br />
+        • Payment Razorpay से होगा
+        <br />
+        • Payment verification server पर होगा
+        <br />
+        • Verification के बाद ही subscription activate होगा
+      </div>
+    </div>
+  );
+}
