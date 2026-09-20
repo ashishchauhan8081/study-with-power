@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import "./App.css";
 import TestSeries from "./TestSeries";
 import HelpChat from "./HelpChat";
+import Login from "./Login";
 
 const exams = [
   {
@@ -104,7 +105,13 @@ const shortcuts = [
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // ================= SELECTED EXAM =================
+
   const [selectedExam, setSelectedExam] = useState(null);
+
+  // ================= LOGIN PAGE =================
+
+  const [showLogin, setShowLogin] = useState(false);
 
   // ================= OPEN TEST SERIES =================
 
@@ -141,6 +148,20 @@ function App() {
         behavior: "smooth",
       });
   };
+
+  // ==================================================
+  // LOGIN PAGE
+  // ==================================================
+
+  if (showLogin) {
+    return (
+      <Login
+        onBack={() => {
+          setShowLogin(false);
+        }}
+      />
+    );
+  }
 
   // ==================================================
   // TEST SERIES PAGE
@@ -208,6 +229,7 @@ function App() {
         <button
           className="nav-item active"
           onClick={() => {
+
             window.scrollTo({
               top: 0,
               behavior: "smooth",
@@ -222,20 +244,27 @@ function App() {
         <button
           className="nav-item"
           onClick={() => {
+
             startExam();
+
             setMenuOpen(false);
           }}
         >
           📄 Exam Test
         </button>
 
+        {/* ================= LOGIN BUTTON ================= */}
+
         <button
           className="nav-profile"
           onClick={() => {
-            alert(
-              "Login/Profile सुविधा जल्द उपलब्ध होगी।"
-            );
+
+            setShowLogin(true);
+
+            setMenuOpen(false);
+
           }}
+          title="Login"
         >
           👤
         </button>
@@ -255,12 +284,15 @@ function App() {
             </div>
 
             <h2>
+
               Welcome to
+
               <br />
 
               <span>
                 Exam Test
               </span>
+
             </h2>
 
             <p>
@@ -285,17 +317,25 @@ function App() {
             </div>
 
             <div className="hero-books">
+
               📘
               <br />
+
               📙
               <br />
+
               📗
+
             </div>
 
             <div className="hero-tagline">
+
               Learn Today
+
               <br />
+
               Lead Tomorrow
+
             </div>
 
           </div>
