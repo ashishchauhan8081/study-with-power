@@ -1,230 +1,416 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "./App.css";
+import TestPage from "./TestPage";
+import HelpChat from "./HelpChat";
 
-import { getApps, getApp, initializeApp } from "firebase/app";
-import {
-  getDatabase,
-  ref,
-  onValue,
-} from "firebase/database";
-
-import firebaseConfig from "./firebase-config.json";
-
-import TestPage from "./pages/TestPage";
-
-// ======================================================
-// FIREBASE
-// ======================================================
-
-const firebaseApp = getApps().length
-  ? getApp()
-  : initializeApp({
-      ...firebaseConfig,
-      databaseURL:
-        firebaseConfig.databaseURL ||
-        "https://study-with-power-f6914-default-rtdb.asia-southeast1.firebasedatabase.app",
-    });
-
-const db = getDatabase(firebaseApp);
-
-// ======================================================
+// =====================================================
 // EXAMS
-// ======================================================
+// =====================================================
 
 const exams = [
   {
     id: "upsc",
     name: "UPSC",
     icon: "🇮🇳",
-    desc: "UPSC Civil Services परीक्षा स्तर",
+    desc: "UPSC Civil Services",
   },
   {
     id: "uppcs",
     name: "UPPCS",
     icon: "🏛️",
-    desc: "UPPCS परीक्षा स्तर",
+    desc: "UPPCS परीक्षा",
   },
   {
     id: "uppet",
     name: "UP PET",
     icon: "🎯",
-    desc: "UP PET परीक्षा स्तर",
+    desc: "UP PET परीक्षा",
   },
   {
     id: "bpsc",
     name: "BPSC",
     icon: "🏛️",
-    desc: "BPSC परीक्षा स्तर",
+    desc: "BPSC परीक्षा",
   },
   {
     id: "mppsc",
     name: "MPPSC",
     icon: "📚",
-    desc: "MPPSC परीक्षा स्तर",
+    desc: "MPPSC परीक्षा",
   },
   {
     id: "ssc",
     name: "SSC",
     icon: "📝",
-    desc: "SSC परीक्षा स्तर",
+    desc: "SSC परीक्षा",
   },
   {
     id: "railway",
     name: "Railway",
     icon: "🚆",
-    desc: "Railway / RRB परीक्षा स्तर",
+    desc: "RRB / Railway",
   },
   {
     id: "banking",
     name: "Banking",
     icon: "🏦",
-    desc: "Banking परीक्षा स्तर",
+    desc: "Banking परीक्षा",
   },
   {
     id: "upsssc",
     name: "UPSSSC",
     icon: "📖",
-    desc: "UPSSSC परीक्षा स्तर",
+    desc: "UPSSSC परीक्षा",
   },
   {
     id: "roaro",
     name: "RO/ARO",
     icon: "📜",
-    desc: "RO / ARO परीक्षा स्तर",
+    desc: "RO / ARO परीक्षा",
   },
   {
     id: "police",
     name: "Police",
     icon: "👮",
-    desc: "Police परीक्षा स्तर",
+    desc: "Police परीक्षा",
   },
   {
     id: "teaching",
     name: "Teaching",
     icon: "👨‍🏫",
-    desc: "Teaching परीक्षा स्तर",
+    desc: "Teaching परीक्षा",
   },
 ];
 
-// ======================================================
-// SHORTCUTS
-// ======================================================
+// =====================================================
+// DEMO TEST DATA
+// =====================================================
 
-const shortcuts = [
-  {
-    icon: "📖",
-    title: "NCERT Books",
-    subtitle: "कक्षा 6 से 12 तक",
-  },
-  {
-    icon: "📰",
-    title: "Current Affairs",
-    subtitle: "प्रतिदिन अपडेट",
-  },
-  {
-    icon: "☑️",
-    title: "MCQ Practice",
-    subtitle: "विषयवार अभ्यास",
-  },
-  {
-    icon: "📊",
-    title: "Previous Year",
-    subtitle: "पिछले वर्षों के प्रश्न",
-  },
-];
+const testData = {
+  uppcs: [
+    {
+      id: "uppcs-1",
+      title: "UPPCS Prelims Test - 01",
+      durationMinutes: 30,
+      marksPerQuestion: 1,
+      negativeMarking: true,
+      negativeMarks: 0.33,
 
-// ======================================================
+      questions: [
+        {
+          id: 1,
+          question: "भारत का संविधान कब लागू हुआ?",
+          options: [
+            "15 अगस्त 1947",
+            "26 जनवरी 1950",
+            "26 नवंबर 1949",
+            "2 अक्टूबर 1950",
+          ],
+          answer: 1,
+          explanation:
+            "भारत का संविधान 26 जनवरी 1950 को लागू हुआ। इसी दिन भारत गणराज्य बना।",
+        },
+
+        {
+          id: 2,
+          question: "भारत की राजधानी कौन-सी है?",
+          options: [
+            "मुंबई",
+            "कोलकाता",
+            "नई दिल्ली",
+            "चेन्नई",
+          ],
+          answer: 2,
+          explanation:
+            "भारत की राजधानी नई दिल्ली है।",
+        },
+
+        {
+          id: 3,
+          question: "भारतीय संविधान की प्रस्तावना में कितने शब्दों में भारत को वर्णित किया गया है?",
+          options: [
+            "संप्रभु समाजवादी पंथनिरपेक्ष लोकतांत्रिक गणराज्य",
+            "संघीय लोकतांत्रिक गणराज्य",
+            "समाजवादी गणराज्य",
+            "लोकतांत्रिक संघ",
+          ],
+          answer: 0,
+          explanation:
+            "प्रस्तावना भारत को संप्रभु, समाजवादी, पंथनिरपेक्ष, लोकतांत्रिक गणराज्य के रूप में वर्णित करती है।",
+        },
+
+        {
+          id: 4,
+          question: "भारत का राष्ट्रीय पशु कौन है?",
+          options: [
+            "सिंह",
+            "बाघ",
+            "हाथी",
+            "हिरण",
+          ],
+          answer: 1,
+          explanation:
+            "बाघ भारत का राष्ट्रीय पशु है।",
+        },
+
+        {
+          id: 5,
+          question: "उत्तर प्रदेश की राजधानी कौन-सी है?",
+          options: [
+            "कानपुर",
+            "वाराणसी",
+            "लखनऊ",
+            "प्रयागराज",
+          ],
+          answer: 2,
+          explanation:
+            "उत्तर प्रदेश की राजधानी लखनऊ है।",
+        },
+      ],
+    },
+  ],
+
+  uppet: [
+    {
+      id: "uppet-1",
+      title: "UP PET Full Test - 01",
+      durationMinutes: 30,
+      marksPerQuestion: 1,
+      negativeMarking: true,
+      negativeMarks: 0.25,
+
+      questions: [
+        {
+          id: 1,
+          question: "भारत का राष्ट्रीय खेल किसे माना जाता है?",
+          options: [
+            "क्रिकेट",
+            "हॉकी",
+            "फुटबॉल",
+            "कबड्डी",
+          ],
+          answer: 1,
+          explanation:
+            "परंपरागत रूप से हॉकी को भारत का राष्ट्रीय खेल माना जाता रहा है, हालांकि भारत सरकार ने आधिकारिक रूप से किसी खेल को राष्ट्रीय खेल घोषित नहीं किया है।",
+        },
+
+        {
+          id: 2,
+          question: "गंगा नदी का उद्गम कहाँ से होता है?",
+          options: [
+            "यमुनोत्री",
+            "गंगोत्री हिमनद",
+            "मानसरोवर",
+            "सियाचिन",
+          ],
+          answer: 1,
+          explanation:
+            "भागीरथी नदी का उद्गम गंगोत्री हिमनद से होता है। देवप्रयाग में भागीरथी और अलकनंदा के संगम के बाद इसे गंगा कहा जाता है।",
+        },
+
+        {
+          id: 3,
+          question: "भारत में पंचायती राज व्यवस्था कितने स्तरों की है?",
+          options: [
+            "एक",
+            "दो",
+            "तीन",
+            "चार",
+          ],
+          answer: 2,
+          explanation:
+            "सामान्यतः पंचायती राज व्यवस्था तीन स्तरों—ग्राम पंचायत, पंचायत समिति और जिला परिषद—पर आधारित है।",
+        },
+      ],
+    },
+  ],
+
+  ssc: [
+    {
+      id: "ssc-1",
+      title: "SSC General Knowledge Test - 01",
+      durationMinutes: 20,
+      marksPerQuestion: 1,
+      negativeMarking: true,
+      negativeMarks: 0.25,
+
+      questions: [
+        {
+          id: 1,
+          question: "भारतीय संविधान का संरक्षक किसे कहा जाता है?",
+          options: [
+            "राष्ट्रपति",
+            "संसद",
+            "सर्वोच्च न्यायालय",
+            "प्रधानमंत्री",
+          ],
+          answer: 2,
+          explanation:
+            "सर्वोच्च न्यायालय को संविधान का संरक्षक कहा जाता है क्योंकि वह संवैधानिक प्रावधानों की व्याख्या और न्यायिक समीक्षा करता है।",
+        },
+
+        {
+          id: 2,
+          question: "पृथ्वी का एकमात्र प्राकृतिक उपग्रह कौन है?",
+          options: [
+            "मंगल",
+            "चंद्रमा",
+            "शुक्र",
+            "सूर्य",
+          ],
+          answer: 1,
+          explanation:
+            "चंद्रमा पृथ्वी का एकमात्र प्राकृतिक उपग्रह है।",
+        },
+      ],
+    },
+  ],
+
+  railway: [
+    {
+      id: "railway-1",
+      title: "Railway RRB Practice Test - 01",
+      durationMinutes: 20,
+      marksPerQuestion: 1,
+      negativeMarking: true,
+      negativeMarks: 0.33,
+
+      questions: [
+        {
+          id: 1,
+          question: "भारत में पहली रेलगाड़ी कब चली?",
+          options: [
+            "1853",
+            "1857",
+            "1861",
+            "1885",
+          ],
+          answer: 0,
+          explanation:
+            "भारत में पहली यात्री रेलगाड़ी 16 अप्रैल 1853 को मुंबई से ठाणे के बीच चली थी।",
+        },
+
+        {
+          id: 2,
+          question: "भारतीय रेलवे का मुख्यालय कहाँ है?",
+          options: [
+            "मुंबई",
+            "नई दिल्ली",
+            "कोलकाता",
+            "चेन्नई",
+          ],
+          answer: 1,
+          explanation:
+            "भारतीय रेलवे का मुख्यालय नई दिल्ली में स्थित है।",
+        },
+      ],
+    },
+  ],
+};
+
+// =====================================================
+// COMMON TEST FOR OTHER EXAMS
+// =====================================================
+
+const createCommonTest = (exam) => ({
+  id: `${exam.id}-demo`,
+  title: `${exam.name} Practice Test - 01`,
+  durationMinutes: 20,
+  marksPerQuestion: 1,
+  negativeMarking: true,
+  negativeMarks: 0.25,
+
+  questions: [
+    {
+      id: 1,
+      question: "भारत की राजधानी कौन-सी है?",
+      options: [
+        "मुंबई",
+        "नई दिल्ली",
+        "कोलकाता",
+        "चेन्नई",
+      ],
+      answer: 1,
+      explanation:
+        "भारत की राजधानी नई दिल्ली है।",
+    },
+
+    {
+      id: 2,
+      question: "भारत का राष्ट्रीय पशु कौन है?",
+      options: [
+        "सिंह",
+        "बाघ",
+        "हाथी",
+        "हिरण",
+      ],
+      answer: 1,
+      explanation:
+        "बाघ भारत का राष्ट्रीय पशु है।",
+    },
+
+    {
+      id: 3,
+      question: "भारत का संविधान कब लागू हुआ?",
+      options: [
+        "15 अगस्त 1947",
+        "26 जनवरी 1950",
+        "26 नवंबर 1949",
+        "2 अक्टूबर 1950",
+      ],
+      answer: 1,
+      explanation:
+        "भारतीय संविधान 26 जनवरी 1950 को लागू हुआ।",
+    },
+  ],
+});
+
+// =====================================================
+// TEST LIST
+// =====================================================
+
+function getTests(exam) {
+  if (testData[exam.id]) {
+    return testData[exam.id];
+  }
+
+  return [createCommonTest(exam)];
+}
+
+// =====================================================
 // APP
-// ======================================================
+// =====================================================
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ====================================================
-  // PAGE
-  // ====================================================
-
-  const [page, setPage] = useState("home");
-
-  // ====================================================
-  // FIREBASE TESTS
-  // ====================================================
-
-  const [tests, setTests] = useState({});
-
-  const [loadingTests, setLoadingTests] = useState(false);
-
-  // ====================================================
-  // SELECTED EXAM
-  // ====================================================
-
   const [selectedExam, setSelectedExam] = useState(null);
-
-  // ====================================================
-  // SELECTED TEST
-  // ====================================================
 
   const [selectedTest, setSelectedTest] = useState(null);
 
-  // ====================================================
-  // LOAD FIREBASE TESTS
-  // ====================================================
-
-  useEffect(() => {
-    const testsRef = ref(db, "tests");
-
-    const unsubscribe = onValue(
-      testsRef,
-      (snapshot) => {
-        const data = snapshot.val() || {};
-
-        setTests(data);
-        setLoadingTests(false);
-      },
-      (error) => {
-        console.error("Tests load error:", error);
-        setTests({});
-        setLoadingTests(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  // ====================================================
-  // START EXAM
-  // ====================================================
-
-  const startExam = () => {
-    document
-      .getElementById("exam-section")
-      ?.scrollIntoView({
-        behavior: "smooth",
-      });
-  };
-
-  // ====================================================
+  // ===================================================
   // OPEN EXAM
-  // ====================================================
+  // ===================================================
 
   const handleExamClick = (exam) => {
     setSelectedExam(exam);
     setSelectedTest(null);
-    setPage("tests");
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    setTimeout(() => {
+      document
+        .getElementById("test-list")
+        ?.scrollIntoView({
+          behavior: "smooth",
+        });
+    }, 100);
   };
 
-  // ====================================================
-  // OPEN TEST
-  // ====================================================
+  // ===================================================
+  // START TEST
+  // ===================================================
 
-  const openTest = (test) => {
+  const startTest = (test) => {
     setSelectedTest(test);
-    setPage("test");
 
     window.scrollTo({
       top: 0,
@@ -232,14 +418,13 @@ function App() {
     });
   };
 
-  // ====================================================
-  // BACK TO HOME
-  // ====================================================
+  // ===================================================
+  // BACK TO EXAMS
+  // ===================================================
 
-  const backToHome = () => {
+  const backToExams = () => {
     setSelectedExam(null);
     setSelectedTest(null);
-    setPage("home");
 
     setTimeout(() => {
       document
@@ -247,331 +432,36 @@ function App() {
         ?.scrollIntoView({
           behavior: "smooth",
         });
-    }, 50);
+    }, 100);
   };
 
-  // ====================================================
-  // BACK TO TEST LIST
-  // ====================================================
+  // ===================================================
+  // IF TEST OPEN
+  // ===================================================
 
-  const backToTests = () => {
-    setSelectedTest(null);
-    setPage("tests");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  // ====================================================
-  // CURRENT EXAM TESTS
-  // ====================================================
-
-  const currentExamTests = selectedExam
-    ? Object.values(tests || {})
-        .filter(
-          (test) =>
-            test &&
-            test.exam === selectedExam.id &&
-            test.status === "public"
-        )
-        .sort(
-          (a, b) =>
-            Number(a.testNumber || 0) -
-            Number(b.testNumber || 0)
-        )
-    : [];
-
-  // ====================================================
-  // TEST PAGE
-  // ====================================================
-
-  if (page === "test" && selectedTest) {
+  if (selectedTest) {
     return (
-      <TestPage
-        test={selectedTest}
-        onBack={backToTests}
-      />
+      <>
+        <TestPage
+          test={selectedTest}
+          onBack={() => {
+            setSelectedTest(null);
+
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            });
+          }}
+        />
+
+        <HelpChat />
+      </>
     );
   }
 
-  // ====================================================
-  // TEST LIST PAGE
-  // ====================================================
-
-  if (page === "tests" && selectedExam) {
-    return (
-      <div className="app">
-
-        {/* HEADER */}
-
-        <header className="header">
-
-          <div className="brand">
-
-            <div className="logo">
-              📝
-            </div>
-
-            <div className="brand-text">
-
-              <h1>Exam Test</h1>
-
-              <p>
-                Prepare Today | Succeed Tomorrow
-              </p>
-
-            </div>
-
-          </div>
-
-        </header>
-
-        {/* TEST LIST */}
-
-        <main>
-
-          <section
-            style={{
-              padding: "35px 20px",
-              maxWidth: "1100px",
-              margin: "0 auto",
-            }}
-          >
-
-            {/* BACK */}
-
-            <button
-              onClick={backToHome}
-              style={{
-                border: "none",
-                background: "#2563eb",
-                color: "#fff",
-                padding: "11px 18px",
-                borderRadius: "10px",
-                fontSize: "15px",
-                fontWeight: "700",
-                cursor: "pointer",
-                marginBottom: "25px",
-              }}
-            >
-              ⬅️ वापस Exam List
-            </button>
-
-            {/* TITLE */}
-
-            <div
-              style={{
-                textAlign: "center",
-                marginBottom: "30px",
-              }}
-            >
-
-              <div
-                style={{
-                  fontSize: "55px",
-                }}
-              >
-                {selectedExam.icon}
-              </div>
-
-              <h1
-                style={{
-                  margin: "8px 0",
-                  color: "#0f172a",
-                }}
-              >
-                {selectedExam.name} Test Series
-              </h1>
-
-              <p
-                style={{
-                  color: "#64748b",
-                  fontSize: "17px",
-                }}
-              >
-                {selectedExam.desc}
-              </p>
-
-            </div>
-
-            {/* LOADING */}
-
-            {loadingTests && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "40px",
-                }}
-              >
-                ⏳ Tests Loading...
-              </div>
-            )}
-
-            {/* NO TEST */}
-
-            {!loadingTests &&
-              currentExamTests.length === 0 && (
-                <div
-                  style={{
-                    maxWidth: "600px",
-                    margin: "30px auto",
-                    padding: "35px 20px",
-                    textAlign: "center",
-                    background: "#fff",
-                    borderRadius: "18px",
-                    border: "1px solid #e2e8f0",
-                    boxShadow:
-                      "0 8px 25px rgba(0,0,0,.08)",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize: "55px",
-                    }}
-                  >
-                    📚
-                  </div>
-
-                  <h2>
-                    अभी कोई Test उपलब्ध नहीं है
-                  </h2>
-
-                  <p
-                    style={{
-                      color: "#64748b",
-                    }}
-                  >
-                    इस Exam के Tests Admin Panel
-                    से Public होने के बाद यहाँ दिखाई
-                    देंगे।
-                  </p>
-
-                </div>
-              )}
-
-            {/* TESTS */}
-
-            {!loadingTests &&
-              currentExamTests.length > 0 && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fit,minmax(280px,1fr))",
-                    gap: "18px",
-                  }}
-                >
-
-                  {currentExamTests.map(
-                    (test) => (
-                      <div
-                        key={test.id}
-                        style={{
-                          background: "#fff",
-                          borderRadius: "18px",
-                          padding: "22px",
-                          border:
-                            "1px solid #e2e8f0",
-                          boxShadow:
-                            "0 7px 22px rgba(0,0,0,.07)",
-                        }}
-                      >
-
-                        <div
-                          style={{
-                            fontSize: "14px",
-                            fontWeight: "800",
-                            color: "#2563eb",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          📝 TEST{" "}
-                          {test.testNumber}
-                        </div>
-
-                        <h2
-                          style={{
-                            margin:
-                              "5px 0 12px",
-                            color: "#111827",
-                            fontSize: "21px",
-                          }}
-                        >
-                          {test.title ||
-                            `Test ${test.testNumber}`}
-                        </h2>
-
-                        <div
-                          style={{
-                            color: "#64748b",
-                            lineHeight: "1.8",
-                            marginBottom: "15px",
-                          }}
-                        >
-
-                          <div>
-                            ❓ Questions:{" "}
-                            {test.totalQuestions ||
-                              test.questions?.length ||
-                              0}
-                          </div>
-
-                          <div>
-                            ⏱️ Duration:{" "}
-                            {test.duration ||
-                              30} मिनट
-                          </div>
-
-                          <div>
-                            💰 Price: ₹
-                            {Number(
-                              test.price || 0
-                            )}
-                          </div>
-
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            openTest(test)
-                          }
-                          style={{
-                            width: "100%",
-                            border: "none",
-                            borderRadius: "11px",
-                            padding: "13px",
-                            background:
-                              "#2563eb",
-                            color: "#fff",
-                            fontSize: "16px",
-                            fontWeight: "800",
-                            cursor: "pointer",
-                          }}
-                        >
-                          ▶️ Start Test
-                        </button>
-
-                      </div>
-                    )
-                  )}
-
-                </div>
-              )}
-
-          </section>
-
-        </main>
-
-      </div>
-    );
-  }
-
-  // ====================================================
-  // HOME PAGE
-  // ====================================================
+  // ===================================================
+  // APP HOME
+  // ===================================================
 
   return (
     <div className="app">
@@ -609,7 +499,7 @@ function App() {
 
       </header>
 
-      {/* NAVIGATION */}
+      {/* NAVBAR */}
 
       <nav
         className={`navbar ${
@@ -620,7 +510,7 @@ function App() {
         <button
           className="nav-item active"
           onClick={() => {
-            setPage("home");
+            setSelectedExam(null);
 
             window.scrollTo({
               top: 0,
@@ -633,20 +523,37 @@ function App() {
 
         <button
           className="nav-item"
-          onClick={startExam}
+          onClick={() => {
+            document
+              .getElementById("exam-section")
+              ?.scrollIntoView({
+                behavior: "smooth",
+              });
+
+            setMenuOpen(false);
+          }}
         >
           📄 Exam Test
         </button>
 
-        <button className="nav-profile">
+        <button
+          className="nav-profile"
+          onClick={() =>
+            alert(
+              "Profile सुविधा जल्द उपलब्ध होगी।"
+            )
+          }
+        >
           👤
         </button>
 
       </nav>
 
-      {/* HERO */}
+      {/* MAIN */}
 
       <main>
+
+        {/* HERO */}
 
         <section className="hero">
 
@@ -670,7 +577,13 @@ function App() {
 
             <button
               className="start-btn"
-              onClick={startExam}
+              onClick={() =>
+                document
+                  .getElementById("exam-section")
+                  ?.scrollIntoView({
+                    behavior: "smooth",
+                  })
+              }
             >
               ▶️ Start Exam Test
             </button>
@@ -705,28 +618,45 @@ function App() {
 
         <section className="shortcuts">
 
-          {shortcuts.map(
-            (item, index) => (
-              <div
-                className={`shortcut shortcut-${index}`}
-                key={item.title}
-              >
+          <div className="shortcut">
+            <div className="shortcut-icon">
+              📖
+            </div>
 
-                <div className="shortcut-icon">
-                  {item.icon}
-                </div>
+            <h3>NCERT Books</h3>
 
-                <h3>
-                  {item.title}
-                </h3>
+            <p>कक्षा 6 से 12 तक</p>
+          </div>
 
-                <p>
-                  {item.subtitle}
-                </p>
+          <div className="shortcut">
+            <div className="shortcut-icon">
+              📰
+            </div>
 
-              </div>
-            )
-          )}
+            <h3>Current Affairs</h3>
+
+            <p>प्रतिदिन अपडेट</p>
+          </div>
+
+          <div className="shortcut">
+            <div className="shortcut-icon">
+              ☑️
+            </div>
+
+            <h3>MCQ Practice</h3>
+
+            <p>विषयवार अभ्यास</p>
+          </div>
+
+          <div className="shortcut">
+            <div className="shortcut-icon">
+              📊
+            </div>
+
+            <h3>Previous Year</h3>
+
+            <p>पिछले वर्षों के प्रश्न</p>
+          </div>
 
         </section>
 
@@ -780,9 +710,7 @@ function App() {
                   <button
                     className="view-btn"
                     onClick={() =>
-                      handleExamClick(
-                        exam
-                      )
+                      handleExamClick(exam)
                     }
                   >
                     View Tests →
@@ -796,6 +724,100 @@ function App() {
           </div>
 
         </section>
+
+        {/* TEST LIST */}
+
+        {selectedExam && (
+
+          <section
+            className="exam-section"
+            id="test-list"
+          >
+
+            <div className="section-heading">
+
+              <h2>
+                📚 {selectedExam.name} Tests
+              </h2>
+
+              <p>
+                अपना Test चुनें और परीक्षा शुरू करें
+              </p>
+
+              <div className="heading-line"></div>
+
+            </div>
+
+            <div className="exam-grid">
+
+              {getTests(selectedExam).map(
+                (test, index) => (
+
+                  <div
+                    className={`exam-card card-${
+                      index % 6
+                    }`}
+                    key={test.id}
+                  >
+
+                    <div className="exam-icon">
+                      📝
+                    </div>
+
+                    <h3>
+                      {test.title}
+                    </h3>
+
+                    <p>
+                      प्रश्न:{" "}
+                      {test.questions.length}
+                      <br />
+
+                      समय:{" "}
+                      {test.durationMinutes} मिनट
+                      <br />
+
+                      Negative Marking:{" "}
+                      {test.negativeMarking
+                        ? "हाँ"
+                        : "नहीं"}
+                    </p>
+
+                    <button
+                      className="view-btn"
+                      onClick={() =>
+                        startTest(test)
+                      }
+                    >
+                      ▶️ Start Test
+                    </button>
+
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+            <div
+              style={{
+                textAlign: "center",
+                marginTop: 25,
+              }}
+            >
+
+              <button
+                className="start-btn"
+                onClick={backToExams}
+              >
+                ⬅️ सभी Exams
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
 
         {/* PROMO */}
 
@@ -819,16 +841,7 @@ function App() {
 
       {/* HELP */}
 
-      <button
-        className="help-btn"
-        onClick={() =>
-          alert(
-            "Exam Test Support\n\nजल्द ही Support System उपलब्ध होगा।"
-          )
-        }
-      >
-        💬
-      </button>
+      <HelpChat />
 
     </div>
   );
