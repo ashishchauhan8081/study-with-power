@@ -1,8 +1,3 @@
-/* =====================================================
-   STUDY WITH POWER - APP.CSS
-   Main Website Styling
-   ===================================================== */
-
 * {
   box-sizing: border-box;
 }
@@ -18,819 +13,945 @@ body {
     Arial,
     "Noto Sans Devanagari",
     sans-serif;
-  background: #f5f7fb;
-  color: #1f2937;
+
+  background: #f5f8ff;
+  color: #172033;
 }
 
-/* =====================================================
-   APP
-   ===================================================== */
+button {
+  font-family: inherit;
+}
 
 .app {
   min-height: 100vh;
-  background: #f5f7fb;
+  overflow-x: hidden;
 }
 
 /* =====================================================
    HEADER
-   ===================================================== */
+===================================================== */
 
 .header {
-  width: 100%;
+  min-height: 120px;
   background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.header-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  min-height: 72px;
-  padding: 10px 20px;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+
+  padding: 18px 4%;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-/* =====================================================
-   LOGO
-   ===================================================== */
-
-.logo {
+.brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
+  gap: 18px;
 }
 
-.logo-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+.logo {
+  width: 78px;
+  height: 78px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 25px;
+  border-radius: 20px;
+
+  background: #0868f5;
+
+  font-size: 42px;
 
   box-shadow:
-    0 5px 15px rgba(37, 99, 235, 0.25);
+    0 8px 22px
+    rgba(37, 99, 235, 0.25);
 }
 
-.logo-text h2 {
+.brand-text h1 {
   margin: 0;
-  color: #1d4ed8;
-  font-size: 21px;
-  line-height: 1.2;
+
+  font-size: 38px;
+
+  color: #10235d;
+
+  font-weight: 800;
 }
 
-.logo-text span {
-  display: block;
-  margin-top: 3px;
-  color: #6b7280;
-  font-size: 11px;
+.brand-text p {
+  margin: 4px 0 0;
+
+  font-size: 17px;
+
+  color: #64748b;
 }
 
-/* =====================================================
-   NAVIGATION
-   ===================================================== */
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.nav button {
+.menu-btn {
   border: 0;
   background: transparent;
-  color: #374151;
 
-  padding: 10px 13px;
-  border-radius: 8px;
-
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 34px;
 
   cursor: pointer;
-  transition: 0.2s ease;
-}
 
-.nav button:hover {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.nav button:last-child {
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.nav button:last-child:hover {
-  background: #1d4ed8;
+  color: #111827;
 }
 
 /* =====================================================
-   MAIN CONTAINER
-   ===================================================== */
+   NAVBAR
+===================================================== */
 
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 30px 20px 60px;
+.navbar {
+  background: #ffffff;
+
+  min-height: 75px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 25px;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  position: sticky;
+  top: 120px;
+
+  z-index: 90;
+}
+
+.nav-item {
+  min-width: 190px;
+
+  border: 0;
+
+  background: transparent;
+
+  padding: 16px 25px;
+
+  font-size: 22px;
+
+  color: #334155;
+
+  cursor: pointer;
+
+  border-radius: 14px;
+}
+
+.nav-item:hover {
+  background: #eff6ff;
+  color: #0868f5;
+}
+
+.nav-item.active {
+  background: #0868f5;
+  color: #ffffff;
+
+  box-shadow:
+    0 6px 15px
+    rgba(37, 99, 235, 0.25);
+}
+
+.nav-profile {
+  width: 55px;
+  height: 55px;
+
+  border-radius: 50%;
+
+  border: 2px solid #94a3b8;
+
+  background: #ffffff;
+
+  font-size: 25px;
+
+  cursor: pointer;
 }
 
 /* =====================================================
    HERO
-   ===================================================== */
+===================================================== */
 
 .hero {
-  padding: 50px 25px;
-  margin-bottom: 35px;
+  margin: 30px auto;
+
+  width: 94%;
+  max-width: 1250px;
+
+  min-height: 440px;
+
+  padding: 50px;
+
+  border-radius: 28px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #e8f3ff,
+      #ffffff 50%,
+      #f8eaff
+    );
+
+  border: 1px solid #dbeafe;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 10px 30px
+    rgba(15, 23, 42, 0.08);
+}
+
+.hero-content {
+  width: 62%;
+}
+
+.hero-badge {
+  display: inline-block;
+
+  padding: 12px 20px;
+
+  border-radius: 25px;
+
+  background: rgba(255, 255, 255, 0.85);
+
+  color: #10235d;
+
+  font-weight: 700;
+
+  font-size: 19px;
+
+  margin-bottom: 18px;
+
+  box-shadow:
+    0 4px 15px
+    rgba(0, 0, 0, 0.05);
+}
+
+.hero h2 {
+  margin: 0;
+
+  font-size: 54px;
+
+  line-height: 1.1;
+
+  color: #10235d;
+}
+
+.hero h2 span {
+  color: #0868f5;
+}
+
+.hero-content p {
+  max-width: 720px;
+
+  margin: 22px 0;
+
+  font-size: 21px;
+
+  line-height: 1.7;
+
+  color: #475569;
+}
+
+.start-btn {
+  border: 0;
+
+  padding: 17px 35px;
+
+  border-radius: 15px;
+
+  background: #0868f5;
+
+  color: #ffffff;
+
+  font-size: 20px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 20px
+    rgba(37, 99, 235, 0.25);
+
+  transition: 0.2s;
+}
+
+.start-btn:hover {
+  transform: translateY(-2px);
+
+  background: #0758d1;
+}
+
+.hero-image {
+  width: 30%;
 
   text-align: center;
 
-  background: linear-gradient(
-    135deg,
-    #eff6ff,
-    #ffffff
-  );
-
-  border: 1px solid #dbeafe;
-  border-radius: 20px;
-
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
-.hero h1 {
-  margin: 0 0 12px;
+.books {
+  font-size: 110px;
 
-  color: #1d4ed8;
+  margin-bottom: 10px;
+}
 
-  font-size: 42px;
+.hero-books {
+  font-size: 65px;
+
+  line-height: 0.75;
+}
+
+.hero-tagline {
+  margin-top: 15px;
+
+  font-size: 25px;
+
   font-weight: 800;
-}
 
-.hero p {
-  margin: 0;
+  color: #0868f5;
 
-  color: #4b5563;
-
-  font-size: 18px;
+  font-style: italic;
 }
 
 /* =====================================================
-   SECTION
-   ===================================================== */
+   SHORTCUTS
+===================================================== */
 
-section {
-  margin-bottom: 40px;
+.shortcuts {
+  width: 94%;
+  max-width: 1250px;
+
+  margin: 35px auto;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 20px;
 }
 
-section > h1,
-section > h2 {
-  margin-top: 0;
+.shortcut {
+  text-align: center;
+
+  padding: 22px 12px;
+
+  border-radius: 20px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+
+  transition: 0.2s;
 }
 
-section h2 {
-  margin-bottom: 18px;
+.shortcut:hover {
+  transform: translateY(-4px);
 
-  color: #111827;
-  font-size: 24px;
+  box-shadow:
+    0 8px 20px
+    rgba(0, 0, 0, 0.08);
+}
+
+.shortcut-icon {
+  width: 85px;
+  height: 85px;
+
+  margin: auto;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 20px;
+
+  font-size: 45px;
+
+  background: #eff6ff;
+}
+
+.shortcut-1 .shortcut-icon {
+  background: #fff7d6;
+}
+
+.shortcut-2 .shortcut-icon {
+  background: #ffe4e6;
+}
+
+.shortcut-3 .shortcut-icon {
+  background: #ede9fe;
+}
+
+.shortcut h3 {
+  margin: 12px 0 4px;
+
+  font-size: 19px;
+
+  color: #10235d;
+}
+
+.shortcut p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 15px;
+}
+
+/* =====================================================
+   EXAM SECTION
+===================================================== */
+
+.exam-section {
+  width: 94%;
+  max-width: 1250px;
+
+  margin: 60px auto;
+}
+
+.section-heading {
+  text-align: center;
+
+  margin-bottom: 30px;
+}
+
+.section-heading h2 {
+  margin: 0;
+
+  font-size: 42px;
+
+  color: #10235d;
+}
+
+.section-heading p {
+  margin: 12px 0;
+
+  font-size: 20px;
+
+  color: #475569;
+}
+
+.heading-line {
+  width: 65px;
+  height: 4px;
+
+  margin: auto;
+
+  border-radius: 10px;
+
+  background: #0868f5;
 }
 
 /* =====================================================
    EXAM GRID
-   ===================================================== */
+===================================================== */
 
 .exam-grid {
   display: grid;
 
   grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+    repeat(4, 1fr);
 
-  gap: 16px;
+  gap: 20px;
 }
 
 .exam-card {
-  width: 100%;
-  min-height: 175px;
+  min-height: 245px;
 
-  padding: 20px;
+  padding: 24px 16px;
 
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 22px;
 
   text-align: center;
 
-  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+  transition: 0.25s;
 }
 
 .exam-card:hover {
   transform: translateY(-5px);
 
-  border-color: #93c5fd;
-
   box-shadow:
-    0 12px 25px rgba(0, 0, 0, 0.09);
+    0 10px 25px
+    rgba(0, 0, 0, 0.09);
 }
 
 .exam-icon {
-  font-size: 42px;
+  font-size: 52px;
+
   margin-bottom: 8px;
 }
 
 .exam-card h3 {
   margin: 5px 0;
 
+  font-size: 23px;
+
   color: #111827;
-  font-size: 20px;
 }
 
 .exam-card p {
-  margin: 0;
+  min-height: 42px;
 
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 5px 0 16px;
+
+  font-size: 15px;
+
+  color: #64748b;
 }
 
-/* =====================================================
-   RESOURCE GRID
-   ===================================================== */
+.view-btn {
+  border: 1px solid #94a3b8;
 
-.resource-grid {
-  display: grid;
+  background: rgba(255, 255, 255, 0.7);
 
-  grid-template-columns:
-    repeat(3, minmax(0, 1fr));
+  padding: 10px 18px;
 
-  gap: 16px;
-}
+  border-radius: 9px;
 
-.resource-card {
-  background: #ffffff;
+  font-size: 16px;
 
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  font-weight: 700;
 
-  padding: 20px;
-
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.04);
-
-  transition: 0.2s ease;
-}
-
-.resource-card:hover {
-  transform: translateY(-3px);
-
-  box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.08);
-}
-
-.resource-card > div {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.resource-card h3 {
-  margin: 5px 0 8px;
+  cursor: pointer;
 
   color: #111827;
-  font-size: 18px;
 }
 
-.resource-card p {
-  margin: 0;
+.view-btn:hover {
+  background: #0868f5;
 
-  color: #6b7280;
-
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-/* =====================================================
-   TEST LIST
-   ===================================================== */
-
-.test-list {
-  display: grid;
-
-  grid-template-columns:
-    repeat(3, minmax(0, 1fr));
-
-  gap: 18px;
-
-  margin-top: 20px;
-}
-
-.test-card {
-  background: #ffffff;
-
-  padding: 22px;
-
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-
-  box-shadow:
-    0 5px 16px rgba(0, 0, 0, 0.05);
-}
-
-.test-card h3 {
-  margin: 0 0 10px;
-
-  color: #111827;
-  font-size: 19px;
-}
-
-.test-card p {
-  margin: 0 0 18px;
-
-  color: #6b7280;
-}
-
-/* =====================================================
-   BUTTONS
-   ===================================================== */
-
-.open-btn {
-  border: none;
-
-  padding: 11px 18px;
-
-  background: #2563eb;
   color: #ffffff;
 
-  border-radius: 9px;
-
-  font-size: 14px;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  transition: 0.2s ease;
+  border-color: #0868f5;
 }
 
-.open-btn:hover {
-  background: #1d4ed8;
+/* CARD COLORS */
 
-  transform: translateY(-1px);
+.card-0 {
+  background: #ffe5e5;
 }
 
-.open-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
+.card-1 {
+  background: #fff5c9;
 }
 
-.back {
-  border: none;
-
-  padding: 9px 14px;
-
-  background: #e5e7eb;
-  color: #374151;
-
-  border-radius: 8px;
-
-  font-size: 14px;
-  font-weight: 600;
-
-  cursor: pointer;
-
-  margin-bottom: 20px;
+.card-2 {
+  background: #d7fae9;
 }
 
-.back:hover {
-  background: #d1d5db;
+.card-3 {
+  background: #eeeaff;
+}
+
+.card-4 {
+  background: #e1efff;
+}
+
+.card-5 {
+  background: #ffe9f0;
 }
 
 /* =====================================================
-   LOADING
-   ===================================================== */
+   PROMO
+===================================================== */
 
-.loading-box {
-  min-height: 100vh;
+.promo {
+  width: 94%;
+  max-width: 1250px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 30px auto 20px;
 
-  text-align: center;
-}
+  padding: 16px;
 
-.loading-box h2 {
-  color: #2563eb;
-}
+  border-radius: 14px;
 
-/* =====================================================
-   EMPTY BOX
-   ===================================================== */
-
-.empty-box {
-  max-width: 600px;
-
-  margin: 70px auto;
-
-  padding: 35px;
-
-  background: #ffffff;
-
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  background: #dceeff;
 
   text-align: center;
 
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.06);
-}
+  color: #0868f5;
 
-.empty-box h2 {
-  margin-top: 0;
-  color: #111827;
-}
+  font-size: 20px;
 
-.empty-box p {
-  color: #6b7280;
+  font-weight: 800;
 }
 
 /* =====================================================
-   LOGIN MODAL
-   ===================================================== */
+   FOOTER
+===================================================== */
 
-.modal-overlay {
+.footer {
+  padding: 24px;
+
+  background: #0868f5;
+
+  color: #ffffff;
+
+  text-align: center;
+
+  font-size: 16px;
+}
+
+/* =====================================================
+   HELP BUTTON
+===================================================== */
+
+.help-btn {
   position: fixed;
 
-  inset: 0;
+  right: 22px;
+  bottom: 22px;
 
-  z-index: 5000;
+  width: 65px;
+  height: 65px;
 
-  padding: 20px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(15, 23, 42, 0.6);
-
-  backdrop-filter: blur(3px);
-}
-
-.login-modal {
-  position: relative;
-
-  width: 100%;
-  max-width: 420px;
-
-  padding: 30px;
-
-  background: #ffffff;
-
-  border-radius: 18px;
-
-  box-shadow:
-    0 25px 70px rgba(0, 0, 0, 0.2);
-}
-
-.login-modal h2 {
-  margin: 0 0 22px;
-
-  color: #111827;
-
-  text-align: center;
-}
-
-.modal-close {
-  position: absolute;
-
-  top: 12px;
-  right: 12px;
-
-  width: 34px;
-  height: 34px;
-
-  border: none;
   border-radius: 50%;
 
-  background: #f3f4f6;
-  color: #374151;
-
-  cursor: pointer;
-
-  font-size: 17px;
-}
-
-.modal-close:hover {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-/* =====================================================
-   LOGIN INPUTS
-   ===================================================== */
-
-.login-modal input {
-  width: 100%;
-
-  padding: 13px 14px;
-
-  margin-bottom: 12px;
-
-  border: 1px solid #d1d5db;
-  border-radius: 9px;
-
-  outline: none;
-
-  font-size: 15px;
-
-  transition: 0.2s ease;
-}
-
-.login-modal input:focus {
-  border-color: #2563eb;
-
-  box-shadow:
-    0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.login-modal .open-btn {
-  width: 100%;
-}
-
-/* =====================================================
-   GOOGLE BUTTON
-   ===================================================== */
-
-.google-btn {
-  width: 100%;
-
-  padding: 12px 15px;
-
-  border: 1px solid #d1d5db;
-  border-radius: 9px;
-
-  background: #ffffff;
-  color: #111827;
-
-  font-size: 15px;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  transition: 0.2s ease;
-}
-
-.google-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.google-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.login-modal hr {
   border: 0;
 
-  border-top: 1px solid #e5e7eb;
+  background: #0868f5;
 
-  margin: 20px 0;
-}
+  color: #ffffff;
 
-/* =====================================================
-   TEST PAGE
-   ===================================================== */
+  font-size: 32px;
 
-.test-page-app {
-  min-height: 100vh;
-  background: #f5f7fb;
-}
-
-.test-page-container {
-  width: 100%;
-  max-width: 1100px;
-
-  margin: 0 auto;
-
-  padding: 25px 20px 60px;
-}
-
-/* =====================================================
-   TEST RUNNER COMMON
-   ===================================================== */
-
-.test-page-container button {
   cursor: pointer;
+
+  box-shadow:
+    0 8px 25px
+    rgba(0, 0, 0, 0.25);
+
+  z-index: 200;
 }
 
-.test-page-container input,
-.test-page-container textarea,
-.test-page-container select {
-  font-family: inherit;
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 900px) {
+
+  .header {
+    min-height: 95px;
+  }
+
+  .brand-text h1 {
+    font-size: 30px;
+  }
+
+  .brand-text p {
+    font-size: 14px;
+  }
+
+  .logo {
+    width: 65px;
+    height: 65px;
+    font-size: 35px;
+  }
+
+  .navbar {
+    top: 95px;
+  }
+
+  .hero {
+    padding: 35px;
+  }
+
+  .hero h2 {
+    font-size: 42px;
+  }
+
+  .hero-content p {
+    font-size: 18px;
+  }
+
+  .shortcuts {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .exam-grid {
+    grid-template-columns:
+      repeat(3, 1fr);
+  }
+
 }
 
 /* =====================================================
    MOBILE
-   ===================================================== */
+===================================================== */
 
-@media (max-width: 900px) {
-  .header-inner {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 600px) {
+
+  .header {
+    padding: 12px 16px;
+
+    min-height: 82px;
+  }
+
+  .brand {
+    gap: 10px;
   }
 
   .logo {
-    justify-content: center;
+    width: 55px;
+    height: 55px;
+
+    border-radius: 15px;
+
+    font-size: 30px;
   }
 
-  .nav {
-    justify-content: center;
+  .brand-text h1 {
+    font-size: 25px;
   }
 
-  .exam-grid {
-    grid-template-columns:
-      repeat(3, minmax(0, 1fr));
+  .brand-text p {
+    font-size: 11px;
   }
 
-  .resource-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+  .menu-btn {
+    font-size: 28px;
   }
 
-  .test-list {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-  }
-}
+  .navbar {
+    top: 82px;
 
-/* =====================================================
-   SMALL MOBILE
-   ===================================================== */
+    padding: 10px;
 
-@media (max-width: 600px) {
-  .header-inner {
-    padding: 10px 12px;
+    gap: 8px;
+
+    justify-content: space-between;
   }
 
-  .logo-text h2 {
+  .nav-item {
+    min-width: auto;
+
+    flex: 1;
+
+    padding: 12px 8px;
+
+    font-size: 16px;
+  }
+
+  .nav-profile {
+    width: 45px;
+    height: 45px;
+  }
+
+  /* HERO */
+
+  .hero {
+    width: 96%;
+
+    min-height: auto;
+
+    padding: 28px 18px;
+
+    margin-top: 20px;
+
+    display: block;
+
+    text-align: center;
+
+    border-radius: 22px;
+  }
+
+  .hero-content {
+    width: 100%;
+  }
+
+  .hero-badge {
+    font-size: 14px;
+
+    padding: 9px 12px;
+  }
+
+  .hero h2 {
+    font-size: 36px;
+  }
+
+  .hero-content p {
+    font-size: 17px;
+
+    line-height: 1.6;
+  }
+
+  .start-btn {
+    width: 100%;
+
+    font-size: 18px;
+
+    padding: 15px;
+  }
+
+  .hero-image {
+    width: 100%;
+
+    margin-top: 25px;
+  }
+
+  .books {
+    font-size: 75px;
+  }
+
+  .hero-books {
+    font-size: 45px;
+  }
+
+  .hero-tagline {
     font-size: 18px;
   }
 
-  .logo-text span {
-    font-size: 10px;
-  }
+  /* SHORTCUTS */
 
-  .logo-icon {
-    width: 42px;
-    height: 42px;
-    font-size: 21px;
-  }
-
-  .nav {
-    display: grid;
+  .shortcuts {
+    width: 94%;
 
     grid-template-columns:
       repeat(2, 1fr);
 
-    width: 100%;
+    gap: 12px;
+
+    margin-top: 25px;
   }
 
-  .nav button {
-    width: 100%;
-    font-size: 13px;
-    padding: 9px 7px;
+  .shortcut {
+    padding: 15px 5px;
+
+    border-radius: 16px;
   }
 
-  .container {
-    padding: 20px 12px 45px;
-  }
+  .shortcut-icon {
+    width: 65px;
+    height: 65px;
 
-  .hero {
-    padding: 35px 18px;
+    font-size: 34px;
+
     border-radius: 15px;
   }
 
-  .hero h1 {
-    font-size: 30px;
+  .shortcut h3 {
+    font-size: 15px;
   }
 
-  .hero p {
-    font-size: 15px;
+  .shortcut p {
+    font-size: 11px;
+  }
+
+  /* EXAMS */
+
+  .exam-section {
+    width: 94%;
+
+    margin-top: 45px;
+  }
+
+  .section-heading h2 {
+    font-size: 32px;
+  }
+
+  .section-heading p {
+    font-size: 16px;
   }
 
   .exam-grid {
     grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+      repeat(2, 1fr);
 
-    gap: 10px;
+    gap: 12px;
   }
 
   .exam-card {
-    min-height: 145px;
-    padding: 14px 8px;
+    min-height: 215px;
+
+    padding: 16px 8px;
+
+    border-radius: 17px;
   }
 
   .exam-icon {
-    font-size: 32px;
+    font-size: 42px;
   }
 
   .exam-card h3 {
-    font-size: 16px;
+    font-size: 19px;
   }
 
   .exam-card p {
-    font-size: 11px;
+    font-size: 12px;
+
+    min-height: 38px;
   }
 
-  .resource-grid {
-    grid-template-columns: 1fr;
+  .view-btn {
+    font-size: 13px;
+
+    padding: 8px 10px;
   }
 
-  .test-list {
-    grid-template-columns: 1fr;
+  .promo {
+    font-size: 14px;
+
+    padding: 13px 5px;
   }
 
-  .test-card {
-    padding: 18px;
+  .footer {
+    font-size: 13px;
+
+    padding: 20px;
   }
 
-  .login-modal {
-    padding: 25px 18px;
+  .help-btn {
+    width: 55px;
+    height: 55px;
+
+    font-size: 26px;
+
+    right: 15px;
+    bottom: 15px;
   }
 
-  .test-page-container {
-    padding: 15px 10px 40px;
-  }
 }
 
 /* =====================================================
    VERY SMALL MOBILE
-   ===================================================== */
+===================================================== */
 
 @media (max-width: 380px) {
-  .hero h1 {
-    font-size: 26px;
+
+  .brand-text h1 {
+    font-size: 22px;
   }
 
-  .exam-grid {
-    grid-template-columns: 1fr;
+  .brand-text p {
+    font-size: 9px;
+  }
+
+  .hero h2 {
+    font-size: 31px;
   }
 
   .exam-card {
-    min-height: auto;
-    padding: 18px;
+    min-height: 205px;
   }
 
-  .nav {
-    grid-template-columns: 1fr;
+  .exam-card h3 {
+    font-size: 17px;
   }
-}
 
-/* =====================================================
-   SELECTION
-   ===================================================== */
-
-::selection {
-  background: #bfdbfe;
-  color: #1e3a8a;
-}
-
-/* =====================================================
-   SCROLLBAR
-   ===================================================== */
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
 }
