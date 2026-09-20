@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function TestPage({ test, onBack }) {
-  // Maximum 150 questions
   const questions = (test?.questions || []).slice(0, 150);
 
   const [current, setCurrent] = useState(0);
@@ -9,10 +8,11 @@ export default function TestPage({ test, onBack }) {
   const [submitted, setSubmitted] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState(
-    Number(test?.durationMinutes || 120) * 60
+    Number(test?.durationMinutes || 30) * 60
   );
 
   // ================= TIMER =================
+
   useEffect(() => {
     if (submitted) return;
 
@@ -32,6 +32,7 @@ export default function TestPage({ test, onBack }) {
   }, [submitted]);
 
   // ================= SCORE =================
+
   const scoreData = useMemo(() => {
     let correct = 0;
     let wrong = 0;
@@ -67,6 +68,7 @@ export default function TestPage({ test, onBack }) {
   }, [answers, questions, test]);
 
   // ================= SELECT ANSWER =================
+
   const selectAnswer = (index) => {
     if (submitted) return;
 
@@ -77,8 +79,13 @@ export default function TestPage({ test, onBack }) {
   };
 
   // ================= SUBMIT =================
+
   const submitTest = () => {
-    if (window.confirm("क्या आप Test Submit करना चाहते हैं?")) {
+    if (
+      window.confirm(
+        "क्या आप Test Submit करना चाहते हैं?"
+      )
+    ) {
       setSubmitted(true);
 
       window.scrollTo({
@@ -88,9 +95,16 @@ export default function TestPage({ test, onBack }) {
     }
   };
 
-  // ================= TIMER FORMAT =================
+  // ================= TIME FORMAT =================
+
   const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(seconds / 3600)
+      .toString()
+      .padStart(2, "0");
+
+    const minutes = Math.floor(
+      (seconds % 3600) / 60
+    )
       .toString()
       .padStart(2, "0");
 
@@ -98,10 +112,15 @@ export default function TestPage({ test, onBack }) {
       .toString()
       .padStart(2, "0");
 
+    if (hours !== "00") {
+      return `${hours}:${minutes}:${secs}`;
+    }
+
     return `${minutes}:${secs}`;
   };
 
   // ================= NO QUESTIONS =================
+
   if (!questions.length) {
     return (
       <main className="ai-container">
@@ -114,7 +133,9 @@ export default function TestPage({ test, onBack }) {
             ⬅️ वापस
           </button>
 
-          <h2>❌ Test में Questions नहीं मिले</h2>
+          <h2>
+            ❌ Test में Questions नहीं मिले
+          </h2>
 
           <p>
             इस Test में कोई प्रश्न उपलब्ध नहीं है।
@@ -126,14 +147,23 @@ export default function TestPage({ test, onBack }) {
   }
 
   // ================= RESULT =================
+
   if (submitted) {
     return (
       <main className="ai-container">
         <div className="ai-card">
 
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              textAlign: "center",
+            }}
+          >
 
-            <div style={{ fontSize: 60 }}>
+            <div
+              style={{
+                fontSize: 60,
+              }}
+            >
               🏆
             </div>
 
@@ -141,14 +171,16 @@ export default function TestPage({ test, onBack }) {
               {test?.title || "Test Result"}
             </h1>
 
-            <h2
+            <div
               style={{
                 fontSize: 42,
+                fontWeight: 900,
+                color: "#2563eb",
                 margin: "10px 0",
               }}
             >
               {scoreData.score.toFixed(2)}
-            </h2>
+            </div>
 
             <p>
               कुल प्रश्न: {questions.length}
@@ -157,6 +189,7 @@ export default function TestPage({ test, onBack }) {
           </div>
 
           {/* SUMMARY */}
+
           <div
             style={{
               display: "grid",
@@ -175,11 +208,18 @@ export default function TestPage({ test, onBack }) {
                 textAlign: "center",
               }}
             >
-              <b>सही</b>
 
-              <div style={{ fontSize: 28 }}>
+              <b>✅ सही</b>
+
+              <div
+                style={{
+                  fontSize: 28,
+                  fontWeight: 900,
+                }}
+              >
                 {scoreData.correct}
               </div>
+
             </div>
 
             <div
@@ -190,11 +230,18 @@ export default function TestPage({ test, onBack }) {
                 textAlign: "center",
               }}
             >
-              <b>गलत</b>
 
-              <div style={{ fontSize: 28 }}>
+              <b>❌ गलत</b>
+
+              <div
+                style={{
+                  fontSize: 28,
+                  fontWeight: 900,
+                }}
+              >
                 {scoreData.wrong}
               </div>
+
             </div>
 
             <div
@@ -205,22 +252,67 @@ export default function TestPage({ test, onBack }) {
                 textAlign: "center",
               }}
             >
-              <b>छोड़े</b>
 
-              <div style={{ fontSize: 28 }}>
+              <b>⚪ छोड़े</b>
+
+              <div
+                style={{
+                  fontSize: 28,
+                  fontWeight: 900,
+                }}
+              >
                 {scoreData.unanswered}
               </div>
+
             </div>
 
           </div>
 
-          {/* EXPLANATIONS */}
+          {/* RESULT DETAILS */}
+
+          <div
+            style={{
+              padding: 16,
+              borderRadius: 14,
+              background: "#eff6ff",
+              marginBottom: 25,
+            }}
+          >
+
+            <p>
+              <b>कुल प्रश्न:</b>{" "}
+              {questions.length}
+            </p>
+
+            <p>
+              <b>सही उत्तर:</b>{" "}
+              {scoreData.correct}
+            </p>
+
+            <p>
+              <b>गलत उत्तर:</b>{" "}
+              {scoreData.wrong}
+            </p>
+
+            <p>
+              <b>अनुत्तरित:</b>{" "}
+              {scoreData.unanswered}
+            </p>
+
+            <p>
+              <b>कुल प्राप्त अंक:</b>{" "}
+              {scoreData.score.toFixed(2)}
+            </p>
+
+          </div>
+
+          {/* EXPLANATION */}
+
           <h2>
             📖 प्रश्नों की व्याख्या
           </h2>
 
           {questions.map((q, index) => {
-
             const selected = answers[index];
 
             const isCorrect =
@@ -235,26 +327,38 @@ export default function TestPage({ test, onBack }) {
                   padding: 18,
                   borderRadius: 14,
                   border: "1px solid #dce3ed",
-                  background: "#fff",
+                  background: "#ffffff",
                 }}
               >
 
-                <b>
+                <div
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 800,
+                    lineHeight: 1.6,
+                  }}
+                >
                   {index + 1}. {q.question}
-                </b>
+                </div>
 
                 <p>
-                  आपका उत्तर:{" "}
+                  <strong>
+                    आपका उत्तर:
+                  </strong>{" "}
+
                   {selected === undefined
                     ? "नहीं दिया"
-                    : q.options?.[selected] ?? "—"}
+                    : q.options?.[selected] ??
+                      "—"}
                 </p>
 
                 <p>
                   <strong>
                     सही उत्तर:
                   </strong>{" "}
-                  {q.options?.[q.answer] ?? "—"}
+
+                  {q.options?.[q.answer] ??
+                    "—"}
                 </p>
 
                 <p
@@ -268,12 +372,16 @@ export default function TestPage({ test, onBack }) {
                     "इस प्रश्न की व्याख्या उपलब्ध नहीं है।"}
                 </p>
 
-                <div style={{ fontWeight: 800 }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                  }}
+                >
                   {selected === undefined
                     ? "⚪ अनुत्तरित"
                     : isCorrect
-                    ? "✅ सही"
-                    : "❌ गलत"}
+                    ? "✅ सही उत्तर"
+                    : "❌ गलत उत्तर"}
                 </div>
 
               </div>
@@ -282,7 +390,9 @@ export default function TestPage({ test, onBack }) {
 
           <button
             className="ai-button"
-            style={{ marginTop: 22 }}
+            style={{
+              marginTop: 25,
+            }}
             onClick={onBack}
           >
             ⬅️ Test Series पर वापस जाएँ
@@ -296,11 +406,14 @@ export default function TestPage({ test, onBack }) {
   const question = questions[current];
 
   // ================= TEST PAGE =================
+
   return (
     <main className="ai-container">
+
       <div className="ai-card">
 
-        {/* HEADER */}
+        {/* TOP BAR */}
+
         <div
           style={{
             display: "flex",
@@ -321,7 +434,7 @@ export default function TestPage({ test, onBack }) {
           <div
             style={{
               fontWeight: 900,
-              fontSize: 18,
+              fontSize: 20,
               color:
                 timeLeft < 300
                   ? "#dc2626"
@@ -334,28 +447,30 @@ export default function TestPage({ test, onBack }) {
         </div>
 
         {/* TITLE */}
+
         <h1
           style={{
             textAlign: "center",
             marginBottom: 5,
           }}
         >
-          {test?.title || "Test"}
+          {test?.title || "Exam Test"}
         </h1>
 
-        {/* QUESTION NUMBER */}
         <div
           style={{
             textAlign: "center",
             color: "#64748b",
             fontWeight: 700,
-            fontSize: 18,
+            fontSize: 17,
           }}
         >
-          प्रश्न {current + 1} / {questions.length}
+          प्रश्न {current + 1} /{" "}
+          {questions.length}
         </div>
 
         {/* PROGRESS */}
+
         <div
           style={{
             margin: "18px 0",
@@ -368,25 +483,29 @@ export default function TestPage({ test, onBack }) {
 
           <div
             style={{
-              width:
-                `${((current + 1) /
+              width: `${
+                ((current + 1) /
                   questions.length) *
-                  100}%`,
+                100
+              }%`,
               height: "100%",
               background: "#2563eb",
-              transition: "width 0.2s ease",
+              transition:
+                "width 0.2s ease",
             }}
           />
 
         </div>
 
-        {/* QUESTION BOX */}
+        {/* QUESTION */}
+
         <div
           style={{
             padding: 22,
             borderRadius: 16,
             background: "#f8fafc",
-            border: "1px solid #dce3ed",
+            border:
+              "1px solid #dce3ed",
           }}
         >
 
@@ -399,10 +518,12 @@ export default function TestPage({ test, onBack }) {
               overflowWrap: "anywhere",
             }}
           >
-            {current + 1}. {question.question}
+            {current + 1}.{" "}
+            {question.question}
           </h2>
 
           {/* OPTIONS */}
+
           <div
             style={{
               display: "flex",
@@ -416,7 +537,8 @@ export default function TestPage({ test, onBack }) {
               (option, index) => {
 
                 const selected =
-                  answers[current] === index;
+                  answers[current] ===
+                  index;
 
                 return (
                   <button
@@ -427,17 +549,15 @@ export default function TestPage({ test, onBack }) {
                     }
                     style={{
                       display: "flex",
-                      alignItems: "flex-start",
+                      alignItems:
+                        "flex-start",
                       gap: 12,
-
                       width: "100%",
                       minHeight: 55,
-
-                      boxSizing: "border-box",
-
+                      boxSizing:
+                        "border-box",
                       padding:
                         "15px 16px",
-
                       borderRadius: 12,
 
                       border: selected
@@ -449,13 +569,9 @@ export default function TestPage({ test, onBack }) {
                         : "#ffffff",
 
                       color: "#0f172a",
-
                       textAlign: "left",
-
                       fontSize: 17,
-
                       lineHeight: 1.5,
-
                       cursor: "pointer",
 
                       overflowWrap:
@@ -497,10 +613,12 @@ export default function TestPage({ test, onBack }) {
         </div>
 
         {/* NAVIGATION */}
+
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
+            justifyContent:
+              "space-between",
             gap: 12,
             marginTop: 22,
           }}
@@ -518,7 +636,8 @@ export default function TestPage({ test, onBack }) {
             ⬅️ पिछला
           </button>
 
-          {current < questions.length - 1 ? (
+          {current <
+          questions.length - 1 ? (
 
             <button
               className="ai-button"
@@ -548,6 +667,7 @@ export default function TestPage({ test, onBack }) {
         </div>
 
       </div>
+
     </main>
   );
 }
