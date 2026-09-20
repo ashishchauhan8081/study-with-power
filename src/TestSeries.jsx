@@ -34,12 +34,8 @@ function TestSeries({ exam, onBack }) {
     },
   ];
 
-  const startTest = (test) => {
-    setSelectedTest(test);
-  };
-
   // ==============================
-  // SELECTED TEST PAGE
+  // TEST PAGE
   // ==============================
 
   if (selectedTest) {
@@ -54,7 +50,7 @@ function TestSeries({ exam, onBack }) {
       >
         <div
           style={{
-            maxWidth: "700px",
+            maxWidth: "750px",
             margin: "0 auto",
             background: "#fff",
             borderRadius: "20px",
@@ -63,7 +59,6 @@ function TestSeries({ exam, onBack }) {
           }}
         >
           <button
-            type="button"
             onClick={() => setSelectedTest(null)}
             style={{
               border: "none",
@@ -82,7 +77,7 @@ function TestSeries({ exam, onBack }) {
           <h1
             style={{
               color: "#10235d",
-              marginBottom: "10px",
+              margin: "5px 0 10px",
             }}
           >
             {selectedTest.title}
@@ -92,11 +87,13 @@ function TestSeries({ exam, onBack }) {
             {exam} परीक्षा के लिए Online Test
           </p>
 
+          {/* TEST INFO */}
+
           <div
             style={{
               display: "grid",
               gridTemplateColumns:
-                "repeat(auto-fit, minmax(140px, 1fr))",
+                "repeat(auto-fit,minmax(150px,1fr))",
               gap: "15px",
               marginTop: "25px",
             }}
@@ -109,9 +106,13 @@ function TestSeries({ exam, onBack }) {
                 textAlign: "center",
               }}
             >
-              <strong>📝 Questions</strong>
-              <br />
-              {selectedTest.questions}
+              <div style={{ fontSize: "25px" }}>📝</div>
+
+              <strong>Questions</strong>
+
+              <div style={{ marginTop: "5px" }}>
+                {selectedTest.questions}
+              </div>
             </div>
 
             <div
@@ -122,9 +123,13 @@ function TestSeries({ exam, onBack }) {
                 textAlign: "center",
               }}
             >
-              <strong>⏱️ Time</strong>
-              <br />
-              {selectedTest.time} मिनट
+              <div style={{ fontSize: "25px" }}>⏱️</div>
+
+              <strong>Time</strong>
+
+              <div style={{ marginTop: "5px" }}>
+                {selectedTest.time} मिनट
+              </div>
             </div>
 
             <div
@@ -135,14 +140,21 @@ function TestSeries({ exam, onBack }) {
                 textAlign: "center",
               }}
             >
-              <strong>💰 Type</strong>
-              <br />
-              {selectedTest.type}
+              <div style={{ fontSize: "25px" }}>💰</div>
+
+              <strong>Type</strong>
+
+              <div style={{ marginTop: "5px" }}>
+                {selectedTest.type === "Free"
+                  ? "🆓 Free"
+                  : "💎 Premium"}
+              </div>
             </div>
           </div>
 
+          {/* START TEST */}
+
           <button
-            type="button"
             onClick={() => {
               alert(
                 `${selectedTest.title} जल्द ही शुरू होगा।`
@@ -154,14 +166,19 @@ function TestSeries({ exam, onBack }) {
               padding: "15px",
               border: "none",
               borderRadius: "12px",
-              background: "#0868f5",
+              background:
+                selectedTest.type === "Premium"
+                  ? "#f59e0b"
+                  : "#0868f5",
               color: "#fff",
               fontSize: "18px",
               fontWeight: "800",
               cursor: "pointer",
             }}
           >
-            ▶️ Start Test
+            {selectedTest.type === "Premium"
+              ? "💎 Premium Test शुरू करें"
+              : "▶️ Free Test शुरू करें"}
           </button>
         </div>
       </div>
@@ -195,11 +212,11 @@ function TestSeries({ exam, onBack }) {
             borderRadius: "20px",
             padding: "25px",
             marginBottom: "25px",
-            boxShadow: "0 8px 25px rgba(0,0,0,0.07)",
+            boxShadow:
+              "0 8px 25px rgba(0,0,0,0.07)",
           }}
         >
           <button
-            type="button"
             onClick={onBack}
             style={{
               border: "none",
@@ -240,7 +257,7 @@ function TestSeries({ exam, onBack }) {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "repeat(auto-fit, minmax(260px, 1fr))",
+              "repeat(auto-fit,minmax(260px,1fr))",
             gap: "20px",
           }}
         >
@@ -251,7 +268,8 @@ function TestSeries({ exam, onBack }) {
                 background: "#ffffff",
                 borderRadius: "18px",
                 padding: "22px",
-                boxShadow: "0 8px 25px rgba(0,0,0,0.07)",
+                boxShadow:
+                  "0 8px 25px rgba(0,0,0,0.07)",
               }}
             >
               <div
@@ -272,7 +290,12 @@ function TestSeries({ exam, onBack }) {
                 {test.title}
               </h2>
 
-              <p style={{ color: "#64748b" }}>
+              <p
+                style={{
+                  color: "#64748b",
+                  lineHeight: 1.7,
+                }}
+              >
                 प्रश्न: {test.questions}
                 <br />
                 समय: {test.time} मिनट
@@ -301,14 +324,18 @@ function TestSeries({ exam, onBack }) {
               </div>
 
               <button
-                type="button"
-                onClick={() => startTest(test)}
+                onClick={() =>
+                  setSelectedTest(test)
+                }
                 style={{
                   width: "100%",
                   padding: "13px",
                   border: "none",
                   borderRadius: "10px",
-                  background: "#0868f5",
+                  background:
+                    test.type === "Premium"
+                      ? "#f59e0b"
+                      : "#0868f5",
                   color: "#ffffff",
                   fontSize: "16px",
                   fontWeight: "800",
