@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
@@ -10,8 +11,6 @@ import {
 
 import { auth, db } from "./firebase";
 
-import "./Login.css";
-
 export default function Login({ onBack }) {
 
   const [email, setEmail] = useState("");
@@ -19,10 +18,15 @@ export default function Login({ onBack }) {
 
   const [loading, setLoading] = useState(false);
 
+  // ==========================================
+  // LOGIN FUNCTION
+  // ==========================================
+
   const handleLogin = async (e) => {
+
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       alert("कृपया Email और Password भरें।");
       return;
     }
@@ -31,9 +35,9 @@ export default function Login({ onBack }) {
 
       setLoading(true);
 
-      // =========================
-      // FIREBASE LOGIN
-      // =========================
+      // ======================================
+      // FIREBASE EMAIL/PASSWORD LOGIN
+      // ======================================
 
       const result =
         await signInWithEmailAndPassword(
@@ -44,9 +48,11 @@ export default function Login({ onBack }) {
 
       const user = result.user;
 
-      // =========================
-      // USER ROLE CHECK
-      // =========================
+      console.log("Login User:", user);
+
+      // ======================================
+      // FIRESTORE USER PROFILE
+      // ======================================
 
       const userRef = doc(
         db,
@@ -57,6 +63,10 @@ export default function Login({ onBack }) {
       const userSnap =
         await getDoc(userRef);
 
+      // ======================================
+      // USER PROFILE NOT FOUND
+      // ======================================
+
       if (!userSnap.exists()) {
 
         alert(
@@ -66,30 +76,34 @@ export default function Login({ onBack }) {
         return;
       }
 
+      // ======================================
+      // USER DATA
+      // ======================================
+
       const userData =
         userSnap.data();
 
       const role =
         userData.role || "user";
 
-      // =========================
-      // ADMIN
-      // =========================
+      console.log("User Role:", role);
+
+      // ======================================
+      // ADMIN LOGIN
+      // ======================================
 
       if (role === "admin") {
 
-        window.location.href =
-          "/admin";
+        window.location.href = "/admin";
 
         return;
       }
 
-      // =========================
-      // NORMAL USER
-      // =========================
+      // ======================================
+      // NORMAL USER LOGIN
+      // ======================================
 
-      window.location.href =
-        "/";
+      window.location.href = "/";
 
     } catch (error) {
 
@@ -101,36 +115,66 @@ export default function Login({ onBack }) {
       let message =
         "Login नहीं हो पाया।";
 
+      // ======================================
+      // FIREBASE ERROR HANDLING
+      // ======================================
+
       if (
         error.code ===
         "auth/invalid-credential"
       ) {
+
         message =
           "Email या Password गलत है।";
-      }
 
-      if (
+      } else if (
         error.code ===
         "auth/user-not-found"
       ) {
-        message =
-          "यह User मौजूद नहीं है।";
-      }
 
-      if (
+        message =
+          "यह Email Firebase में मौजूद नहीं है।";
+
+      } else if (
         error.code ===
         "auth/wrong-password"
       ) {
+
         message =
           "Password गलत है।";
-      }
 
-      if (
+      } else if (
         error.code ===
         "auth/invalid-email"
       ) {
+
         message =
           "Email सही नहीं है।";
+
+      } else if (
+        error.code ===
+        "auth/user-disabled"
+      ) {
+
+        message =
+          "यह Account Disable है।";
+
+      } else if (
+        error.code ===
+        "auth/too-many-requests"
+      ) {
+
+        message =
+          "बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।";
+
+      } else if (
+        error.code ===
+        "auth/network-request-failed"
+      ) {
+
+        message =
+          "Internet connection check करें।";
+
       }
 
       alert(message);
@@ -140,33 +184,48 @@ export default function Login({ onBack }) {
       setLoading(false);
 
     }
+
   };
 
+  // ==========================================
+  // PAGE
+  // ==========================================
+
   return (
+
     <div
       style={{
         minHeight: "100vh",
-        background: "#f5f8ff",
+        background:
+          "linear-gradient(135deg, #eff6ff, #f8fafc)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: 20,
+        padding: "20px",
+        boxSizing: "border-box",
       }}
     >
+
+      {/* =====================================
+          LOGIN CARD
+      ===================================== */}
 
       <div
         style={{
           width: "100%",
-          maxWidth: 430,
+          maxWidth: "430px",
           background: "#ffffff",
-          padding: 30,
-          borderRadius: 22,
+          padding: "30px",
+          borderRadius: "22px",
           boxShadow:
-            "0 10px 35px rgba(0,0,0,0.10)",
+            "0 10px 35px rgba(0,0,0,0.12)",
+          boxSizing: "border-box",
         }}
       >
 
-        {/* BACK */}
+        {/* ===================================
+            BACK BUTTON
+        =================================== */}
 
         <button
           type="button"
@@ -176,27 +235,32 @@ export default function Login({ onBack }) {
             background: "#eff6ff",
             color: "#0868f5",
             padding: "10px 16px",
-            borderRadius: 10,
+            borderRadius: "10px",
             cursor: "pointer",
-            fontWeight: 700,
-            marginBottom: 20,
+            fontWeight: "700",
+            marginBottom: "20px",
+            fontSize: "15px",
           }}
         >
           ⬅️ वापस
         </button>
 
-        {/* TITLE */}
+        {/* ===================================
+            TITLE
+        =================================== */}
 
         <div
           style={{
             textAlign: "center",
-            marginBottom: 25,
+            marginBottom: "28px",
           }}
         >
 
           <div
             style={{
-              fontSize: 55,
+              fontSize: "55px",
+              lineHeight: "1",
+              marginBottom: "10px",
             }}
           >
             👤
@@ -206,6 +270,7 @@ export default function Login({ onBack }) {
             style={{
               margin: "8px 0",
               color: "#10235d",
+              fontSize: "32px",
             }}
           >
             Login
@@ -213,7 +278,9 @@ export default function Login({ onBack }) {
 
           <p
             style={{
+              margin: "8px 0",
               color: "#64748b",
+              fontSize: "15px",
             }}
           >
             User और Admin दोनों के लिए
@@ -221,7 +288,9 @@ export default function Login({ onBack }) {
 
         </div>
 
-        {/* FORM */}
+        {/* ===================================
+            LOGIN FORM
+        =================================== */}
 
         <form onSubmit={handleLogin}>
 
@@ -230,8 +299,9 @@ export default function Login({ onBack }) {
           <label
             style={{
               display: "block",
-              marginBottom: 7,
-              fontWeight: 700,
+              marginBottom: "7px",
+              fontWeight: "700",
+              color: "#1e293b",
             }}
           >
             Email
@@ -244,15 +314,17 @@ export default function Login({ onBack }) {
             onChange={(e) =>
               setEmail(e.target.value)
             }
+            autoComplete="email"
             style={{
               width: "100%",
               padding: "14px",
-              borderRadius: 10,
+              borderRadius: "10px",
               border:
                 "1px solid #cbd5e1",
-              fontSize: 16,
-              marginBottom: 18,
+              fontSize: "16px",
+              marginBottom: "18px",
               boxSizing: "border-box",
+              outline: "none",
             }}
           />
 
@@ -261,8 +333,9 @@ export default function Login({ onBack }) {
           <label
             style={{
               display: "block",
-              marginBottom: 7,
-              fontWeight: 700,
+              marginBottom: "7px",
+              fontWeight: "700",
+              color: "#1e293b",
             }}
           >
             Password
@@ -275,19 +348,23 @@ export default function Login({ onBack }) {
             onChange={(e) =>
               setPassword(e.target.value)
             }
+            autoComplete="current-password"
             style={{
               width: "100%",
               padding: "14px",
-              borderRadius: 10,
+              borderRadius: "10px",
               border:
                 "1px solid #cbd5e1",
-              fontSize: 16,
-              marginBottom: 22,
+              fontSize: "16px",
+              marginBottom: "22px",
               boxSizing: "border-box",
+              outline: "none",
             }}
           />
 
-          {/* LOGIN BUTTON */}
+          {/* =================================
+              LOGIN BUTTON
+          ================================= */}
 
           <button
             type="submit"
@@ -296,35 +373,45 @@ export default function Login({ onBack }) {
               width: "100%",
               padding: "15px",
               border: "none",
-              borderRadius: 12,
-              background: "#0868f5",
+              borderRadius: "12px",
+              background:
+                loading
+                  ? "#93c5fd"
+                  : "#0868f5",
               color: "#ffffff",
-              fontSize: 18,
-              fontWeight: 800,
-              cursor: loading
-                ? "not-allowed"
-                : "pointer",
-              opacity: loading ? 0.7 : 1,
+              fontSize: "18px",
+              fontWeight: "800",
+              cursor:
+                loading
+                  ? "not-allowed"
+                  : "pointer",
+              transition:
+                "0.2s",
             }}
           >
+
             {loading
               ? "⏳ Login हो रहा है..."
               : "🔐 Login"}
+
           </button>
 
         </form>
 
-        {/* INFO */}
+        {/* ===================================
+            INFORMATION
+        =================================== */}
 
         <div
           style={{
-            marginTop: 20,
-            padding: 14,
-            borderRadius: 12,
+            marginTop: "20px",
+            padding: "14px",
+            borderRadius: "12px",
             background: "#f8fafc",
             color: "#64748b",
             textAlign: "center",
-            fontSize: 14,
+            fontSize: "14px",
+            lineHeight: "1.5",
           }}
         >
           Login के बाद आपका Account Type
@@ -334,5 +421,6 @@ export default function Login({ onBack }) {
       </div>
 
     </div>
+
   );
 }
