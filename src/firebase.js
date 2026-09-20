@@ -9,4 +9,12 @@ const firebaseConfig = {
   projectId: "study-with-power-f6914",
   storageBucket: "study-with-power-f6914.firebasestorage.app",
   messagingSenderId: "26217270395",
-  app
+  appId: "1:26217270395:web:322ab200fc64110fda26de"
+};
+
+const app = initializeApp(firebaseConfig);
+
+export const auth = getAuth(app);
+export const db = getDatabase(app);
+
+export default app;
