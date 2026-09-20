@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./App.css";
 import TestSeries from "./TestSeries";
+import HelpChat from "./HelpChat";
 
 const exams = [
   {
@@ -103,8 +104,6 @@ const shortcuts = [
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ================= SELECTED EXAM =================
-
   const [selectedExam, setSelectedExam] = useState(null);
 
   // ================= OPEN TEST SERIES =================
@@ -119,7 +118,7 @@ function App() {
     });
   };
 
-  // ================= BACK =================
+  // ================= BACK TO HOME =================
 
   const handleBack = () => {
     setSelectedExam(null);
@@ -334,4 +333,95 @@ function App() {
 
         </section>
 
-        {/* ================= EXAM SECTION
+        {/* ================= EXAM SECTION ================= */}
+
+        <section
+          className="exam-section"
+          id="exam-section"
+        >
+
+          <div className="section-heading">
+
+            <h2>
+              🎯 Exam Test
+            </h2>
+
+            <p>
+              अपनी परीक्षा चुनें और Test शुरू करें
+            </p>
+
+            <div className="heading-line"></div>
+
+          </div>
+
+          {/* ================= EXAM GRID ================= */}
+
+          <div className="exam-grid">
+
+            {exams.map(
+              (exam, index) => (
+
+                <div
+                  className={`exam-card card-${index % 6}`}
+                  key={exam.id}
+                >
+
+                  <div className="exam-icon">
+                    {exam.icon}
+                  </div>
+
+                  <h3>
+                    {exam.name}
+                  </h3>
+
+                  <p>
+                    {exam.desc}
+                  </p>
+
+                  <button
+                    className="view-btn"
+                    onClick={() =>
+                      handleExamClick(exam)
+                    }
+                  >
+                    View Tests →
+                  </button>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+        </section>
+
+        {/* ================= PROMO ================= */}
+
+        <section className="promo">
+
+          ⭐ Study Smart&nbsp; | &nbsp;
+          Practice Daily&nbsp; | &nbsp;
+          Crack Your Dream
+
+        </section>
+
+      </main>
+
+      {/* ================= FOOTER ================= */}
+
+      <footer className="footer">
+
+        © 2026 Exam Test. All Rights Reserved.
+
+      </footer>
+
+      {/* ================= HELP CHAT ================= */}
+
+      <HelpChat />
+
+    </div>
+  );
+}
+
+export default App;
