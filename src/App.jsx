@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-import {
-  initializeApp,
-} from "firebase/app";
+import { initializeApp } from "firebase/app";
 
 import {
   getAuth,
@@ -25,10 +23,6 @@ import {
 
 import firebaseConfig from "./firebase-config.json";
 
-// ======================================================
-// SEPARATE COMPONENTS
-// ======================================================
-
 import AdminPanel from "./pages/AdminPanel";
 import TestRunner from "./components/TestRunner";
 
@@ -48,6 +42,13 @@ const googleProvider = new GoogleAuthProvider();
 const db = getDatabase(firebaseApp);
 
 const ADMIN_EMAIL = "cciashish@gmail.com";
+
+// ======================================================
+// APP NAME
+// ======================================================
+
+const APP_NAME = "Exam Test";
+const APP_TAGLINE = "Practice Today | Success Tomorrow";
 
 // ======================================================
 // EXAMS
@@ -147,8 +148,8 @@ const exams = [
 const defaultResources = [
   {
     icon: "📚",
-    title: "NCERT Books",
-    text: "कक्षा 6 से 12 तक की NCERT पुस्तकों का अध्ययन करें।",
+    title: "Study Material",
+    text: "महत्वपूर्ण अध्ययन सामग्री यहाँ उपलब्ध होगी।",
     page: "resources",
     enabled: true,
   },
@@ -190,14 +191,6 @@ const defaultResources = [
 ];
 
 // ======================================================
-// TEST ID
-// ======================================================
-
-function testId(examId, number) {
-  return `${examId}_test_${number}`;
-}
-
-// ======================================================
 // NORMALIZE QUESTIONS
 // ======================================================
 
@@ -231,126 +224,11 @@ function normalizeQuestions(questions) {
 }
 
 // ======================================================
-// CORRECT ANSWER INDEX
-// ======================================================
-
-function getCorrectIndex(question) {
-  const options = Array.isArray(question?.options)
-    ? question.options
-    : [];
-
-  const answer = question?.answer;
-
-  if (
-    !options.length ||
-    answer === undefined ||
-    answer === null
-  ) {
-    return -1;
-  }
-
-  if (
-    typeof answer === "number" &&
-    Number.isInteger(answer)
-  ) {
-    if (
-      answer >= 0 &&
-      answer < options.length
-    ) {
-      return answer;
-    }
-
-    if (
-      answer >= 1 &&
-      answer <= options.length
-    ) {
-      return answer - 1;
-    }
-  }
-
-  const raw = String(answer).trim();
-
-  if (!raw) return -1;
-
-  if (/^\d+$/.test(raw)) {
-    const n = Number(raw);
-
-    if (
-      n >= 0 &&
-      n < options.length
-    ) {
-      return n;
-    }
-
-    if (
-      n >= 1 &&
-      n <= options.length
-    ) {
-      return n - 1;
-    }
-  }
-
-  const letterMatch =
-    raw.match(
-      /^([ABCD])(?:\s*[.\):-]|\s*$)/i
-    );
-
-  if (letterMatch) {
-    const index =
-      "ABCD".indexOf(
-        letterMatch[1].toUpperCase()
-      );
-
-    if (
-      index >= 0 &&
-      index < options.length
-    ) {
-      return index;
-    }
-  }
-
-  const compact = (value) =>
-    String(value ?? "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-
-  const cleaned =
-    raw
-      .replace(
-        /^[ABCD]\s*[.\):-]\s*/i,
-        ""
-      )
-      .trim();
-
-  const exact =
-    options.findIndex(
-      (option) =>
-        String(option ?? "").trim() === raw ||
-        String(option ?? "").trim() === cleaned
-    );
-
-  if (exact >= 0) {
-    return exact;
-  }
-
-  const loose =
-    options.findIndex(
-      (option) =>
-        compact(option) ===
-        compact(cleaned)
-    );
-
-  return loose >= 0 ? loose : -1;
-}
-
-// ======================================================
 // APP
 // ======================================================
 
 export default function App() {
-  const [page, setPage] =
-    useState("home");
+  const [page, setPage] = useState("home");
 
   const [selectedExam, setSelectedExam] =
     useState(null);
@@ -412,7 +290,7 @@ export default function App() {
   }, []);
 
   // ====================================================
-  // FIREBASE TESTS
+  // LOAD TESTS
   // ====================================================
 
   useEffect(() => {
@@ -439,7 +317,7 @@ export default function App() {
   }, []);
 
   // ====================================================
-  // RESOURCES
+  // LOAD RESOURCES
   // ====================================================
 
   useEffect(() => {
@@ -485,20 +363,6 @@ export default function App() {
   }, []);
 
   // ====================================================
-  // VISIBLE RESOURCES
-  // ====================================================
-
-  const visibleResources =
-    useMemo(
-      () =>
-        siteResources.filter(
-          (item) =>
-            item?.enabled !== false
-        ),
-      [siteResources]
-    );
-
-  // ====================================================
   // PUBLIC TESTS
   // ====================================================
 
@@ -521,6 +385,20 @@ export default function App() {
 
       return result;
     }, [cloudTests]);
+
+  // ====================================================
+  // VISIBLE RESOURCES
+  // ====================================================
+
+  const visibleResources =
+    useMemo(
+      () =>
+        siteResources.filter(
+          (item) =>
+            item?.enabled !== false
+        ),
+      [siteResources]
+    );
 
   // ====================================================
   // LOGIN MODAL
@@ -670,7 +548,7 @@ export default function App() {
 
         alert(
           "✅ Login Request Admin Panel में भेज दी गई है।\n\n" +
-            "Admin OTP Generate करके आपको WhatsApp पर भेजेंगे।"
+            "Admin OTP Generate करके WhatsApp पर भेज सकते हैं।"
         );
       } catch (error) {
         console.error(
@@ -793,7 +671,7 @@ export default function App() {
         );
 
         localStorage.setItem(
-          "swp_manual_phone",
+          "exam_test_phone",
           manualOtpPhone ||
             request.phone
         );
@@ -914,7 +792,7 @@ export default function App() {
     return (
       <div className="app">
         <div className="loading-box">
-          <h2>⏳ Loading...</h2>
+          <h2>⏳ Exam Test Loading...</h2>
         </div>
       </div>
     );
@@ -985,16 +863,16 @@ export default function App() {
             onClick={goHome}
           >
             <div className="logo-icon">
-              📚
+              📝
             </div>
 
             <div className="logo-text">
               <h2>
-                Study With Power
+                {APP_NAME}
               </h2>
 
               <span>
-                Learn Today | Lead Tomorrow
+                {APP_TAGLINE}
               </span>
             </div>
           </div>
@@ -1009,28 +887,53 @@ export default function App() {
 
             <button
               onClick={() =>
+                setPage("exams")
+              }
+            >
+              📚 Exams
+            </button>
+
+            <button
+              onClick={() =>
                 setPage("tests")
               }
             >
               📝 Test Series
             </button>
 
-            {user && (
-              <button
-                onClick={logout}
-              >
-                🚪 Logout
-              </button>
-            )}
+            {user ? (
+              <>
+                <span className="user-info">
+                  👤{" "}
+                  {user.displayName ||
+                    user.email ||
+                    "User"}
+                </span>
 
-            {user?.email ===
-              ADMIN_EMAIL && (
+                {user.email ===
+                  ADMIN_EMAIL && (
+                  <button
+                    onClick={() =>
+                      setAdminOpen(true)
+                    }
+                  >
+                    ⚙️ Admin
+                  </button>
+                )}
+
+                <button
+                  onClick={logout}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
               <button
                 onClick={() =>
-                  setAdminOpen(true)
+                  openLoginModal()
                 }
               >
-                ⚙️ Admin
+                🔐 Login
               </button>
             )}
 
@@ -1038,121 +941,128 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN */}
+      {/* HERO */}
 
-      <main className="container">
+      <section className="hero">
+        <div className="container">
 
-        {page === "home" && (
-          <>
-            <section className="hero">
-              <h1>
-                Study With Power
-              </h1>
+          <div className="hero-icon">
+            📝
+          </div>
 
-              <p>
-                प्रतियोगी परीक्षाओं की
-                तैयारी एक ही जगह।
-              </p>
-            </section>
+          <h1>
+            Welcome to{" "}
+            <span>
+              {APP_NAME}
+            </span>
+          </h1>
 
-            <section>
-              <h2>
-                📚 परीक्षा चुनें
-              </h2>
+          <p>
+            प्रतियोगी परीक्षाओं की तैयारी के लिए
+            Online Test Series
+          </p>
 
-              <div className="exam-grid">
-
-                {exams.map(
-                  (exam) => (
-                    <button
-                      key={exam.id}
-                      className="exam-card"
-                      style={{
-                        background:
-                          exam.color,
-                      }}
-                      onClick={() =>
-                        openExam(exam)
-                      }
-                    >
-                      <div className="exam-icon">
-                        {exam.icon}
-                      </div>
-
-                      <h3>
-                        {exam.name}
-                      </h3>
-
-                      <p>
-                        {exam.description}
-                      </p>
-                    </button>
-                  )
-                )}
-
-              </div>
-            </section>
-
-            <section>
-              <h2>
-                🎯 Important Resources
-              </h2>
-
-              <div className="resource-grid">
-
-                {visibleResources.map(
-                  (item, index) => (
-                    <div
-                      className="resource-card"
-                      key={
-                        item.id ||
-                        index
-                      }
-                    >
-                      <div>
-                        {item.icon}
-                      </div>
-
-                      <h3>
-                        {item.title}
-                      </h3>
-
-                      <p>
-                        {item.text}
-                      </p>
-                    </div>
-                  )
-                )}
-
-              </div>
-            </section>
-          </>
-        )}
-
-        {/* TEST LIST */}
-
-        {page === "tests" && (
-          <section>
+          <div className="hero-buttons">
 
             <button
-              className="back"
-              onClick={goHome}
+              className="primary-btn"
+              onClick={() =>
+                setPage("exams")
+              }
             >
-              ← वापस जाएँ
+              🎯 Exam चुनें
             </button>
 
-            <h1>
-              📝 Test Series
-            </h1>
+            <button
+              className="secondary-btn"
+              onClick={() =>
+                setPage("tests")
+              }
+            >
+              📝 Test Series देखें
+            </button>
 
-            {selectedExam && (
+          </div>
+        </div>
+      </section>
+
+      {/* EXAMS */}
+
+      {(page === "home" ||
+        page === "exams") && (
+        <section className="section">
+          <div className="container">
+
+            <div className="section-title">
               <h2>
-                {selectedExam.icon}{" "}
-                {selectedExam.name}
+                🎯 परीक्षा चुनें
               </h2>
-            )}
 
-            <div className="test-list">
+              <p>
+                अपनी परीक्षा के अनुसार Test Series
+                चुनें
+              </p>
+            </div>
+
+            <div className="exam-grid">
+
+              {exams.map(
+                (exam) => (
+                  <button
+                    key={exam.id}
+                    className="exam-card"
+                    style={{
+                      background:
+                        exam.color,
+                    }}
+                    onClick={() =>
+                      openExam(exam)
+                    }
+                  >
+                    <div className="exam-icon">
+                      {exam.icon}
+                    </div>
+
+                    <h3>
+                      {exam.name}
+                    </h3>
+
+                    <p>
+                      {exam.description}
+                    </p>
+
+                    <span>
+                      Test देखें →
+                    </span>
+                  </button>
+                )
+              )}
+
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TESTS */}
+
+      {(page === "home" ||
+        page === "tests") && (
+        <section className="section tests-section">
+          <div className="container">
+
+            <div className="section-title">
+              <h2>
+                📝 Available Test Series
+              </h2>
+
+              <p>
+                {selectedExam
+                  ? `${selectedExam.name} Test Series`
+                  : "सभी उपलब्ध Tests"}
+              </p>
+            </div>
+
+            <div className="test-grid">
 
               {Object.entries(
                 publicTests
@@ -1169,24 +1079,46 @@ export default function App() {
                       className="test-card"
                       key={id}
                     >
+                      <div className="test-icon">
+                        📝
+                      </div>
+
                       <h3>
-                        {test.title ||
-                          `Test ${test.testNumber}`}
+                        {test.title}
                       </h3>
 
                       <p>
-                        {test.questions
-                          ?.length ||
-                          0}{" "}
-                        Questions
+                        🎯{" "}
+                        {exams.find(
+                          (e) =>
+                            e.id ===
+                            test.exam
+                        )?.name ||
+                          test.exam}
                       </p>
+
+                      <div className="test-meta">
+                        <span>
+                          ❓{" "}
+                          {test.totalQuestions ||
+                            test.questions
+                              ?.length ||
+                            0}{" "}
+                          Questions
+                        </span>
+
+                        <span>
+                          ⏱️{" "}
+                          {test.duration ||
+                            30}{" "}
+                          Min
+                        </span>
+                      </div>
 
                       <button
                         className="open-btn"
                         onClick={() =>
-                          openTest(
-                            test
-                          )
+                          openTest(test)
                         }
                       >
                         🚀 Test शुरू करें
@@ -1197,10 +1129,96 @@ export default function App() {
 
             </div>
 
-          </section>
-        )}
+            {Object.entries(
+              publicTests
+            ).filter(
+              ([, test]) =>
+                !selectedExam ||
+                test.exam ===
+                  selectedExam.id
+            ).length === 0 && (
+              <div className="empty-box">
+                <h3>
+                  📭 अभी कोई Public Test उपलब्ध
+                  नहीं है।
+                </h3>
 
-      </main>
+                <p>
+                  Admin Panel से Test बनाकर
+                  Status = Public करें।
+                </p>
+              </div>
+            )}
+
+          </div>
+        </section>
+      )}
+
+      {/* RESOURCES */}
+
+      {page === "home" && (
+        <section className="section resources-section">
+          <div className="container">
+
+            <div className="section-title">
+              <h2>
+                📚 Study Resources
+              </h2>
+
+              <p>
+                आपकी तैयारी के लिए उपयोगी सामग्री
+              </p>
+            </div>
+
+            <div className="resource-grid">
+
+              {visibleResources.map(
+                (item, index) => (
+                  <div
+                    className="resource-card"
+                    key={index}
+                  >
+                    <div className="resource-icon">
+                      {item.icon ||
+                        "📚"}
+                    </div>
+
+                    <h3>
+                      {item.title}
+                    </h3>
+
+                    <p>
+                      {item.text}
+                    </p>
+                  </div>
+                )
+              )}
+
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* FOOTER */}
+
+      <footer className="footer">
+        <div className="container">
+
+          <h3>
+            📝 {APP_NAME}
+          </h3>
+
+          <p>
+            {APP_TAGLINE}
+          </p>
+
+          <p>
+            © {new Date().getFullYear()}{" "}
+            {APP_NAME}. All Rights Reserved.
+          </p>
+
+        </div>
+      </footer>
 
       {/* LOGIN MODAL */}
 
@@ -1212,62 +1230,83 @@ export default function App() {
             <button
               className="modal-close"
               onClick={() =>
-                setLoginModalOpen(
-                  false
-                )
+                setLoginModalOpen(false)
               }
             >
               ✕
             </button>
 
+            <div className="modal-icon">
+              📝
+            </div>
+
             <h2>
-              🔐 Login करें
+              {APP_NAME} Login
             </h2>
 
+            <p>
+              Test शुरू करने के लिए Login करें
+            </p>
+
             <button
-              className="google-btn"
+              className="google-login-btn"
               onClick={
                 loginWithGoogle
               }
-              disabled={phoneLoading}
+              disabled={
+                phoneLoading
+              }
             >
               🇬 Google से Login
             </button>
 
-            <hr />
-
-            <input
-              type="tel"
-              placeholder="Mobile Number"
-              value={phoneNumber}
-              onChange={(e) =>
-                setPhoneNumber(
-                  e.target.value
-                )
-              }
-            />
+            <div className="login-divider">
+              <span>
+                या
+              </span>
+            </div>
 
             {!manualOtpRequestId ? (
-              <button
-                className="open-btn"
-                onClick={
-                  sendPhoneOtp
-                }
-                disabled={
-                  phoneLoading
-                }
-              >
-                {phoneLoading
-                  ? "⏳ भेजा जा रहा है..."
-                  : "📱 OTP भेजें"}
-              </button>
-            ) : (
               <>
                 <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="6 अंकों का OTP"
+                  type="tel"
+                  placeholder="Mobile Number"
+                  value={phoneNumber}
+                  onChange={(e) =>
+                    setPhoneNumber(
+                      e.target.value
+                    )
+                  }
+                  maxLength={10}
+                />
+
+                <button
+                  className="otp-btn"
+                  onClick={
+                    sendPhoneOtp
+                  }
+                  disabled={
+                    phoneLoading
+                  }
+                >
+                  {phoneLoading
+                    ? "⏳ भेजा जा रहा है..."
+                    : "📱 OTP Request भेजें"}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="otp-info">
+                  📱 OTP भेजने के लिए Request
+                  भेज दी गई है।
+                  <br />
+                  Admin द्वारा OTP Generate
+                  करने के बाद यहाँ OTP डालें।
+                </div>
+
+                <input
+                  type="tel"
+                  placeholder="6 Digit OTP"
                   value={otp}
                   onChange={(e) =>
                     setOtp(
@@ -1276,12 +1315,14 @@ export default function App() {
                           /\D/g,
                           ""
                         )
+                        .slice(0, 6)
                     )
                   }
+                  maxLength={6}
                 />
 
                 <button
-                  className="open-btn"
+                  className="otp-btn"
                   onClick={
                     verifyPhoneOtp
                   }
@@ -1295,6 +1336,11 @@ export default function App() {
                 </button>
               </>
             )}
+
+            <p className="login-note">
+              Login करके आप {APP_NAME} की
+              Test Series access कर सकते हैं।
+            </p>
 
           </div>
         </div>
