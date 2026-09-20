@@ -1,1 +1,519 @@
+/* =====================================================
+   EXAM TEST - ADMIN PANEL
+   ===================================================== */
 
+.admin-page {
+  min-height: 100vh;
+  background: #f4f7fb;
+  color: #1f2937;
+  padding-bottom: 40px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.admin-header {
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: white;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.admin-header p {
+  margin: 5px 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-email {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+/* ================= TABS ================= */
+
+.admin-tabs {
+  display: flex;
+  gap: 10px;
+  background: white;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.admin-tabs button {
+  border: none;
+  background: #f1f5f9;
+  color: #374151;
+  padding: 11px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-tabs button:hover {
+  background: #dbeafe;
+}
+
+.admin-tabs button.active {
+  background: #2563eb;
+  color: white;
+}
+
+/* ================= CONTENT ================= */
+
+.admin-content {
+  max-width: 1250px;
+  margin: 20px auto;
+  padding: 0 15px;
+}
+
+.admin-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.07);
+  border: 1px solid #e5e7eb;
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.card-title h2 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.card-title p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ================= FORM ================= */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.form-group label {
+  font-weight: 700;
+  font-size: 14px;
+  color: #374151;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 15px;
+  background: white;
+  outline: none;
+}
+
+.form-group textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* ================= BUTTONS ================= */
+
+.admin-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: 0.2s;
+}
+
+.admin-btn:hover {
+  transform: translateY(-1px);
+}
+
+.admin-btn.primary {
+  background: #2563eb;
+  color: white;
+}
+
+.admin-btn.secondary {
+  background: #0f766e;
+  color: white;
+}
+
+.admin-btn.danger {
+  background: #dc2626;
+  color: white;
+}
+
+.admin-btn.success {
+  background: #16a34a;
+  color: white;
+}
+
+.admin-btn.warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.admin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ================= QUESTION AREA ================= */
+
+.question-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+}
+
+.question-list {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  max-height: 650px;
+  overflow-y: auto;
+}
+
+.question-list-title {
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.question-list button {
+  width: 100%;
+  border: none;
+  text-align: left;
+  padding: 9px 11px;
+  margin-bottom: 6px;
+  border-radius: 7px;
+  cursor: pointer;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.question-list button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.question-editor {
+  min-width: 0;
+}
+
+.question-number {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+/* ================= OPTIONS ================= */
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.option-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.option-box input[type="radio"] {
+  width: 18px;
+  height: 18px;
+}
+
+.option-box input[type="text"] {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  padding: 10px;
+  min-width: 0;
+}
+
+/* ================= QUESTION ACTIONS ================= */
+
+.question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.question-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ================= TEST LIST ================= */
+
+.test-list {
+  display: grid;
+  gap: 12px;
+}
+
+.test-item {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.test-info h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.test-info p {
+  margin: 3px 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.test-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ================= STATUS ================= */
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-public {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* ================= MESSAGE ================= */
+
+.admin-message {
+  max-width: 1250px;
+  margin: 15px auto 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  font-weight: 700;
+}
+
+/* ================= LOADING ================= */
+
+.admin-loading {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* ================= ACCESS DENIED ================= */
+
+.admin-denied {
+  max-width: 500px;
+  margin: 80px auto;
+  background: white;
+  padding: 35px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+}
+
+.denied-icon {
+  font-size: 55px;
+  margin-bottom: 15px;
+}
+
+.admin-denied h2 {
+  margin: 0 0 10px;
+}
+
+.admin-denied p {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* ================= RESOURCE ================= */
+
+.resource-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 12px;
+  background: #f8fafc;
+}
+
+.resource-item input,
+.resource-item textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  margin-bottom: 10px;
+}
+
+/* ================= MOBILE ================= */
+
+@media (max-width: 768px) {
+  .admin-header {
+    padding: 15px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-header h1 {
+    font-size: 21px;
+  }
+
+  .admin-header-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .admin-email {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .question-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-title {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .test-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .test-actions {
+    width: 100%;
+  }
+
+  .test-actions .admin-btn {
+    flex: 1;
+  }
+
+  .admin-content {
+    padding: 0 10px;
+  }
+
+  .admin-card {
+    padding: 15px;
+  }
+}
+
+/* ================= SMALL MOBILE ================= */
+
+@media (max-width: 480px) {
+  .admin-tabs {
+    padding: 10px;
+  }
+
+  .admin-tabs button {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .admin-btn {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .admin-card {
+    border-radius: 10px;
+  }
+}
