@@ -34,9 +34,9 @@ function TestSeries({ exam, onBack }) {
     },
   ];
 
-  // ==============================
-  // TEST PAGE
-  // ==============================
+  // =========================
+  // TEST DETAIL PAGE
+  // =========================
 
   if (selectedTest) {
     return (
@@ -52,13 +52,14 @@ function TestSeries({ exam, onBack }) {
           style={{
             maxWidth: "750px",
             margin: "0 auto",
-            background: "#fff",
+            background: "#ffffff",
             borderRadius: "20px",
             padding: "25px",
             boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
           }}
         >
           <button
+            type="button"
             onClick={() => setSelectedTest(null)}
             style={{
               border: "none",
@@ -83,11 +84,16 @@ function TestSeries({ exam, onBack }) {
             {selectedTest.title}
           </h1>
 
-          <p style={{ color: "#64748b" }}>
+          <p
+            style={{
+              color: "#64748b",
+              marginBottom: "25px",
+            }}
+          >
             {exam} परीक्षा के लिए Online Test
           </p>
 
-          {/* TEST INFO */}
+          {/* TEST INFORMATION */}
 
           <div
             style={{
@@ -95,7 +101,6 @@ function TestSeries({ exam, onBack }) {
               gridTemplateColumns:
                 "repeat(auto-fit,minmax(150px,1fr))",
               gap: "15px",
-              marginTop: "25px",
             }}
           >
             <div
@@ -106,7 +111,9 @@ function TestSeries({ exam, onBack }) {
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: "25px" }}>📝</div>
+              <div style={{ fontSize: "28px" }}>
+                📝
+              </div>
 
               <strong>Questions</strong>
 
@@ -123,7 +130,9 @@ function TestSeries({ exam, onBack }) {
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: "25px" }}>⏱️</div>
+              <div style={{ fontSize: "28px" }}>
+                ⏱️
+              </div>
 
               <strong>Time</strong>
 
@@ -140,7 +149,9 @@ function TestSeries({ exam, onBack }) {
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: "25px" }}>💰</div>
+              <div style={{ fontSize: "28px" }}>
+                💰
+              </div>
 
               <strong>Type</strong>
 
@@ -155,10 +166,17 @@ function TestSeries({ exam, onBack }) {
           {/* START TEST */}
 
           <button
+            type="button"
             onClick={() => {
-              alert(
-                `${selectedTest.title} जल्द ही शुरू होगा।`
-              );
+              if (selectedTest.type === "Premium") {
+                alert(
+                  "💎 यह Premium Test है। Payment के बाद Test शुरू होगा।"
+                );
+              } else {
+                alert(
+                  `${selectedTest.title} जल्द ही शुरू होगा।`
+                );
+              }
             }}
             style={{
               width: "100%",
@@ -170,7 +188,7 @@ function TestSeries({ exam, onBack }) {
                 selectedTest.type === "Premium"
                   ? "#f59e0b"
                   : "#0868f5",
-              color: "#fff",
+              color: "#ffffff",
               fontSize: "18px",
               fontWeight: "800",
               cursor: "pointer",
@@ -185,9 +203,9 @@ function TestSeries({ exam, onBack }) {
     );
   }
 
-  // ==============================
+  // =========================
   // TEST SERIES LIST
-  // ==============================
+  // =========================
 
   return (
     <div
@@ -217,6 +235,7 @@ function TestSeries({ exam, onBack }) {
           }}
         >
           <button
+            type="button"
             onClick={onBack}
             style={{
               border: "none",
@@ -324,6 +343,7 @@ function TestSeries({ exam, onBack }) {
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setSelectedTest(test)
                 }
