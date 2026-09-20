@@ -1,126 +1,36 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 /*
   Study With Power
-  Subscription System
+  ₹19 Exam-wise Test Series Unlock
 
-  Plans:
-  - Single Test Series = ₹49 / 365 Days
-  - Complete Combo      = ₹599 / 365 Days
-
-  IMPORTANT:
-  Payment verification बाद में secure backend/payment gateway से होगा.
+  Rule:
+  - हर Exam का Test 1 FREE
+  - बाकी Tests के लिए ₹19 One Time Payment
+  - Payment के बाद उस Exam के सभी Tests Unlock
 */
 
 export const SUBSCRIPTION_PLANS = {
   SINGLE: {
     id: "single",
-    name: "Single Test Series",
-    price: 49,
-    validityDays: 365,
-  },
-
-  COMBO: {
-    id: "combo",
-    name: "Complete Test Series Combo",
-    price: 599,
-    validityDays: 365,
+    name: "Complete Exam Test Series",
+    price: 19,
   },
 };
 
 // -------------------------------------------------------
-// Date Utilities
-// -------------------------------------------------------
-
-export function getExpiryDate(startDate, validityDays = 365) {
-  const start = new Date(startDate);
-
-  if (Number.isNaN(start.getTime())) {
-    return null;
-  }
-
-  const expiry = new Date(start);
-  expiry.setDate(expiry.getDate() + validityDays);
-
-  return expiry;
-}
-
-export function isSubscriptionActive(expiryDate) {
-  if (!expiryDate) return false;
-
-  const expiry = new Date(expiryDate);
-
-  if (Number.isNaN(expiry.getTime())) {
-    return false;
-  }
-
-  return new Date() < expiry;
-}
-
-export function getRemainingDays(expiryDate) {
-  if (!expiryDate) return 0;
-
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-
-  if (Number.isNaN(expiry.getTime())) {
-    return 0;
-  }
-
-  const difference = expiry.getTime() - now.getTime();
-
-  if (difference <= 0) {
-    return 0;
-  }
-
-  return Math.ceil(
-    difference / (1000 * 60 * 60 * 24)
-  );
-}
-
-export function formatDate(date) {
-  if (!date) return "-";
-
-  const value = new Date(date);
-
-  if (Number.isNaN(value.getTime())) {
-    return "-";
-  }
-
-  return value.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-// -------------------------------------------------------
-// Check Single Test Series Access
+// Check Exam Access
 // -------------------------------------------------------
 
 export function hasSeriesAccess(subscription, seriesId) {
-  if (!subscription) {
+  if (!subscription || !seriesId) {
     return false;
   }
 
-  // Complete Combo gives access to every series
-  if (
-    subscription.plan === "combo" &&
-    isSubscriptionActive(subscription.expiryDate)
-  ) {
-    return true;
-  }
-
-  // Single series subscription
-  if (
-    subscription.plan === "single" &&
+  return (
     subscription.seriesId === seriesId &&
-    isSubscriptionActive(subscription.expiryDate)
-  ) {
-    return true;
-  }
-
-  return false;
+    subscription.active === true
+  );
 }
 
 // -------------------------------------------------------
@@ -134,67 +44,119 @@ export default function Subscription({
   subscription = null,
   onPurchase = null,
 }) {
-  const [currentSubscription, setCurrentSubscription] =
-    useState(subscription);
-
-  useEffect(() => {
-    setCurrentSubscription(subscription);
-  }, [subscription]);
-
-  const active =
-    currentSubscription &&
-    isSubscriptionActive(
-      currentSubscription.expiryDate
-    );
-
-  const remainingDays = active
-    ? getRemainingDays(
-        currentSubscription.expiryDate
-      )
-    : 0;
+  const active = hasSeriesAccess(
+    subscription,
+    seriesId
+  );
 
   // -----------------------------------------------------
-  // Purchase button
+  // Purchase
   // -----------------------------------------------------
 
-  const handlePurchase = (plan) => {
+  const handlePurchase = () => {
     if (!user) {
       alert("कृपया पहले Login करें।");
       return;
     }
 
+    if (!seriesId) {
+      alert("Exam की जानकारी नहीं मिली।");
+      return;
+    }
+
+    if (active) {
+      alert(
+        `✅ ${seriesName} पहले से Unlock है।`
+      );
+      return;
+    }
+
     if (typeof onPurchase === "function") {
       onPurchase({
-        planId: plan.id,
-        amount: plan.price,
-        validityDays: plan.validityDays,
-        seriesId:
-          plan.id === "single"
-            ? seriesId
-            : null,
-        seriesName:
-          plan.id === "single"
-            ? seriesName
-            : "All Test Series",
+        planId: "single",
+        amount: 19,
+        seriesId: seriesId,
+        seriesName: seriesName,
       });
 
       return;
     }
 
     alert(
-      "Payment system अगले चरण में जोड़ा जाएगा।"
+      "Payment system अभी connect नहीं है।"
     );
   };
 
   // -----------------------------------------------------
-  // UI
+  // Already Unlocked
+  // -----------------------------------------------------
+
+  if (active) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "600px",
+          margin: "20px auto",
+          padding: "25px",
+          boxSizing: "border-box",
+          borderRadius: "18px",
+          background: "#ecfdf5",
+          border: "2px solid #86efac",
+          textAlign: "center",
+          fontFamily:
+            "Arial, Helvetica, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "50px",
+            marginBottom: "10px",
+          }}
+        >
+          🔓
+        </div>
+
+        <h2
+          style={{
+            margin: "5px 0",
+            color: "#15803d",
+          }}
+        >
+          Test Series Unlocked
+        </h2>
+
+        <p
+          style={{
+            fontSize: "17px",
+            margin: "10px 0",
+          }}
+        >
+          <strong>{seriesName}</strong>
+        </p>
+
+        <p
+          style={{
+            color: "#166534",
+            margin: 0,
+          }}
+        >
+          ✅ इस Exam के सभी Tests अब आपके लिए
+          Unlock हैं।
+        </p>
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------
+  // Purchase UI
   // -----------------------------------------------------
 
   return (
     <div
       style={{
         width: "100%",
-        maxWidth: "900px",
+        maxWidth: "600px",
         margin: "20px auto",
         padding: "20px",
         boxSizing: "border-box",
@@ -207,16 +169,23 @@ export default function Subscription({
       <div
         style={{
           textAlign: "center",
-          marginBottom: "25px",
+          marginBottom: "20px",
         }}
       >
-        <h2
+        <div
           style={{
-            margin: 0,
-            fontSize: "28px",
+            fontSize: "45px",
           }}
         >
-          📚 Test Series Plans
+          🔒
+        </div>
+
+        <h2
+          style={{
+            margin: "5px 0",
+          }}
+        >
+          {seriesName}
         </h2>
 
         <p
@@ -225,243 +194,112 @@ export default function Subscription({
             marginTop: "8px",
           }}
         >
-          365 दिन की Validity
+          Test 1 FREE है। बाकी सभी Tests
+          Unlock करने के लिए एक बार ₹19 भुगतान करें।
         </p>
       </div>
 
-      {/* Active Subscription */}
-
-      {active && (
-        <div
-          style={{
-            marginBottom: "25px",
-            padding: "18px",
-            borderRadius: "14px",
-            background: "#ecfdf5",
-            border: "1px solid #86efac",
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-            }}
-          >
-            ✅ आपका Subscription Active है
-          </h3>
-
-          <p>
-            Plan:{" "}
-            <strong>
-              {currentSubscription.plan ===
-              "combo"
-                ? "Complete Combo"
-                : "Single Test Series"}
-            </strong>
-          </p>
-
-          {currentSubscription.plan ===
-            "single" && (
-            <p>
-              Test Series:{" "}
-              <strong>
-                {currentSubscription.seriesName ||
-                  seriesName}
-              </strong>
-            </p>
-          )}
-
-          <p>
-            Expiry Date:{" "}
-            <strong>
-              {formatDate(
-                currentSubscription.expiryDate
-              )}
-            </strong>
-          </p>
-
-          <p>
-            Remaining:{" "}
-            <strong>
-              {remainingDays} दिन
-            </strong>
-          </p>
-        </div>
-      )}
-
-      {/* Plans */}
+      {/* Plan */}
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "20px",
+          border: "2px solid #2563eb",
+          borderRadius: "20px",
+          padding: "25px",
+          background: "#fff",
+          boxShadow:
+            "0 8px 25px rgba(0,0,0,0.10)",
         }}
       >
-        {/* SINGLE ₹49 */}
+        <div
+          style={{
+            display: "inline-block",
+            padding: "6px 12px",
+            borderRadius: "20px",
+            background: "#dbeafe",
+            color: "#1d4ed8",
+            fontSize: "13px",
+            fontWeight: "800",
+          }}
+        >
+          ⭐ ONE TIME PAYMENT
+        </div>
+
+        <h3
+          style={{
+            marginTop: "15px",
+            fontSize: "21px",
+          }}
+        >
+          📚 Complete {seriesName}
+        </h3>
 
         <div
           style={{
-            border: "1px solid #ddd",
-            borderRadius: "18px",
-            padding: "25px",
-            background: "#fff",
-            boxShadow:
-              "0 5px 20px rgba(0,0,0,0.08)",
+            fontSize: "42px",
+            fontWeight: "900",
+            margin: "15px 0",
+            color: "#2563eb",
           }}
         >
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "700",
-              marginBottom: "10px",
-            }}
-          >
-            📖 Single Test Series
-          </div>
-
-          <div
-            style={{
-              fontSize: "34px",
-              fontWeight: "800",
-              margin: "15px 0",
-            }}
-          >
-            ₹49
-          </div>
-
-          <p>✓ केवल चुनी हुई Test Series</p>
-          <p>✓ सभी उपलब्ध Tests</p>
-          <p>✓ Validity: 365 दिन</p>
-          <p>✓ 365 दिन बाद ₹49 Renewal</p>
-
-          <button
-            onClick={() =>
-              handlePurchase(
-                SUBSCRIPTION_PLANS.SINGLE
-              )
-            }
-            style={{
-              width: "100%",
-              marginTop: "15px",
-              padding: "14px",
-              border: "none",
-              borderRadius: "10px",
-              background: "#2563eb",
-              color: "#fff",
-              fontSize: "16px",
-              fontWeight: "700",
-              cursor: "pointer",
-            }}
-          >
-            🔓 Buy ₹49
-          </button>
+          ₹19
         </div>
-
-        {/* COMBO ₹599 */}
 
         <div
           style={{
-            border: "2px solid #f59e0b",
-            borderRadius: "18px",
-            padding: "25px",
-            background: "#fff",
-            boxShadow:
-              "0 7px 25px rgba(0,0,0,0.10)",
+            lineHeight: "1.9",
+            color: "#374151",
           }}
         >
-          <div
-            style={{
-              display: "inline-block",
-              padding: "5px 10px",
-              borderRadius: "20px",
-              background: "#fef3c7",
-              fontSize: "13px",
-              fontWeight: "700",
-              marginBottom: "10px",
-            }}
-          >
-            ⭐ BEST VALUE
-          </div>
-
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "700",
-            }}
-          >
-            🏆 Complete Test Series Combo
-          </div>
-
-          <div
-            style={{
-              fontSize: "34px",
-              fontWeight: "800",
-              margin: "15px 0",
-            }}
-          >
-            ₹599
-          </div>
-
-          <p>✓ सभी Exams की Test Series</p>
-          <p>✓ सभी उपलब्ध Tests</p>
-          <p>✓ Validity: 365 दिन</p>
-          <p>✓ 365 दिन बाद ₹599 Renewal</p>
-
-          <button
-            onClick={() =>
-              handlePurchase(
-                SUBSCRIPTION_PLANS.COMBO
-              )
-            }
-            style={{
-              width: "100%",
-              marginTop: "15px",
-              padding: "14px",
-              border: "none",
-              borderRadius: "10px",
-              background: "#f59e0b",
-              color: "#111",
-              fontSize: "16px",
-              fontWeight: "800",
-              cursor: "pointer",
-            }}
-          >
-            🏆 Buy Complete Combo ₹599
-          </button>
+          <p>✓ Test 1 पहले से FREE</p>
+          <p>✓ Test 2, 3, 4... सभी Unlock</p>
+          <p>✓ इसी Exam के सभी उपलब्ध Tests</p>
+          <p>✓ एक बार ₹19 Payment</p>
+          <p>✓ कोई Monthly Subscription नहीं</p>
+          <p>✓ कोई 365 दिन Expiry नहीं</p>
         </div>
+
+        <button
+          type="button"
+          onClick={handlePurchase}
+          style={{
+            width: "100%",
+            marginTop: "15px",
+            padding: "15px",
+            border: "none",
+            borderRadius: "12px",
+            background: "#2563eb",
+            color: "#fff",
+            fontSize: "18px",
+            fontWeight: "800",
+            cursor: "pointer",
+          }}
+        >
+          🔓 ₹19 में सभी Tests Unlock करें
+        </button>
       </div>
 
-      {/* Renewal Information */}
+      {/* Information */}
 
       <div
         style={{
-          marginTop: "25px",
-          padding: "16px",
+          marginTop: "18px",
+          padding: "15px",
           borderRadius: "12px",
-          background: "#f3f4f6",
-          color: "#444",
+          background: "#f8fafc",
+          border: "1px solid #e2e8f0",
           fontSize: "14px",
-          lineHeight: "1.6",
+          lineHeight: "1.7",
+          color: "#475569",
         }}
       >
-        <strong>📅 Renewal नियम:</strong>
-
+        <strong>ℹ️ ध्यान दें:</strong>
         <br />
-
-        ₹49 Single Test Series का access
-        365 दिनों तक रहेगा।
-
+        ₹19 का Payment केवल इस Exam की Test
+        Series को Unlock करेगा।
         <br />
-
-        ₹599 Complete Combo का access
-        365 दिनों तक रहेगा।
-
-        <br />
-
-        365 दिन पूरे होने के बाद access
-        automatically expire होगा और
-        renewal करना पड़ेगा।
+        दूसरे Exam को Unlock करने के लिए उस
+        Exam के लिए अलग से ₹19 देना होगा।
       </div>
     </div>
   );
