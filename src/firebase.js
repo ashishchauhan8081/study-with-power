@@ -1,22 +1,30 @@
-﻿import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  GoogleAuthProvider,
+} from "firebase/auth";
+
+// ===============================
+// FIREBASE CONFIG
+// ===============================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBjZBoiZ1vgnvixt6U_KqcQXlyEr-2ofKU",
-  authDomain: "study-with-power-f6914.firebaseapp.com",
-  projectId: "study-with-power-f6914",
-  storageBucket: "study-with-power-f6914.firebasestorage.app",
-  messagingSenderId: "26217270395",
-  appId: "1:26217270395:web:322ab200fc64110fda26de"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.firebasestorage.app",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
 };
+
+// ===============================
+// INITIALIZE FIREBASE
+// ===============================
 
 const app = initializeApp(firebaseConfig);
 
+// Firebase Authentication
 export const auth = getAuth(app);
+
+// Google Login
 export const googleProvider = new GoogleAuthProvider();
-
-googleProvider.setCustomParameters({
-  prompt: "select_account"
-});
-
-export default app;
