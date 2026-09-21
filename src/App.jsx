@@ -1,19 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+
 import "./App.css";
 
 import TestSeries from "./TestSeries";
 import HelpChat from "./HelpChat";
 import Login from "./Login";
-import AdminPanel from "./pages/AdminPanel";
+import AdminLogin from "./AdminLogin";
+import AdminPanel from "./AdminPanel";
 
-import {
-  getAuth,
-  onAuthStateChanged,
-} from "firebase/auth";
-
-const ADMIN_EMAIL = "cciashish@gmail.com";
-
-const auth = getAuth();
+// ======================================================
+// EXAMS
+// ======================================================
 
 const exams = [
   {
@@ -90,6 +87,10 @@ const exams = [
   },
 ];
 
+// ======================================================
+// SHORTCUTS
+// ======================================================
+
 const shortcuts = [
   {
     icon: "📖",
@@ -113,123 +114,36 @@ const shortcuts = [
   },
 ];
 
-function App() {
-  // ==================================================
-  // MENU
-  // ==================================================
+// ======================================================
+// APP
+// ======================================================
 
+function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ==================================================
-  // SELECTED EXAM
-  // ==================================================
-
-  const [selectedExam, setSelectedExam] = useState(null);
-
-  // ==================================================
-  // LOGIN PAGE
-  // ==================================================
-
-  const [showLogin, setShowLogin] = useState(false);
-
-  // ==================================================
-  // ADMIN PANEL
-  // ==================================================
-
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-
-  const [adminRequested, setAdminRequested] =
-    useState(false);
-
-  // ==================================================
-  // CURRENT FIREBASE USER
-  // ==================================================
-
-  const [currentUser, setCurrentUser] =
+  // Selected exam
+  const [selectedExam, setSelectedExam] =
     useState(null);
 
-  // ==================================================
-  // FIREBASE AUTH LISTENER
-  // ==================================================
+  // User Login
+  const [showLogin, setShowLogin] =
+    useState(false);
 
-  useEffect(() => {
-    const unsubscribe =
-      onAuthStateChanged(
-        auth,
-        (user) => {
-          setCurrentUser(user);
+  // Admin Login
+  const [showAdminLogin, setShowAdminLogin] =
+    useState(false);
 
-          // ==========================================
-          // ADMIN LOGIN SUCCESS
-          // ==========================================
+  // Admin Panel
+  const [showAdminPanel, setShowAdminPanel] =
+    useState(false);
 
-          if (
-            user &&
-            user.email === ADMIN_EMAIL &&
-            adminRequested
-          ) {
-            setShowLogin(false);
-            setShowAdminPanel(true);
-          }
-        }
-      );
+  // Admin User
+  const [adminUser, setAdminUser] =
+    useState(null);
 
-    return () => unsubscribe();
-  }, [adminRequested]);
-
-  // ==================================================
-  // OPEN ADMIN PANEL
-  // ==================================================
-
-  const openAdminPanel = () => {
-    setMenuOpen(false);
-
-    setAdminRequested(true);
-
-    // Already logged in as admin
-    if (
-      currentUser &&
-      currentUser.email === ADMIN_EMAIL
-    ) {
-      setShowAdminPanel(true);
-      setShowLogin(false);
-      return;
-    }
-
-    // Login required
-    setShowLogin(true);
-  };
-
-  // ==================================================
-  // CLOSE ADMIN PANEL
-  // ==================================================
-
-  const closeAdminPanel = () => {
-    setShowAdminPanel(false);
-    setAdminRequested(false);
-  };
-
-  // ==================================================
-  // OPEN LOGIN
-  // ==================================================
-
-  const openLogin = () => {
-    setShowLogin(true);
-    setMenuOpen(false);
-  };
-
-  // ==================================================
-  // CLOSE LOGIN
-  // ==================================================
-
-  const closeLogin = () => {
-    setShowLogin(false);
-    setAdminRequested(false);
-  };
-
-  // ==================================================
-  // SELECT EXAM
-  // ==================================================
+  // ====================================================
+  // EXAM CLICK
+  // ====================================================
 
   const handleExamClick = (exam) => {
     setSelectedExam(exam.name);
@@ -241,9 +155,9 @@ function App() {
     });
   };
 
-  // ==================================================
-  // BACK TO HOME
-  // ==================================================
+  // ====================================================
+  // BACK
+  // ====================================================
 
   const handleBack = () => {
     setSelectedExam(null);
@@ -257,9 +171,9 @@ function App() {
     }, 100);
   };
 
-  // ==================================================
+  // ====================================================
   // START EXAM
-  // ==================================================
+  // ====================================================
 
   const startExam = () => {
     document
@@ -269,34 +183,81 @@ function App() {
       });
   };
 
-  // ==================================================
+  // ====================================================
+  // ADMIN LOGIN SUCCESS
+  // ====================================================
+
+  const handleAdminLoginSuccess = (user) => {
+    console.log(
+      "Admin logged in:",
+      user?.email
+    );
+
+    setAdminUser(user);
+
+    setShowAdminLogin(false);
+
+    setShowAdminPanel(true);
+
+    setMenuOpen(false);
+  };
+
+  // ====================================================
+  // ADMIN PANEL CLOSE
+  // ====================================================
+
+  const closeAdminPanel = () => {
+    setShowAdminPanel(false);
+    setAdminUser(null);
+  };
+
+  // ====================================================
+  // ADMIN LOGIN PAGE
+  // ====================================================
+
+  if (showAdminLogin) {
+    return (
+      <AdminLogin
+        onSuccess={
+          handleAdminLoginSuccess
+        }
+        onBack={() =>
+          setShowAdminLogin(false)
+        }
+      />
+    );
+  }
+
+  // ====================================================
   // ADMIN PANEL
-  // ==================================================
+  // ====================================================
 
   if (showAdminPanel) {
     return (
       <AdminPanel
-        user={currentUser}
+        user={adminUser}
         onClose={closeAdminPanel}
       />
     );
   }
 
-  // ==================================================
-  // LOGIN PAGE
-  // ==================================================
+  // ====================================================
+  // USER LOGIN
+  // ====================================================
 
   if (showLogin) {
     return (
       <Login
-        onBack={closeLogin}
+        onBack={() =>
+          setShowLogin(false)
+        }
       />
     );
   }
 
-  // ==================================================
-  // TEST SERIES PAGE
-  // ==================================================
+  // ====================================================
+  // TEST SERIES
+  // ====================================================
 
   if (selectedExam) {
     return (
@@ -307,9 +268,9 @@ function App() {
     );
   }
 
-  // ==================================================
+  // ====================================================
   // HOME PAGE
-  // ==================================================
+  // ====================================================
 
   return (
     <div className="app">
@@ -339,8 +300,6 @@ function App() {
           </div>
 
         </div>
-
-        {/* MENU BUTTON */}
 
         <button
           className="menu-btn"
@@ -375,7 +334,6 @@ function App() {
             });
 
             setMenuOpen(false);
-
           }}
         >
           🏠 Home
@@ -390,30 +348,41 @@ function App() {
             startExam();
 
             setMenuOpen(false);
-
           }}
         >
           📄 Exam Test
         </button>
 
-        {/* LOGIN */}
+        {/* USER LOGIN */}
 
         <button
-          className="nav-item"
-          onClick={openLogin}
+          className="nav-profile"
+          onClick={() => {
+
+            setShowLogin(true);
+
+            setMenuOpen(false);
+
+          }}
+          title="User Login"
         >
-          👤 Login
+          👤
         </button>
 
-        {/* ==================================================
-            ADMIN PANEL
-        ================================================== */}
+        {/* ADMIN LOGIN */}
 
         <button
-          className="nav-item admin-menu-btn"
-          onClick={openAdminPanel}
+          className="nav-admin"
+          onClick={() => {
+
+            setShowAdminLogin(true);
+
+            setMenuOpen(false);
+
+          }}
+          title="Admin Login"
         >
-          🔐 Admin Panel
+          🔐 Admin
         </button>
 
       </nav>
