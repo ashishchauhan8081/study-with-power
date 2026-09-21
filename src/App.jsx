@@ -1,12 +1,50 @@
-import React, { useState } from "react";
-
+import React, { useEffect, useState } from "react";
 import "./App.css";
 
 import TestSeries from "./TestSeries";
 import HelpChat from "./HelpChat";
 import Login from "./Login";
-import AdminLogin from "./AdminLogin";
-import AdminPanel from "./AdminPanel";
+
+import AdminLogin from "./admin/AdminLogin";
+import AdminPanel from "./admin/AdminPanel";
+
+// ======================================================
+// FIREBASE
+// ======================================================
+
+import {
+  getApps,
+  getApp,
+  initializeApp,
+} from "firebase/app";
+
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "firebase/auth";
+
+import firebaseConfig from "./firebase-config.json";
+
+// ======================================================
+// FIREBASE INITIALIZE
+// ======================================================
+
+const firebaseApp = getApps().length
+  ? getApp()
+  : initializeApp({
+      ...firebaseConfig,
+      databaseURL:
+        firebaseConfig.databaseURL ||
+        "https://study-with-power-f6914-default-rtdb.asia-southeast1.firebasedatabase.app",
+    });
+
+const auth = getAuth(firebaseApp);
+
+// ======================================================
+// ADMIN EMAIL
+// ======================================================
+
+const ADMIN_EMAIL = "cciashish@gmail.com";
 
 // ======================================================
 // EXAMS
@@ -19,66 +57,77 @@ const exams = [
     icon: "🇮🇳",
     desc: "UPSC Civil Services परीक्षा स्तर",
   },
+
   {
     id: "uppcs",
     name: "UPPCS",
     icon: "🏛️",
     desc: "UPPCS परीक्षा स्तर",
   },
+
   {
     id: "uppet",
     name: "UP PET",
     icon: "🎯",
     desc: "UP PET परीक्षा स्तर",
   },
+
   {
     id: "bpsc",
     name: "BPSC",
     icon: "🏛️",
     desc: "BPSC परीक्षा स्तर",
   },
+
   {
     id: "mppsc",
     name: "MPPSC",
     icon: "📚",
     desc: "MPPSC परीक्षा स्तर",
   },
+
   {
     id: "ssc",
     name: "SSC",
     icon: "📝",
     desc: "SSC परीक्षा स्तर",
   },
+
   {
     id: "railway",
     name: "Railway",
     icon: "🚆",
     desc: "Railway / RRB परीक्षा स्तर",
   },
+
   {
     id: "banking",
     name: "Banking",
     icon: "🏦",
     desc: "Banking परीक्षा स्तर",
   },
+
   {
     id: "upsssc",
     name: "UPSSSC",
     icon: "📖",
     desc: "UPSSSC परीक्षा स्तर",
   },
+
   {
     id: "roaro",
     name: "RO/ARO",
     icon: "📜",
     desc: "RO / ARO परीक्षा स्तर",
   },
+
   {
     id: "police",
     name: "Police",
     icon: "👮",
     desc: "Police परीक्षा स्तर",
   },
+
   {
     id: "teaching",
     name: "Teaching",
@@ -97,16 +146,19 @@ const shortcuts = [
     title: "NCERT Books",
     subtitle: "कक्षा 6 से 12 तक",
   },
+
   {
     icon: "📰",
     title: "Current Affairs",
     subtitle: "प्रतिदिन अपडेट",
   },
+
   {
     icon: "☑️",
     title: "MCQ Practice",
     subtitle: "विषयवार अभ्यास",
   },
+
   {
     icon: "📊",
     title: "Previous Year",
@@ -119,27 +171,83 @@ const shortcuts = [
 // ======================================================
 
 function App() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  // ====================================================
+  // MENU
+  // ====================================================
 
-  // Selected exam
+  const [menuOpen, setMenuOpen] =
+    useState(false);
+
+  // ====================================================
+  // SELECTED EXAM
+  // ====================================================
+
   const [selectedExam, setSelectedExam] =
     useState(null);
 
-  // User Login
+  // ====================================================
+  // NORMAL LOGIN
+  // ====================================================
+
   const [showLogin, setShowLogin] =
     useState(false);
 
-  // Admin Login
+  // ====================================================
+  // ADMIN LOGIN
+  // ====================================================
+
   const [showAdminLogin, setShowAdminLogin] =
     useState(false);
 
-  // Admin Panel
+  // ====================================================
+  // ADMIN PANEL
+  // ====================================================
+
   const [showAdminPanel, setShowAdminPanel] =
     useState(false);
 
-  // Admin User
-  const [adminUser, setAdminUser] =
+  // ====================================================
+  // FIREBASE USER
+  // ====================================================
+
+  const [currentUser, setCurrentUser] =
     useState(null);
+
+  const [authLoading, setAuthLoading] =
+    useState(true);
+
+  // ====================================================
+  // FIREBASE AUTH LISTENER
+  // ====================================================
+
+  useEffect(() => {
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          setCurrentUser(user);
+          setAuthLoading(false);
+
+          // ------------------------------------------
+          // ADMIN USER LOGIN
+          // ------------------------------------------
+
+          if (
+            user &&
+            user.email === ADMIN_EMAIL
+          ) {
+            // अगर Admin Login से आया है
+            // तो Admin Panel खोल देंगे
+            if (showAdminLogin) {
+              setShowAdminLogin(false);
+              setShowAdminPanel(true);
+            }
+          }
+        }
+      );
+
+    return () => unsubscribe();
+  }, [showAdminLogin]);
 
   // ====================================================
   // EXAM CLICK
@@ -147,6 +255,7 @@ function App() {
 
   const handleExamClick = (exam) => {
     setSelectedExam(exam.name);
+
     setMenuOpen(false);
 
     window.scrollTo({
@@ -156,7 +265,7 @@ function App() {
   };
 
   // ====================================================
-  // BACK
+  // BACK TO HOME
   // ====================================================
 
   const handleBack = () => {
@@ -181,50 +290,71 @@ function App() {
       ?.scrollIntoView({
         behavior: "smooth",
       });
-  };
-
-  // ====================================================
-  // ADMIN LOGIN SUCCESS
-  // ====================================================
-
-  const handleAdminLoginSuccess = (user) => {
-    console.log(
-      "Admin logged in:",
-      user?.email
-    );
-
-    setAdminUser(user);
-
-    setShowAdminLogin(false);
-
-    setShowAdminPanel(true);
 
     setMenuOpen(false);
   };
 
   // ====================================================
-  // ADMIN PANEL CLOSE
+  // OPEN ADMIN
+  // ====================================================
+
+  const openAdmin = () => {
+    setMenuOpen(false);
+
+    // अगर Admin पहले से login है
+    if (
+      currentUser &&
+      currentUser.email === ADMIN_EMAIL
+    ) {
+      setShowAdminPanel(true);
+      setShowAdminLogin(false);
+      return;
+    }
+
+    // नहीं तो Admin Login
+    setShowAdminLogin(true);
+    setShowAdminPanel(false);
+  };
+
+  // ====================================================
+  // CLOSE ADMIN LOGIN
+  // ====================================================
+
+  const closeAdminLogin = () => {
+    setShowAdminLogin(false);
+  };
+
+  // ====================================================
+  // CLOSE ADMIN PANEL
   // ====================================================
 
   const closeAdminPanel = () => {
     setShowAdminPanel(false);
-    setAdminUser(null);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   // ====================================================
-  // ADMIN LOGIN PAGE
+  // AUTH LOADING
   // ====================================================
 
-  if (showAdminLogin) {
+  if (authLoading) {
     return (
-      <AdminLogin
-        onSuccess={
-          handleAdminLoginSuccess
-        }
-        onBack={() =>
-          setShowAdminLogin(false)
-        }
-      />
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "22px",
+          background: "#f4f7fb",
+        }}
+      >
+        ⏳ Loading...
+      </div>
     );
   }
 
@@ -235,22 +365,34 @@ function App() {
   if (showAdminPanel) {
     return (
       <AdminPanel
-        user={adminUser}
+        user={currentUser}
         onClose={closeAdminPanel}
       />
     );
   }
 
   // ====================================================
-  // USER LOGIN
+  // ADMIN LOGIN
+  // ====================================================
+
+  if (showAdminLogin) {
+    return (
+      <AdminLogin
+        onBack={closeAdminLogin}
+      />
+    );
+  }
+
+  // ====================================================
+  // NORMAL USER LOGIN
   // ====================================================
 
   if (showLogin) {
     return (
       <Login
-        onBack={() =>
-          setShowLogin(false)
-        }
+        onBack={() => {
+          setShowLogin(false);
+        }}
       />
     );
   }
@@ -306,6 +448,7 @@ function App() {
           onClick={() =>
             setMenuOpen(!menuOpen)
           }
+          aria-label="Menu"
         >
           ☰
         </button>
@@ -344,54 +487,46 @@ function App() {
         <button
           className="nav-item"
           onClick={() => {
-
             startExam();
-
-            setMenuOpen(false);
           }}
         >
           📄 Exam Test
         </button>
 
-        {/* USER LOGIN */}
+        {/* LOGIN */}
 
         <button
-          className="nav-profile"
+          className="nav-item"
           onClick={() => {
 
             setShowLogin(true);
-
             setMenuOpen(false);
 
           }}
-          title="User Login"
         >
-          👤
+          👤 Login
         </button>
 
-        {/* ADMIN LOGIN */}
+        {/* ADMIN */}
 
         <button
-          className="nav-admin"
-          onClick={() => {
-
-            setShowAdminLogin(true);
-
-            setMenuOpen(false);
-
-          }}
-          title="Admin Login"
+          className="nav-item"
+          onClick={openAdmin}
         >
-          🔐 Admin
+          🔐 Admin Panel
         </button>
 
       </nav>
 
       {/* ==================================================
-          HERO
+          MAIN
       ================================================== */}
 
       <main>
+
+        {/* ==================================================
+            HERO
+        ================================================== */}
 
         <section className="hero">
 
@@ -427,6 +562,8 @@ function App() {
             </button>
 
           </div>
+
+          {/* HERO IMAGE */}
 
           <div className="hero-image">
 
@@ -524,7 +661,9 @@ function App() {
               (exam, index) => (
 
                 <div
-                  className={`exam-card card-${index % 6}`}
+                  className={`exam-card card-${
+                    index % 6
+                  }`}
                   key={exam.id}
                 >
 
@@ -543,7 +682,9 @@ function App() {
                   <button
                     className="view-btn"
                     onClick={() =>
-                      handleExamClick(exam)
+                      handleExamClick(
+                        exam
+                      )
                     }
                   >
                     View Tests →
@@ -564,8 +705,10 @@ function App() {
 
         <section className="promo">
 
-          ⭐ Study Smart&nbsp; | &nbsp;
-          Practice Daily&nbsp; | &nbsp;
+          ⭐ Study Smart
+          &nbsp; | &nbsp;
+          Practice Daily
+          &nbsp; | &nbsp;
           Crack Your Dream
 
         </section>
