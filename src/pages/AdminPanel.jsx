@@ -46,10 +46,10 @@ const auth = getAuth(firebaseApp);
 const ADMIN_EMAIL = "cciashish@gmail.com";
 
 // ======================================================
-// EXAMS
+// DEFAULT EXAMS
 // ======================================================
 
-const exams = [
+const defaultExams = [
   { id: "upsc", name: "UPSC", icon: "🇮🇳" },
   { id: "uppcs", name: "UPPCS", icon: "🏛️" },
   { id: "uppet", name: "UP PET", icon: "🎯" },
@@ -65,7 +65,7 @@ const exams = [
 ];
 
 // ======================================================
-// DEFAULT QUESTION
+// QUESTION
 // ======================================================
 
 function createQuestion(id = 1) {
@@ -89,20 +89,40 @@ export default function AdminPanel({
   resources = [],
   onClose,
 }) {
-  const [currentUser, setCurrentUser] =
-    useState(user || null);
+  // ====================================================
+  // USER
+  // ====================================================
 
-  const [authChecking, setAuthChecking] =
-    useState(!user);
+  const [currentUser, setCurrentUser] = useState(
+    user || null
+  );
 
-  const [cloudTests, setCloudTests] =
-    useState(tests || {});
+  const [authChecking, setAuthChecking] = useState(
+    !user
+  );
+
+  // ====================================================
+  // FIREBASE DATA
+  // ====================================================
+
+  const [cloudTests, setCloudTests] = useState(
+    tests || {}
+  );
 
   const [siteResources, setSiteResources] =
     useState(resources || []);
 
+  const [cloudExams, setCloudExams] = useState({});
+
   // ====================================================
-  // TEST SETTINGS
+  // ACTIVE SECTION
+  // ====================================================
+
+  const [activeSection, setActiveSection] =
+    useState("tests");
+
+  // ====================================================
+  // EXAM SETTINGS
   // ====================================================
 
   const [selectedExam, setSelectedExam] =
@@ -124,6 +144,28 @@ export default function AdminPanel({
     useState(0);
 
   // ====================================================
+  // NEW EXAM
+  // ====================================================
+
+  const [newExamName, setNewExamName] =
+    useState("");
+
+  const [newExamIcon, setNewExamIcon] =
+    useState("📝");
+
+  const [newExamTotalTests, setNewExamTotalTests] =
+    useState(10);
+
+  const [newExamFreeTests, setNewExamFreeTests] =
+    useState(2);
+
+  const [newExamPremiumPrice, setNewExamPremiumPrice] =
+    useState(99);
+
+  const [addingExam, setAddingExam] =
+    useState(false);
+
+  // ====================================================
   // QUESTIONS
   // ====================================================
 
@@ -136,9 +178,6 @@ export default function AdminPanel({
   // ====================================================
   // UI
   // ====================================================
-
-  const [activeSection, setActiveSection] =
-    useState("tests");
 
   const [saving, setSaving] =
     useState(false);
@@ -168,24 +207,47 @@ export default function AdminPanel({
   // ====================================================
 
   useEffect(() => {
-    const testsRef =
-      ref(db, "tests");
+    const testsRef = ref(db, "tests");
 
-    const unsubscribe =
-      onValue(
-        testsRef,
-        (snapshot) => {
-          setCloudTests(
-            snapshot.val() || {}
-          );
-        },
-        (error) => {
-          console.error(
-            "Exam Test load error:",
-            error
-          );
-        }
-      );
+    const unsubscribe = onValue(
+      testsRef,
+      (snapshot) => {
+        setCloudTests(
+          snapshot.val() || {}
+        );
+      },
+      (error) => {
+        console.error(
+          "Exam Test load error:",
+          error
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // ====================================================
+  // LOAD EXAMS
+  // ====================================================
+
+  useEffect(() => {
+    const examsRef = ref(db, "exams");
+
+    const unsubscribe = onValue(
+      examsRef,
+      (snapshot) => {
+        setCloudExams(
+          snapshot.val() || {}
+        );
+      },
+      (error) => {
+        console.error(
+          "Exam load error:",
+          error
+        );
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -195,44 +257,54 @@ export default function AdminPanel({
   // ====================================================
 
   useEffect(() => {
-    const resourceRef =
-      ref(
-        db,
-        "siteContent/resources"
-      );
+    const resourceRef = ref(
+      db,
+      "siteContent/resources"
+    );
 
-    const unsubscribe =
-      onValue(
-        resourceRef,
-        (snapshot) => {
-          const value =
-            snapshot.val();
+    const unsubscribe = onValue(
+      resourceRef,
+      (snapshot) => {
+        const value =
+          snapshot.val();
 
-          if (
-            Array.isArray(value)
-          ) {
-            setSiteResources(value);
-          } else if (
-            value &&
-            typeof value === "object"
-          ) {
-            setSiteResources(
-              Object.values(value)
-            );
-          } else {
-            setSiteResources([]);
-          }
-        },
-        (error) => {
-          console.error(
-            "Resources load error:",
-            error
+        if (Array.isArray(value)) {
+          setSiteResources(value);
+        } else if (
+          value &&
+          typeof value === "object"
+        ) {
+          setSiteResources(
+            Object.values(value)
           );
+        } else {
+          setSiteResources([]);
         }
-      );
+      },
+      (error) => {
+        console.error(
+          "Resources load error:",
+          error
+        );
+      }
+    );
 
     return () => unsubscribe();
   }, []);
+
+  // ====================================================
+  // ALL EXAMS
+  // ====================================================
+
+  const allExams = [
+    ...defaultExams,
+    ...Object.values(cloudExams || {}),
+  ].filter(
+    (exam, index, array) =>
+      array.findIndex(
+        (x) => x.id === exam.id
+      ) === index
+  );
 
   // ====================================================
   // AUTH CHECK
@@ -289,14 +361,250 @@ export default function AdminPanel({
 
   const getExamName = (id) => {
     return (
-      exams.find(
+      allExams.find(
         (exam) => exam.id === id
       )?.name || id
     );
   };
 
   // ====================================================
-  // RESET
+  // NEW EXAM ID
+  // ====================================================
+
+  const makeExamId = (name) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(
+        /[^a-z0-9\u0900-\u097F]+/gi,
+        "_"
+      )
+      .replace(
+        /^_+|_+$/g,
+        ""
+      );
+  };
+
+  // ====================================================
+  // ADD NEW EXAM
+  // ====================================================
+
+  const addNewExam = async () => {
+    const name =
+      newExamName.trim();
+
+    const total =
+      Number(newExamTotalTests);
+
+    const free =
+      Number(newExamFreeTests);
+
+    const price =
+      Number(newExamPremiumPrice);
+
+    if (!name) {
+      alert(
+        "Exam Name डालें।"
+      );
+      return;
+    }
+
+    if (!total || total < 1) {
+      alert(
+        "Total Tests सही डालें।"
+      );
+      return;
+    }
+
+    if (
+      free < 0 ||
+      free > total
+    ) {
+      alert(
+        "Free Tests, Total Tests से अधिक नहीं हो सकते।"
+      );
+      return;
+    }
+
+    if (
+      free < total &&
+      price < 0
+    ) {
+      alert(
+        "Premium Price सही डालें।"
+      );
+      return;
+    }
+
+    const id =
+      makeExamId(name);
+
+    if (!id) {
+      alert(
+        "Exam Name सही डालें।"
+      );
+      return;
+    }
+
+    const alreadyExists =
+      allExams.some(
+        (exam) =>
+          exam.id === id
+      );
+
+    if (alreadyExists) {
+      alert(
+        "यह Exam पहले से मौजूद है।"
+      );
+      return;
+    }
+
+    try {
+      setAddingExam(true);
+
+      const examData = {
+        id,
+        name,
+        icon:
+          newExamIcon.trim() ||
+          "📝",
+
+        totalTests: total,
+
+        freeTests: free,
+
+        premiumTests:
+          Math.max(
+            0,
+            total - free
+          ),
+
+        premiumPrice:
+          price,
+
+        createdAt:
+          Date.now(),
+
+        createdBy:
+          currentUser?.email ||
+          ADMIN_EMAIL,
+      };
+
+      await set(
+        ref(
+          db,
+          `exams/${id}`
+        ),
+        examData
+      );
+
+      setCloudExams(
+        (old) => ({
+          ...old,
+          [id]: examData,
+        })
+      );
+
+      setSelectedExam(id);
+
+      setNewExamName("");
+      setNewExamIcon("📝");
+      setNewExamTotalTests(10);
+      setNewExamFreeTests(2);
+      setNewExamPremiumPrice(99);
+
+      setMessage(
+        `✅ ${name} Exam successfully add हो गया।`
+      );
+
+      alert(
+        `✅ ${name} Exam add हो गया।`
+      );
+    } catch (error) {
+      console.error(
+        "Add exam error:",
+        error
+      );
+
+      alert(
+        "❌ Exam add नहीं हुआ:\n" +
+          error.message
+      );
+    } finally {
+      setAddingExam(false);
+    }
+  };
+
+  // ====================================================
+  // DELETE CUSTOM EXAM
+  // ====================================================
+
+  const deleteExam = async (
+    exam
+  ) => {
+    if (
+      defaultExams.some(
+        (x) =>
+          x.id === exam.id
+      )
+    ) {
+      alert(
+        "Default Exam को इस panel से delete नहीं किया जा सकता।"
+      );
+      return;
+    }
+
+    const ok =
+      window.confirm(
+        `${exam.name} Exam delete करें?`
+      );
+
+    if (!ok) return;
+
+    try {
+      await remove(
+        ref(
+          db,
+          `exams/${exam.id}`
+        )
+      );
+
+      setCloudExams(
+        (old) => {
+          const copy = {
+            ...old,
+          };
+
+          delete copy[
+            exam.id
+          ];
+
+          return copy;
+        }
+      );
+
+      if (
+        selectedExam ===
+        exam.id
+      ) {
+        setSelectedExam(
+          "uppcs"
+        );
+      }
+
+      alert(
+        "✅ Exam delete हो गया।"
+      );
+    } catch (error) {
+      alert(
+        "❌ Exam delete error:\n" +
+          error.message
+      );
+    }
+  };
+
+  // ====================================================
+  // RESET TEST
   // ====================================================
 
   const resetTestForm = () => {
@@ -324,17 +632,26 @@ export default function AdminPanel({
   // LOAD TEST
   // ====================================================
 
-  const loadTest = (id, test) => {
+  const loadTest = (
+    id,
+    test
+  ) => {
     if (!test) return;
 
-    setActiveSection("tests");
+    setActiveSection(
+      "tests"
+    );
 
     setSelectedExam(
-      test.exam || "uppcs"
+      test.exam ||
+        "uppcs"
     );
 
     setTestNumber(
-      Number(test.testNumber || 1)
+      Number(
+        test.testNumber ||
+          1
+      )
     );
 
     setTestTitle(
@@ -342,26 +659,40 @@ export default function AdminPanel({
     );
 
     setTestStatus(
-      test.status || "draft"
+      test.status ||
+        "draft"
     );
 
     setTestDuration(
-      Number(test.duration || 30)
+      Number(
+        test.duration ||
+          30
+      )
     );
 
     setTestPrice(
-      Number(test.price || 0)
+      Number(
+        test.price ||
+          0
+      )
     );
 
     const loadedQuestions =
-      Array.isArray(test.questions)
+      Array.isArray(
+        test.questions
+      )
         ? test.questions
         : [];
 
-    if (loadedQuestions.length) {
+    if (
+      loadedQuestions.length
+    ) {
       setQuestions(
         loadedQuestions.map(
-          (q, index) => ({
+          (
+            q,
+            index
+          ) => ({
             id:
               q?.id ??
               index + 1,
@@ -376,10 +707,14 @@ export default function AdminPanel({
                 q?.options
               )
                 ? [
-                    q.options[0] || "",
-                    q.options[1] || "",
-                    q.options[2] || "",
-                    q.options[3] || "",
+                    q.options[0] ||
+                      "",
+                    q.options[1] ||
+                      "",
+                    q.options[2] ||
+                      "",
+                    q.options[3] ||
+                      "",
                   ]
                 : [
                     "",
@@ -431,7 +766,10 @@ export default function AdminPanel({
   // ====================================================
 
   const addQuestion = () => {
-    if (questions.length >= 150) {
+    if (
+      questions.length >=
+      150
+    ) {
       alert(
         "अधिकतम 150 Questions रख सकते हैं।"
       );
@@ -440,13 +778,16 @@ export default function AdminPanel({
 
     const newQuestion =
       createQuestion(
-        questions.length + 1
+        questions.length +
+          1
       );
 
-    setQuestions((old) => [
-      ...old,
-      newQuestion,
-    ]);
+    setQuestions(
+      (old) => [
+        ...old,
+        newQuestion,
+      ]
+    );
 
     setCurrentQuestion(
       questions.length
@@ -461,17 +802,22 @@ export default function AdminPanel({
     field,
     value
   ) => {
-    setQuestions((old) =>
-      old.map(
-        (q, index) =>
-          index ===
-          currentQuestion
-            ? {
-                ...q,
-                [field]: value,
-              }
-            : q
-      )
+    setQuestions(
+      (old) =>
+        old.map(
+          (
+            q,
+            index
+          ) =>
+            index ===
+            currentQuestion
+              ? {
+                  ...q,
+                  [field]:
+                    value,
+                }
+              : q
+        )
     );
   };
 
@@ -483,30 +829,36 @@ export default function AdminPanel({
     optionIndex,
     value
   ) => {
-    setQuestions((old) =>
-      old.map(
-        (q, index) => {
-          if (
-            index !==
-            currentQuestion
-          ) {
-            return q;
+    setQuestions(
+      (old) =>
+        old.map(
+          (
+            q,
+            index
+          ) => {
+            if (
+              index !==
+              currentQuestion
+            ) {
+              return q;
+            }
+
+            const newOptions =
+              [
+                ...q.options,
+              ];
+
+            newOptions[
+              optionIndex
+            ] = value;
+
+            return {
+              ...q,
+              options:
+                newOptions,
+            };
           }
-
-          const newOptions =
-            [...q.options];
-
-          newOptions[
-            optionIndex
-          ] = value;
-
-          return {
-            ...q,
-            options:
-              newOptions,
-          };
-        }
-      )
+        )
     );
   };
 
@@ -514,369 +866,479 @@ export default function AdminPanel({
   // DELETE QUESTION
   // ====================================================
 
-  const deleteQuestion = () => {
-    if (questions.length === 1) {
-      alert(
-        "कम से कम 1 Question होना चाहिए।"
-      );
-      return;
-    }
+  const deleteQuestion =
+    () => {
+      if (
+        questions.length ===
+        1
+      ) {
+        alert(
+          "कम से कम 1 Question होना चाहिए।"
+        );
+        return;
+      }
 
-    const ok =
-      window.confirm(
-        `Question ${
-          currentQuestion + 1
-        } delete करें?`
-      );
-
-    if (!ok) return;
-
-    const newQuestions =
-      questions
-        .filter(
-          (_, index) =>
-            index !==
-            currentQuestion
-        )
-        .map(
-          (q, index) => ({
-            ...q,
-            id: index + 1,
-          })
+      const ok =
+        window.confirm(
+          `Question ${
+            currentQuestion +
+            1
+          } delete करें?`
         );
 
-    setQuestions(
-      newQuestions
-    );
+      if (!ok) return;
 
-    setCurrentQuestion(
-      (old) =>
-        Math.max(
-          0,
-          Math.min(
-            old,
-            newQuestions.length -
-              1
+      const newQuestions =
+        questions
+          .filter(
+            (
+              _,
+              index
+            ) =>
+              index !==
+              currentQuestion
           )
-        )
-    );
-  };
+          .map(
+            (
+              q,
+              index
+            ) => ({
+              ...q,
+              id:
+                index +
+                1,
+            })
+          );
+
+      setQuestions(
+        newQuestions
+      );
+
+      setCurrentQuestion(
+        (old) =>
+          Math.max(
+            0,
+            Math.min(
+              old,
+              newQuestions.length -
+                1
+            )
+          )
+      );
+    };
 
   // ====================================================
   // VALIDATE
   // ====================================================
 
-  const validateTest = () => {
-    if (!selectedExam) {
-      alert(
-        "Exam select करें।"
-      );
-      return false;
-    }
-
-    if (
-      !Number(testNumber) ||
-      Number(testNumber) < 1
-    ) {
-      alert(
-        "Test Number सही डालें।"
-      );
-      return false;
-    }
-
-    if (!testTitle.trim()) {
-      alert(
-        "Test Title डालें।"
-      );
-      return false;
-    }
-
-    if (!questions.length) {
-      alert(
-        "कम से कम 1 Question डालें।"
-      );
-      return false;
-    }
-
-    for (
-      let i = 0;
-      i < questions.length;
-      i++
-    ) {
-      const q =
-        questions[i];
-
-      if (
-        !String(
-          q.question || ""
-        ).trim()
-      ) {
+  const validateTest =
+    () => {
+      if (!selectedExam) {
         alert(
-          `Question ${
-            i + 1
-          } खाली है।`
+          "Exam select करें।"
         );
-
-        setCurrentQuestion(i);
         return false;
       }
 
       if (
-        !Array.isArray(
-          q.options
+        !Number(
+          testNumber
         ) ||
-        q.options.length !== 4 ||
-        q.options.some(
-          (option) =>
-            !String(
-              option || ""
-            ).trim()
-        )
+        Number(
+          testNumber
+        ) < 1
       ) {
         alert(
-          `Question ${
-            i + 1
-          } के सभी 4 options भरें।`
+          "Test Number सही डालें।"
         );
-
-        setCurrentQuestion(i);
         return false;
       }
 
       if (
-        !Number.isInteger(
-          Number(q.answer)
-        ) ||
-        Number(q.answer) < 0 ||
-        Number(q.answer) > 3
+        !testTitle.trim()
       ) {
         alert(
-          `Question ${
-            i + 1
-          } का सही उत्तर select करें।`
+          "Test Title डालें।"
         );
-
-        setCurrentQuestion(i);
         return false;
       }
-    }
 
-    return true;
-  };
+      if (
+        !questions.length
+      ) {
+        alert(
+          "कम से कम 1 Question डालें।"
+        );
+        return false;
+      }
+
+      for (
+        let i = 0;
+        i <
+        questions.length;
+        i++
+      ) {
+        const q =
+          questions[i];
+
+        if (
+          !String(
+            q.question ||
+              ""
+          ).trim()
+        ) {
+          alert(
+            `Question ${
+              i + 1
+            } खाली है।`
+          );
+
+          setCurrentQuestion(
+            i
+          );
+
+          return false;
+        }
+
+        if (
+          !Array.isArray(
+            q.options
+          ) ||
+          q.options.length !==
+            4 ||
+          q.options.some(
+            (option) =>
+              !String(
+                option ||
+                  ""
+              ).trim()
+          )
+        ) {
+          alert(
+            `Question ${
+              i + 1
+            } के सभी 4 options भरें।`
+          );
+
+          setCurrentQuestion(
+            i
+          );
+
+          return false;
+        }
+
+        if (
+          !Number.isInteger(
+            Number(
+              q.answer
+            )
+          ) ||
+          Number(
+            q.answer
+          ) < 0 ||
+          Number(
+            q.answer
+          ) > 3
+        ) {
+          alert(
+            `Question ${
+              i + 1
+            } का सही उत्तर select करें।`
+          );
+
+          setCurrentQuestion(
+            i
+          );
+
+          return false;
+        }
+      }
+
+      return true;
+    };
 
   // ====================================================
   // SAVE TEST
   // ====================================================
 
-  const saveTest = async () => {
-    if (!validateTest()) {
-      return;
-    }
+  const saveTest =
+    async () => {
+      if (
+        !validateTest()
+      ) {
+        return;
+      }
 
-    try {
-      setSaving(true);
-      setMessage("");
+      try {
+        setSaving(true);
+        setMessage("");
 
-      const id =
-        getTestId();
+        const id =
+          getTestId();
 
-      const cleanQuestions =
-        questions.map(
-          (q, index) => ({
-            id: index + 1,
+        const cleanQuestions =
+          questions.map(
+            (
+              q,
+              index
+            ) => ({
+              id:
+                index +
+                1,
 
-            question:
-              String(
-                q.question || ""
-              ).trim(),
+              question:
+                String(
+                  q.question ||
+                    ""
+                ).trim(),
 
-            options:
-              q.options.map(
-                (option) =>
-                  String(
-                    option || ""
-                  ).trim()
-              ),
+              options:
+                q.options.map(
+                  (
+                    option
+                  ) =>
+                    String(
+                      option ||
+                        ""
+                    ).trim()
+                ),
 
-            answer:
-              Number(q.answer),
+              answer:
+                Number(
+                  q.answer
+                ),
 
-            explanation:
-              String(
-                q.explanation ||
-                  ""
-              ).trim(),
+              explanation:
+                String(
+                  q.explanation ||
+                    ""
+                ).trim(),
 
-            explanationImage:
-              String(
-                q.explanationImage ||
-                  ""
-              ).trim(),
+              explanationImage:
+                String(
+                  q.explanationImage ||
+                    ""
+                ).trim(),
+            })
+          );
+
+        const exam =
+          allExams.find(
+            (x) =>
+              x.id ===
+              selectedExam
+          );
+
+        const examTotal =
+          Number(
+            exam?.totalTests ||
+              0
+          );
+
+        const examFree =
+          Number(
+            exam?.freeTests ||
+              0
+          );
+
+        const automaticType =
+          examTotal > 0
+            ? Number(
+                testNumber
+              ) <=
+              examFree
+              ? "Free"
+              : "Premium"
+            : Number(
+                testPrice
+              ) > 0
+              ? "Premium"
+              : "Free";
+
+        const automaticPrice =
+          automaticType ===
+          "Premium"
+            ? Number(
+                exam?.premiumPrice ||
+                  testPrice ||
+                  0
+              )
+            : 0;
+
+        const testData = {
+          id,
+
+          exam:
+            selectedExam,
+
+          examName:
+            getExamName(
+              selectedExam
+            ),
+
+          testNumber:
+            Number(
+              testNumber
+            ),
+
+          title:
+            testTitle.trim(),
+
+          status:
+            testStatus,
+
+          duration:
+            Number(
+              testDuration
+            ) || 30,
+
+          type:
+            automaticType,
+
+          price:
+            automaticPrice,
+
+          questions:
+            cleanQuestions,
+
+          totalQuestions:
+            cleanQuestions.length,
+
+          updatedAt:
+            Date.now(),
+
+          updatedBy:
+            currentUser?.email ||
+            ADMIN_EMAIL,
+        };
+
+        await set(
+          ref(
+            db,
+            `tests/${id}`
+          ),
+          testData
+        );
+
+        setCloudTests(
+          (old) => ({
+            ...old,
+            [id]:
+              testData,
           })
         );
 
-      const testData = {
-        id,
+        setMessage(
+          `✅ ${testTitle.trim()} successfully save हो गया।`
+        );
 
-        exam:
-          selectedExam,
-
-        examName:
-          getExamName(
-            selectedExam
-          ),
-
-        testNumber:
-          Number(testNumber),
-
-        title:
-          testTitle.trim(),
-
-        status:
-          testStatus,
-
-        duration:
-          Number(testDuration) ||
-          30,
-
-        price:
-          Number(testPrice) ||
-          0,
-
-        questions:
-          cleanQuestions,
-
-        totalQuestions:
-          cleanQuestions.length,
-
-        updatedAt:
-          Date.now(),
-
-        updatedBy:
-          currentUser?.email ||
-          ADMIN_EMAIL,
-      };
-
-      await set(
-        ref(
-          db,
-          `tests/${id}`
-        ),
-        testData
-      );
-
-      setCloudTests(
-        (old) => ({
-          ...old,
-          [id]:
-            testData,
-        })
-      );
-
-      setMessage(
-        `✅ ${testTitle.trim()} successfully save हो गया।`
-      );
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    } catch (error) {
-      console.error(
-        "Save test error:",
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      } catch (
         error
-      );
+      ) {
+        console.error(
+          "Save test error:",
+          error
+        );
 
-      alert(
-        "❌ Test save नहीं हुआ:\n" +
-          error.message
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+        alert(
+          "❌ Test save नहीं हुआ:\n" +
+            error.message
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
 
   // ====================================================
   // DELETE TEST
   // ====================================================
 
-  const deleteTest = async (
-    id,
-    title
-  ) => {
-    const ok =
-      window.confirm(
-        `"${title || id}" को delete करना चाहते हैं?`
-      );
+  const deleteTest =
+    async (
+      id,
+      title
+    ) => {
+      const ok =
+        window.confirm(
+          `"${title || id}" को delete करना चाहते हैं?`
+        );
 
-    if (!ok) return;
+      if (!ok)
+        return;
 
-    try {
-      await remove(
-        ref(
-          db,
-          `tests/${id}`
-        )
-      );
+      try {
+        await remove(
+          ref(
+            db,
+            `tests/${id}`
+          )
+        );
 
-      setCloudTests(
-        (old) => {
-          const copy = {
-            ...old,
-          };
+        setCloudTests(
+          (old) => {
+            const copy = {
+              ...old,
+            };
 
-          delete copy[id];
+            delete copy[
+              id
+            ];
 
-          return copy;
+            return copy;
+          }
+        );
+
+        if (
+          id ===
+          getTestId()
+        ) {
+          resetTestForm();
         }
-      );
 
-      if (
-        id ===
-        getTestId()
-      ) {
-        resetTestForm();
-      }
-
-      alert(
-        "✅ Test delete हो गया।"
-      );
-    } catch (error) {
-      console.error(
-        "Delete test error:",
+        alert(
+          "✅ Test delete हो गया।"
+        );
+      } catch (
         error
-      );
-
-      alert(
-        "❌ Delete error:\n" +
-          error.message
-      );
-    }
-  };
+      ) {
+        alert(
+          "❌ Delete error:\n" +
+            error.message
+        );
+      }
+    };
 
   // ====================================================
-  // RESOURCE ACTIONS
+  // RESOURCES
   // ====================================================
 
-  const updateResource = (
-    index,
-    field,
-    value
-  ) => {
-    setSiteResources(
-      (old) =>
-        old.map(
-          (item, i) =>
-            i === index
-              ? {
-                  ...item,
-                  [field]:
-                    value,
-                }
-              : item
-        )
-    );
-  };
+  const updateResource =
+    (
+      index,
+      field,
+      value
+    ) => {
+      setSiteResources(
+        (old) =>
+          old.map(
+            (
+              item,
+              i
+            ) =>
+              i === index
+                ? {
+                    ...item,
+                    [field]:
+                      value,
+                  }
+                : item
+          )
+      );
+    };
 
   const saveResources =
     async () => {
@@ -894,12 +1356,9 @@ export default function AdminPanel({
         alert(
           "✅ Resources save हो गए।"
         );
-      } catch (error) {
-        console.error(
-          "Resources save error:",
-          error
-        );
-
+      } catch (
+        error
+      ) {
         alert(
           "❌ Resources save error:\n" +
             error.message
@@ -919,10 +1378,12 @@ export default function AdminPanel({
     ).sort(
       (a, b) =>
         Number(
-          a[1]?.testNumber || 0
+          a[1]?.testNumber ||
+            0
         ) -
         Number(
-          b[1]?.testNumber || 0
+          b[1]?.testNumber ||
+            0
         )
     );
 
@@ -932,6 +1393,13 @@ export default function AdminPanel({
     ] ||
     createQuestion(1);
 
+  const selectedExamData =
+    allExams.find(
+      (exam) =>
+        exam.id ===
+        selectedExam
+    );
+
   // ====================================================
   // RENDER
   // ====================================================
@@ -939,7 +1407,9 @@ export default function AdminPanel({
   return (
     <div className="admin-page">
 
-      {/* HEADER */}
+      {/* ==================================================
+          HEADER
+      ================================================== */}
 
       <header className="admin-header">
 
@@ -971,7 +1441,9 @@ export default function AdminPanel({
 
       </header>
 
-      {/* MESSAGE */}
+      {/* ==================================================
+          MESSAGE
+      ================================================== */}
 
       {message && (
         <div className="admin-message">
@@ -979,7 +1451,9 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* TABS */}
+      {/* ==================================================
+          TABS
+      ================================================== */}
 
       <div className="admin-tabs">
 
@@ -1002,6 +1476,22 @@ export default function AdminPanel({
         <button
           className={
             activeSection ===
+            "exams"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setActiveSection(
+              "exams"
+            )
+          }
+        >
+          🎯 Exams
+        </button>
+
+        <button
+          className={
+            activeSection ===
             "resources"
               ? "active"
               : ""
@@ -1018,6 +1508,323 @@ export default function AdminPanel({
       </div>
 
       {/* ==================================================
+          EXAMS SECTION
+      ================================================== */}
+
+      {activeSection ===
+        "exams" && (
+
+        <div className="admin-content">
+
+          {/* ADD NEW EXAM */}
+
+          <div className="admin-card">
+
+            <h2>
+              ➕ New Exam Add करें
+            </h2>
+
+            <p>
+              Exam बनाते समय ही Total,
+              Free और Premium Test सेट करें।
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(220px,1fr))",
+                gap: "15px",
+                marginTop: "20px",
+              }}
+            >
+
+              <div>
+                <label>
+                  Exam Name
+                </label>
+
+                <input
+                  value={
+                    newExamName
+                  }
+                  onChange={(e) =>
+                    setNewExamName(
+                      e.target.value
+                    )
+                  }
+                  placeholder="जैसे SSC CGL"
+                />
+              </div>
+
+              <div>
+                <label>
+                  Exam Icon
+                </label>
+
+                <input
+                  value={
+                    newExamIcon
+                  }
+                  onChange={(e) =>
+                    setNewExamIcon(
+                      e.target.value
+                    )
+                  }
+                  placeholder="📝"
+                />
+              </div>
+
+              <div>
+                <label>
+                  Total Tests
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={
+                    newExamTotalTests
+                  }
+                  onChange={(e) =>
+                    setNewExamTotalTests(
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+
+              <div>
+                <label>
+                  Free Tests
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={
+                    newExamFreeTests
+                  }
+                  onChange={(e) =>
+                    setNewExamFreeTests(
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+
+              <div>
+                <label>
+                  Premium Price ₹
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={
+                    newExamPremiumPrice
+                  }
+                  onChange={(e) =>
+                    setNewExamPremiumPrice(
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+
+            </div>
+
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "15px",
+                background:
+                  "#f1f5f9",
+                borderRadius: "12px",
+              }}
+            >
+
+              <strong>
+                Preview:
+              </strong>
+
+              <p>
+                {newExamName ||
+                  "New Exam"}{" "}
+                → Total{" "}
+                {Number(
+                  newExamTotalTests
+                ) || 0}{" "}
+                Tests → Free{" "}
+                {Number(
+                  newExamFreeTests
+                ) || 0}{" "}
+                → Premium{" "}
+                {Math.max(
+                  0,
+                  (Number(
+                    newExamTotalTests
+                  ) || 0) -
+                    (Number(
+                      newExamFreeTests
+                    ) || 0)
+                )}{" "}
+                → ₹
+                {Number(
+                  newExamPremiumPrice
+                ) || 0}
+              </p>
+
+            </div>
+
+            <button
+              className="admin-btn primary"
+              onClick={
+                addNewExam
+              }
+              disabled={
+                addingExam
+              }
+              style={{
+                marginTop: "20px",
+              }}
+            >
+              {addingExam
+                ? "⏳ Adding..."
+                : "➕ Exam Add करें"}
+            </button>
+
+          </div>
+
+          {/* EXISTING EXAMS */}
+
+          <div className="admin-card">
+
+            <h2>
+              📋 Existing Exams
+            </h2>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(250px,1fr))",
+                gap: "15px",
+                marginTop: "20px",
+              }}
+            >
+
+              {allExams.map(
+                (exam) => (
+                  <div
+                    key={
+                      exam.id
+                    }
+                    style={{
+                      border:
+                        "1px solid #e2e8f0",
+                      borderRadius:
+                        "15px",
+                      padding:
+                        "18px",
+                      background:
+                        "#fff",
+                    }}
+                  >
+
+                    <div
+                      style={{
+                        fontSize:
+                          "35px",
+                      }}
+                    >
+                      {
+                        exam.icon
+                      }
+                    </div>
+
+                    <h3>
+                      {
+                        exam.name
+                      }
+                    </h3>
+
+                    {exam.totalTests ? (
+                      <p>
+                        Total Tests:{" "}
+                        {
+                          exam.totalTests
+                        }
+                        <br />
+                        Free:{" "}
+                        {
+                          exam.freeTests
+                        }
+                        <br />
+                        Premium:{" "}
+                        {
+                          exam.premiumTests
+                        }
+                        <br />
+                        Price: ₹
+                        {
+                          exam.premiumPrice
+                        }
+                      </p>
+                    ) : (
+                      <p>
+                        Default Exam
+                      </p>
+                    )}
+
+                    <button
+                      className="admin-btn primary"
+                      onClick={() => {
+                        setSelectedExam(
+                          exam.id
+                        );
+
+                        setActiveSection(
+                          "tests"
+                        );
+                      }}
+                    >
+                      📝 Tests Manage करें
+                    </button>
+
+                    {!defaultExams.some(
+                      (x) =>
+                        x.id ===
+                        exam.id
+                    ) && (
+                      <button
+                        className="admin-btn danger"
+                        onClick={() =>
+                          deleteExam(
+                            exam
+                          )
+                        }
+                        style={{
+                          marginTop:
+                            "8px",
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
+
+                  </div>
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ==================================================
           TEST SECTION
       ================================================== */}
 
@@ -1030,37 +1837,22 @@ export default function AdminPanel({
 
           <div className="admin-card">
 
-            <div className="card-title">
+            <h2>
+              📝 Test Settings
+            </h2>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(220px,1fr))",
+                gap: "15px",
+              }}
+            >
 
               <div>
-                <h2>
-                  📝 Exam Test Manager
-                </h2>
-
-                <p>
-                  Exam → Test → Questions manage करें
-                </p>
-              </div>
-
-              <button
-                className="admin-btn secondary"
-                onClick={
-                  resetTestForm
-                }
-              >
-                ＋ New Test
-              </button>
-
-            </div>
-
-            <div className="form-grid">
-
-              {/* EXAM */}
-
-              <div className="form-group">
-
                 <label>
-                  🎯 Exam
+                  Exam
                 </label>
 
                 <select
@@ -1073,8 +1865,7 @@ export default function AdminPanel({
                     )
                   }
                 >
-
-                  {exams.map(
+                  {allExams.map(
                     (exam) => (
                       <option
                         key={
@@ -1093,17 +1884,12 @@ export default function AdminPanel({
                       </option>
                     )
                   )}
-
                 </select>
-
               </div>
 
-              {/* TEST NUMBER */}
-
-              <div className="form-group">
-
+              <div>
                 <label>
-                  🔢 Test Number
+                  Test Number
                 </label>
 
                 <input
@@ -1118,20 +1904,14 @@ export default function AdminPanel({
                     )
                   }
                 />
-
               </div>
 
-              {/* TITLE */}
-
-              <div className="form-group form-group-full">
-
+              <div>
                 <label>
-                  📌 Test Title
+                  Test Title
                 </label>
 
                 <input
-                  type="text"
-                  placeholder="जैसे: UPPCS Test 01 - History"
                   value={
                     testTitle
                   }
@@ -1140,48 +1920,13 @@ export default function AdminPanel({
                       e.target.value
                     )
                   }
+                  placeholder="UPPCS Test 01"
                 />
-
               </div>
 
-              {/* STATUS */}
-
-              <div className="form-group">
-
+              <div>
                 <label>
-                  📢 Status
-                </label>
-
-                <select
-                  value={
-                    testStatus
-                  }
-                  onChange={(e) =>
-                    setTestStatus(
-                      e.target.value
-                    )
-                  }
-                >
-
-                  <option value="draft">
-                    📝 Draft
-                  </option>
-
-                  <option value="public">
-                    🌐 Public
-                  </option>
-
-                </select>
-
-              </div>
-
-              {/* DURATION */}
-
-              <div className="form-group">
-
-                <label>
-                  ⏱️ Duration
-                  (Minutes)
+                  Duration (Minutes)
                 </label>
 
                 <input
@@ -1196,37 +1941,94 @@ export default function AdminPanel({
                     )
                   }
                 />
-
               </div>
 
-              {/* PRICE */}
-
-              <div className="form-group">
-
+              <div>
                 <label>
-                  💰 Price (₹)
+                  Status
                 </label>
 
-                <input
-                  type="number"
-                  min="0"
+                <select
                   value={
-                    testPrice
+                    testStatus
                   }
                   onChange={(e) =>
-                    setTestPrice(
+                    setTestStatus(
                       e.target.value
                     )
                   }
-                />
+                >
+                  <option value="draft">
+                    Draft
+                  </option>
 
-                <small>
-                  ₹0 = Free Test
-                </small>
-
+                  <option value="published">
+                    Published
+                  </option>
+                </select>
               </div>
 
             </div>
+
+            {/* AUTOMATIC PREMIUM INFO */}
+
+            {selectedExamData &&
+              selectedExamData.totalTests && (
+                <div
+                  style={{
+                    marginTop:
+                      "20px",
+                    padding:
+                      "15px",
+                    borderRadius:
+                      "12px",
+                    background:
+                      "#eff6ff",
+                  }}
+                >
+
+                  <strong>
+                    💡 इस Exam की Pricing:
+                  </strong>
+
+                  <p>
+                    Total Tests:{" "}
+                    {
+                      selectedExamData.totalTests
+                    }
+                    <br />
+
+                    Free Tests:{" "}
+                    {
+                      selectedExamData.freeTests
+                    }
+                    <br />
+
+                    Premium Tests:{" "}
+                    {
+                      selectedExamData.premiumTests
+                    }
+                    <br />
+
+                    Premium Price: ₹
+                    {
+                      selectedExamData.premiumPrice
+                    }
+                    <br />
+
+                    Current Test:{" "}
+                    {Number(
+                      testNumber
+                    ) <=
+                    Number(
+                      selectedExamData.freeTests
+                    )
+                      ? "🆓 FREE"
+                      : "💎 PREMIUM"}
+                  </p>
+
+                </div>
+              )}
 
           </div>
 
@@ -1234,33 +2036,31 @@ export default function AdminPanel({
 
           <div className="admin-card">
 
-            <div className="card-title">
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems:
+                  "center",
+                gap: "10px",
+                flexWrap:
+                  "wrap",
+              }}
+            >
+
+              <h2>
+                ❓ Questions
+              </h2>
 
               <div>
-                <h2>
-                  ❓ Question Manager
-                </h2>
-
-                <p>
-                  Question{" "}
-                  {currentQuestion +
-                    1}{" "}
-                  /{" "}
-                  {
-                    questions.length
-                  }
-                </p>
-              </div>
-
-              <div className="question-top-actions">
-
                 <button
-                  className="admin-btn secondary"
+                  className="admin-btn primary"
                   onClick={
                     addQuestion
                   }
                 >
-                  ＋ Add Question
+                  ➕ Add Question
                 </button>
 
                 <button
@@ -1268,40 +2068,70 @@ export default function AdminPanel({
                   onClick={
                     deleteQuestion
                   }
+                  style={{
+                    marginLeft:
+                      "8px",
+                  }}
                 >
-                  🗑️ Delete Question
+                  🗑️ Delete
                 </button>
-
               </div>
 
             </div>
 
-            {/* QUESTION NUMBERS */}
+            {/* QUESTION NUMBER */}
 
-            <div className="question-number-list">
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                flexWrap:
+                  "wrap",
+                margin:
+                  "20px 0",
+              }}
+            >
 
               {questions.map(
-                (q, index) => (
+                (
+                  q,
+                  index
+                ) => (
                   <button
                     key={
                       q.id
-                    }
-                    type="button"
-                    className={
-                      index ===
-                      currentQuestion
-                        ? "question-number active"
-                        : "question-number"
                     }
                     onClick={() =>
                       setCurrentQuestion(
                         index
                       )
                     }
+                    style={{
+                      padding:
+                        "8px 12px",
+                      border:
+                        "none",
+                      borderRadius:
+                        "8px",
+                      cursor:
+                        "pointer",
+                      background:
+                        currentQuestion ===
+                        index
+                          ? "#0868f5"
+                          : "#e2e8f0",
+                      color:
+                        currentQuestion ===
+                        index
+                          ? "#fff"
+                          : "#111",
+                      fontWeight:
+                        "700",
+                    }}
                   >
-                    {
-                      index + 1
-                    }
+                    Q
+                    {index +
+                      1}
                   </button>
                 )
               )}
@@ -1310,17 +2140,15 @@ export default function AdminPanel({
 
             {/* QUESTION */}
 
-            <div className="form-group form-group-full">
+            <div>
 
               <label>
-                ❓ Question{" "}
+                Question{" "}
                 {currentQuestion +
                   1}
               </label>
 
               <textarea
-                rows="4"
-                placeholder="यहाँ प्रश्न लिखें..."
                 value={
                   currentQuestionData.question
                 }
@@ -1330,17 +2158,22 @@ export default function AdminPanel({
                     e.target.value
                   )
                 }
+                rows="4"
+                placeholder="Question यहाँ लिखें..."
               />
 
             </div>
 
             {/* OPTIONS */}
 
-            <div className="options-editor">
-
-              <h3>
-                🔤 Options
-              </h3>
+            <div
+              style={{
+                display: "grid",
+                gap: "12px",
+                marginTop:
+                  "15px",
+              }}
+            >
 
               {currentQuestionData.options.map(
                 (
@@ -1348,27 +2181,20 @@ export default function AdminPanel({
                   index
                 ) => (
                   <div
-                    className="option-row"
                     key={
                       index
                     }
                   >
 
-                    <div className="option-label">
-
+                    <label>
+                      Option{" "}
                       {String.fromCharCode(
                         65 +
                           index
                       )}
-
-                    </div>
+                    </label>
 
                     <input
-                      type="text"
-                      placeholder={`Option ${String.fromCharCode(
-                        65 +
-                          index
-                      )}`}
                       value={
                         option
                       }
@@ -1381,30 +2207,11 @@ export default function AdminPanel({
                             .value
                         )
                       }
-                    />
-
-                    <label className="answer-radio">
-
-                      <input
-                        type="radio"
-                        name={`answer-${currentQuestion}`}
-                        checked={
-                          Number(
-                            currentQuestionData.answer
-                          ) ===
+                      placeholder={`Option ${String.fromCharCode(
+                        65 +
                           index
-                        }
-                        onChange={() =>
-                          updateQuestion(
-                            "answer",
-                            index
-                          )
-                        }
-                      />
-
-                      सही उत्तर
-
-                    </label>
+                      )}`}
+                    />
 
                   </div>
                 )
@@ -1412,17 +2219,68 @@ export default function AdminPanel({
 
             </div>
 
-            {/* EXPLANATION */}
+            {/* ANSWER */}
 
-            <div className="form-group form-group-full">
+            <div
+              style={{
+                marginTop:
+                  "15px",
+              }}
+            >
 
               <label>
-                💡 Explanation
+                Correct Answer
+              </label>
+
+              <select
+                value={
+                  currentQuestionData.answer
+                }
+                onChange={(e) =>
+                  updateQuestion(
+                    "answer",
+                    Number(
+                      e.target
+                        .value
+                    )
+                  )
+                }
+              >
+
+                <option value={0}>
+                  A
+                </option>
+
+                <option value={1}>
+                  B
+                </option>
+
+                <option value={2}>
+                  C
+                </option>
+
+                <option value={3}>
+                  D
+                </option>
+
+              </select>
+
+            </div>
+
+            {/* EXPLANATION */}
+
+            <div
+              style={{
+                marginTop:
+                  "15px",
+              }}
+            >
+
+              <label>
+                Explanation
               </label>
 
               <textarea
-                rows="5"
-                placeholder="सही उत्तर का explanation लिखें..."
                 value={
                   currentQuestionData.explanation
                 }
@@ -1432,21 +2290,26 @@ export default function AdminPanel({
                     e.target.value
                   )
                 }
+                rows="4"
+                placeholder="Answer की explanation..."
               />
 
             </div>
 
-            {/* IMAGE */}
+            {/* EXPLANATION IMAGE */}
 
-            <div className="form-group form-group-full">
+            <div
+              style={{
+                marginTop:
+                  "15px",
+              }}
+            >
 
               <label>
-                🖼️ Explanation Image URL
+                Explanation Image URL
               </label>
 
               <input
-                type="text"
-                placeholder="https://example.com/image.jpg"
                 value={
                   currentQuestionData.explanationImage
                 }
@@ -1456,137 +2319,131 @@ export default function AdminPanel({
                     e.target.value
                   )
                 }
+                placeholder="https://..."
               />
 
             </div>
 
             {/* SAVE */}
 
-            <div
+            <button
+              className="admin-btn primary"
+              onClick={
+                saveTest
+              }
+              disabled={
+                saving
+              }
               style={{
-                display:
-                  "flex",
-                justifyContent:
-                  "center",
+                width:
+                  "100%",
                 marginTop:
                   "25px",
+                padding:
+                  "15px",
+                fontSize:
+                  "18px",
               }}
             >
-
-              <button
-                className="admin-btn primary save-large"
-                onClick={
-                  saveTest
-                }
-                disabled={
-                  saving
-                }
-              >
-                {saving
-                  ? "⏳ Saving..."
-                  : "💾 Save Exam Test"}
-              </button>
-
-            </div>
+              {saving
+                ? "⏳ Saving..."
+                : "💾 Save Test"}
+            </button>
 
           </div>
 
-          {/* TEST LIST */}
+          {/* SAVED TESTS */}
 
           <div className="admin-card">
 
-            <div className="card-title">
-
-              <div>
-                <h2>
-                  📋 Saved Exam Tests
-                </h2>
-
-                <p>
-                  Firebase में saved tests
-                </p>
-              </div>
-
-            </div>
+            <h2>
+              📋 Saved Tests
+            </h2>
 
             {testEntries.length ===
             0 ? (
-              <div className="empty-box">
-                अभी कोई Exam Test save नहीं है।
-              </div>
+              <p>
+                अभी कोई Test save नहीं है।
+              </p>
             ) : (
-              <div className="test-list">
+              <div
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    "12px",
+                }}
+              >
 
                 {testEntries.map(
-                  ([id, test]) => (
+                  (
+                    [
+                      id,
+                      test,
+                    ]
+                  ) => (
                     <div
-                      className="test-list-item"
-                      key={id}
+                      key={
+                        id
+                      }
+                      style={{
+                        display:
+                          "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems:
+                          "center",
+                        gap:
+                          "10px",
+                        flexWrap:
+                          "wrap",
+                        padding:
+                          "15px",
+                        border:
+                          "1px solid #e2e8f0",
+                        borderRadius:
+                          "12px",
+                      }}
                     >
 
-                      <div className="test-list-info">
+                      <div>
 
-                        <h3>
-                          {test.examName ||
-                            getExamName(
-                              test.exam
-                            )}{" "}
-                          — Test{" "}
-                          {
-                            test.testNumber
-                          }
-                        </h3>
-
-                        <p>
+                        <strong>
                           {
                             test.title
                           }
+                        </strong>
+
+                        <p
+                          style={{
+                            margin:
+                              "5px 0 0",
+                          }}
+                        >
+                          {
+                            test.examName
+                          }{" "}
+                          • Test{" "}
+                          {
+                            test.testNumber
+                          }{" "}
+                          •{" "}
+                          {
+                            test.totalQuestions
+                          }{" "}
+                          Questions •{" "}
+                          {
+                            test.type ||
+                              "Free"
+                          }
                         </p>
-
-                        <div className="test-meta">
-
-                          <span>
-                            ❓{" "}
-                            {
-                              test.totalQuestions ||
-                              test.questions?.length ||
-                              0
-                            }{" "}
-                            Questions
-                          </span>
-
-                          <span>
-                            ⏱️{" "}
-                            {
-                              test.duration ||
-                              0
-                            }{" "}
-                            मिनट
-                          </span>
-
-                          <span>
-                            💰 ₹
-                            {
-                              test.price ||
-                              0
-                            }
-                          </span>
-
-                          <span>
-                            {test.status ===
-                            "public"
-                              ? "🌐 Public"
-                              : "📝 Draft"}
-                          </span>
-
-                        </div>
 
                       </div>
 
-                      <div className="test-list-actions">
+                      <div>
 
                         <button
-                          className="admin-btn secondary"
+                          className="admin-btn primary"
                           onClick={() =>
                             loadTest(
                               id,
@@ -1605,6 +2462,10 @@ export default function AdminPanel({
                               test.title
                             )
                           }
+                          style={{
+                            marginLeft:
+                              "8px",
+                          }}
                         >
                           🗑️ Delete
                         </button>
@@ -1634,42 +2495,17 @@ export default function AdminPanel({
 
           <div className="admin-card">
 
-            <div className="card-title">
-
-              <div>
-                <h2>
-                  📚 Website Resources
-                </h2>
-
-                <p>
-                  Website पर दिखाई देने वाले resources
-                </p>
-              </div>
-
-              <button
-                className="admin-btn primary"
-                onClick={
-                  saveResources
-                }
-                disabled={
-                  saving
-                }
-              >
-                {saving
-                  ? "⏳ Saving..."
-                  : "💾 Save Resources"}
-              </button>
-
-            </div>
+            <h2>
+              📚 Resources
+            </h2>
 
             {siteResources.length ===
             0 ? (
-              <div className="empty-box">
-                कोई Resources नहीं मिले।
-              </div>
+              <p>
+                अभी कोई Resource उपलब्ध नहीं है।
+              </p>
             ) : (
-              <div>
-
+              <>
                 {siteResources.map(
                   (
                     item,
@@ -1679,160 +2515,74 @@ export default function AdminPanel({
                       key={
                         index
                       }
-                      className="resource-editor"
+                      style={{
+                        marginBottom:
+                          "15px",
+                        padding:
+                          "15px",
+                        border:
+                          "1px solid #e2e8f0",
+                        borderRadius:
+                          "12px",
+                      }}
                     >
 
-                      <div className="form-grid">
+                      <input
+                        value={
+                          item.title ||
+                          ""
+                        }
+                        onChange={(
+                          e
+                        ) =>
+                          updateResource(
+                            index,
+                            "title",
+                            e.target
+                              .value
+                          )
+                        }
+                        placeholder="Resource Title"
+                      />
 
-                        <div className="form-group">
-
-                          <label>
-                            Icon
-                          </label>
-
-                          <input
-                            type="text"
-                            value={
-                              item.icon ||
-                              ""
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              updateResource(
-                                index,
-                                "icon",
-                                e.target
-                                  .value
-                              )
-                            }
-                          />
-
-                        </div>
-
-                        <div className="form-group">
-
-                          <label>
-                            Title
-                          </label>
-
-                          <input
-                            type="text"
-                            value={
-                              item.title ||
-                              ""
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              updateResource(
-                                index,
-                                "title",
-                                e.target
-                                  .value
-                              )
-                            }
-                          />
-
-                        </div>
-
-                        <div className="form-group form-group-full">
-
-                          <label>
-                            Description
-                          </label>
-
-                          <textarea
-                            rows="3"
-                            value={
-                              item.text ||
-                              ""
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              updateResource(
-                                index,
-                                "text",
-                                e.target
-                                  .value
-                              )
-                            }
-                          />
-
-                        </div>
-
-                        <div className="form-group">
-
-                          <label>
-                            Page
-                          </label>
-
-                          <input
-                            type="text"
-                            value={
-                              item.page ||
-                              ""
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              updateResource(
-                                index,
-                                "page",
-                                e.target
-                                  .value
-                              )
-                            }
-                          />
-
-                        </div>
-
-                        <div className="form-group">
-
-                          <label>
-                            Enabled
-                          </label>
-
-                          <select
-                            value={
-                              item.enabled !==
-                              false
-                                ? "true"
-                                : "false"
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              updateResource(
-                                index,
-                                "enabled",
-                                e.target
-                                  .value ===
-                                  "true"
-                              )
-                            }
-                          >
-
-                            <option value="true">
-                              ✅ Show
-                            </option>
-
-                            <option value="false">
-                              ❌ Hide
-                            </option>
-
-                          </select>
-
-                        </div>
-
-                      </div>
+                      <input
+                        value={
+                          item.url ||
+                          ""
+                        }
+                        onChange={(
+                          e
+                        ) =>
+                          updateResource(
+                            index,
+                            "url",
+                            e.target
+                              .value
+                          )
+                        }
+                        placeholder="Resource URL"
+                        style={{
+                          marginTop:
+                            "10px",
+                        }}
+                      />
 
                     </div>
                   )
                 )}
 
-              </div>
+                <button
+                  className="admin-btn primary"
+                  onClick={
+                    saveResources
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  💾 Save Resources
+                </button>
+              </>
             )}
 
           </div>
