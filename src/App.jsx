@@ -1,8 +1,19 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./App.css";
+
 import TestSeries from "./TestSeries";
 import HelpChat from "./HelpChat";
 import Login from "./Login";
+import AdminPanel from "./pages/AdminPanel";
+
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "firebase/auth";
+
+const ADMIN_EMAIL = "cciashish@gmail.com";
+
+const auth = getAuth();
 
 const exams = [
   {
@@ -103,17 +114,122 @@ const shortcuts = [
 ];
 
 function App() {
+  // ==================================================
+  // MENU
+  // ==================================================
+
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ================= SELECTED EXAM =================
+  // ==================================================
+  // SELECTED EXAM
+  // ==================================================
 
   const [selectedExam, setSelectedExam] = useState(null);
 
-  // ================= LOGIN PAGE =================
+  // ==================================================
+  // LOGIN PAGE
+  // ==================================================
 
   const [showLogin, setShowLogin] = useState(false);
 
-  // ================= OPEN TEST SERIES =================
+  // ==================================================
+  // ADMIN PANEL
+  // ==================================================
+
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  const [adminRequested, setAdminRequested] =
+    useState(false);
+
+  // ==================================================
+  // CURRENT FIREBASE USER
+  // ==================================================
+
+  const [currentUser, setCurrentUser] =
+    useState(null);
+
+  // ==================================================
+  // FIREBASE AUTH LISTENER
+  // ==================================================
+
+  useEffect(() => {
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          setCurrentUser(user);
+
+          // ==========================================
+          // ADMIN LOGIN SUCCESS
+          // ==========================================
+
+          if (
+            user &&
+            user.email === ADMIN_EMAIL &&
+            adminRequested
+          ) {
+            setShowLogin(false);
+            setShowAdminPanel(true);
+          }
+        }
+      );
+
+    return () => unsubscribe();
+  }, [adminRequested]);
+
+  // ==================================================
+  // OPEN ADMIN PANEL
+  // ==================================================
+
+  const openAdminPanel = () => {
+    setMenuOpen(false);
+
+    setAdminRequested(true);
+
+    // Already logged in as admin
+    if (
+      currentUser &&
+      currentUser.email === ADMIN_EMAIL
+    ) {
+      setShowAdminPanel(true);
+      setShowLogin(false);
+      return;
+    }
+
+    // Login required
+    setShowLogin(true);
+  };
+
+  // ==================================================
+  // CLOSE ADMIN PANEL
+  // ==================================================
+
+  const closeAdminPanel = () => {
+    setShowAdminPanel(false);
+    setAdminRequested(false);
+  };
+
+  // ==================================================
+  // OPEN LOGIN
+  // ==================================================
+
+  const openLogin = () => {
+    setShowLogin(true);
+    setMenuOpen(false);
+  };
+
+  // ==================================================
+  // CLOSE LOGIN
+  // ==================================================
+
+  const closeLogin = () => {
+    setShowLogin(false);
+    setAdminRequested(false);
+  };
+
+  // ==================================================
+  // SELECT EXAM
+  // ==================================================
 
   const handleExamClick = (exam) => {
     setSelectedExam(exam.name);
@@ -125,7 +241,9 @@ function App() {
     });
   };
 
-  // ================= BACK TO HOME =================
+  // ==================================================
+  // BACK TO HOME
+  // ==================================================
 
   const handleBack = () => {
     setSelectedExam(null);
@@ -139,7 +257,9 @@ function App() {
     }, 100);
   };
 
-  // ================= START EXAM =================
+  // ==================================================
+  // START EXAM
+  // ==================================================
 
   const startExam = () => {
     document
@@ -150,15 +270,26 @@ function App() {
   };
 
   // ==================================================
+  // ADMIN PANEL
+  // ==================================================
+
+  if (showAdminPanel) {
+    return (
+      <AdminPanel
+        user={currentUser}
+        onClose={closeAdminPanel}
+      />
+    );
+  }
+
+  // ==================================================
   // LOGIN PAGE
   // ==================================================
 
   if (showLogin) {
     return (
       <Login
-        onBack={() => {
-          setShowLogin(false);
-        }}
+        onBack={closeLogin}
       />
     );
   }
@@ -183,7 +314,9 @@ function App() {
   return (
     <div className="app">
 
-      {/* ================= HEADER ================= */}
+      {/* ==================================================
+          HEADER
+      ================================================== */}
 
       <header className="header">
 
@@ -207,6 +340,8 @@ function App() {
 
         </div>
 
+        {/* MENU BUTTON */}
+
         <button
           className="menu-btn"
           onClick={() =>
@@ -218,13 +353,17 @@ function App() {
 
       </header>
 
-      {/* ================= NAVIGATION ================= */}
+      {/* ==================================================
+          NAVIGATION
+      ================================================== */}
 
       <nav
         className={`navbar ${
           menuOpen ? "show" : ""
         }`}
       >
+
+        {/* HOME */}
 
         <button
           className="nav-item active"
@@ -236,10 +375,13 @@ function App() {
             });
 
             setMenuOpen(false);
+
           }}
         >
           🏠 Home
         </button>
+
+        {/* EXAM TEST */}
 
         <button
           className="nav-item"
@@ -248,30 +390,37 @@ function App() {
             startExam();
 
             setMenuOpen(false);
+
           }}
         >
           📄 Exam Test
         </button>
 
-        {/* ================= LOGIN BUTTON ================= */}
+        {/* LOGIN */}
 
         <button
-          className="nav-profile"
-          onClick={() => {
-
-            setShowLogin(true);
-
-            setMenuOpen(false);
-
-          }}
-          title="Login"
+          className="nav-item"
+          onClick={openLogin}
         >
-          👤
+          👤 Login
+        </button>
+
+        {/* ==================================================
+            ADMIN PANEL
+        ================================================== */}
+
+        <button
+          className="nav-item admin-menu-btn"
+          onClick={openAdminPanel}
+        >
+          🔐 Admin Panel
         </button>
 
       </nav>
 
-      {/* ================= HERO ================= */}
+      {/* ==================================================
+          HERO
+      ================================================== */}
 
       <main>
 
@@ -342,7 +491,9 @@ function App() {
 
         </section>
 
-        {/* ================= SHORTCUTS ================= */}
+        {/* ==================================================
+            SHORTCUTS
+        ================================================== */}
 
         <section className="shortcuts">
 
@@ -373,7 +524,9 @@ function App() {
 
         </section>
 
-        {/* ================= EXAM SECTION ================= */}
+        {/* ==================================================
+            EXAM SECTION
+        ================================================== */}
 
         <section
           className="exam-section"
@@ -394,7 +547,7 @@ function App() {
 
           </div>
 
-          {/* ================= EXAM GRID ================= */}
+          {/* EXAM GRID */}
 
           <div className="exam-grid">
 
@@ -436,7 +589,9 @@ function App() {
 
         </section>
 
-        {/* ================= PROMO ================= */}
+        {/* ==================================================
+            PROMO
+        ================================================== */}
 
         <section className="promo">
 
@@ -448,7 +603,9 @@ function App() {
 
       </main>
 
-      {/* ================= FOOTER ================= */}
+      {/* ==================================================
+          FOOTER
+      ================================================== */}
 
       <footer className="footer">
 
@@ -456,7 +613,9 @@ function App() {
 
       </footer>
 
-      {/* ================= HELP CHAT ================= */}
+      {/* ==================================================
+          HELP CHAT
+      ================================================== */}
 
       <HelpChat />
 
