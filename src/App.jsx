@@ -33,7 +33,7 @@ import firebaseConfig from "./firebase-config.json";
 // ADMIN PANEL
 // ======================================================
 
-import AdminPanel from "./admin/AdminPanel";
+import AdminPanel from "./AdminPanel";
 
 // ======================================================
 // FIREBASE
