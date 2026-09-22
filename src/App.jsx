@@ -33,7 +33,7 @@ import firebaseConfig from "./firebase-config.json";
 // ADMIN PANEL
 // ======================================================
 
-import AdminPanel from "./AdminPanel";
+import AdminPanel from "./components/AdminPanel";
 
 // ======================================================
 // FIREBASE
@@ -587,7 +587,7 @@ function AdminLogin({
                 "#64748b",
             }}
           >
-            Study With Power
+            Exam Test
             Admin Panel
           </p>
         </div>
@@ -1971,7 +1971,7 @@ export default function App() {
             "#1857c9",
         }}
       >
-        📚 Study With Power Loading...
+        📚 Exam Test Loading...
       </div>
     );
   }
@@ -2110,7 +2110,7 @@ export default function App() {
 
               <div className="logo-text">
                 <h2>
-                  Study With Power
+                  Exam Test
                 </h2>
 
                 <span>
@@ -2866,7 +2866,7 @@ export default function App() {
         <footer className="footer">
 
           <h2>
-            📚 Study With Power
+            📚 Exam Test
           </h2>
 
           <p>
@@ -2880,7 +2880,7 @@ export default function App() {
                 "15px",
             }}
           >
-            © 2026 Study With Power.
+            © 2026 Exam Test.
             All Rights Reserved.
           </p>
 
