@@ -1919,6 +1919,13 @@ export default function App() {
 
   const openTest =
     async (test) => {
+      // Test object must come from the public Firebase test list.
+      if (!test) {
+        alert("❌ Test उपलब्ध नहीं है।");
+        return;
+      }
+
+      // Login is required by the existing TestRunner flow.
       if (!user) {
         const loggedInUser =
           await login();
@@ -1928,16 +1935,13 @@ export default function App() {
         }
       }
 
-      setSelectedTest(
-        test
-      );
-
+      // Open the exact Firebase test object in TestRunner.
+      setSelectedTest(test);
       setPage("test");
 
       window.scrollTo({
         top: 0,
-        behavior:
-          "smooth",
+        behavior: "smooth",
       });
     };
 
