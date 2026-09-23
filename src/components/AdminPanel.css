@@ -1,1 +1,26 @@
+/* AdminPanel-specific base styles.
+   Main layout styles are inherited from ../App.css. */
 
+.admin-panel,
+.admin-dashboard,
+.admin-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-panel button,
+.admin-dashboard button {
+  cursor: pointer;
+}
+
+.admin-panel input,
+.admin-panel select,
+.admin-panel textarea,
+.admin-dashboard input,
+.admin-dashboard select,
+.admin-dashboard textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
