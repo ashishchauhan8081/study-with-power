@@ -4,7 +4,7 @@ import React, {
   useState,
 } from "react";
 
-import "./App.css";
+import "./CurrentAffairs.css";
 
 import {
   getApps,
