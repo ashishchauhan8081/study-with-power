@@ -36,6 +36,12 @@ import firebaseConfig from "./firebase-config.json";
 import AdminPanel from "./components/AdminPanel";
 
 // ======================================================
+// AI MCQ GENERATOR
+// ======================================================
+
+import AIMCQGenerator from "./pages/AIMCQGenerator";
+
+// ======================================================
 // FIREBASE
 // ======================================================
 
@@ -2774,86 +2780,19 @@ export default function App() {
           )}
 
           {/* =================================================
-              MCQ
+              MCQ / AI MCQ GENERATOR
           ================================================= */}
 
-          {page ===
-            "mcq" && (
+          {page === "mcq" && (
             <>
-
               <button
                 className="back"
-                onClick={
-                  goHome
-                }
+                onClick={goHome}
               >
                 ← Home
               </button>
 
-              <div className="page-title">
-
-                <div className="big-icon">
-                  🤖
-                </div>
-
-                <h1>
-                  AI MCQ Generator
-                </h1>
-
-                <p>
-                  विषय और परीक्षा के
-                  अनुसार MCQ तैयार करें
-                </p>
-
-              </div>
-
-              <div className="question-box">
-
-                <h3>
-                  विषय चुनें
-                </h3>
-
-                <select className="full-input">
-
-                  <option>
-                    History
-                  </option>
-
-                  <option>
-                    Geography
-                  </option>
-
-                  <option>
-                    Polity
-                  </option>
-
-                  <option>
-                    Economy
-                  </option>
-
-                  <option>
-                    Science
-                  </option>
-
-                  <option>
-                    Current Affairs
-                  </option>
-
-                </select>
-
-                <button className="primary">
-                  🤖 MCQ Generate करें
-                </button>
-
-                <div className="notice">
-                  Gemini API जोड़ने के
-                  बाद यहाँ AI से
-                  वास्तविक MCQ Generate
-                  होंगे।
-                </div>
-
-              </div>
-
+              <AIMCQGenerator />
             </>
           )}
 
