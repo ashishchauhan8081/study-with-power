@@ -36,28 +36,28 @@ function AIMCQGenerator() {
         }),
       });
 
-      let data;
-
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          `Server ने valid JSON response नहीं दिया। Status: ${response.status}`
-        );
-      }
+      const data = await response.json();
 
       if (!response.ok || !data.success) {
         throw new Error(
-          data.error || data.message || "MCQ generate नहीं हो सके।"
+          data?.error ||
+            data?.message ||
+            "MCQ generate नहीं हो सके।"
         );
       }
 
-      setQuestions(data.questions || []);
-    } catch (error) {
-      console.error(error);
+      if (!Array.isArray(data.questions)) {
+        throw new Error(
+          "API response में questions नहीं मिले।"
+        );
+      }
+
+      setQuestions(data.questions);
+    } catch (err) {
+      console.error("AI MCQ Error:", err);
 
       setError(
-        error.message ||
+        err?.message ||
           "Gemini API से connection नहीं हो पाया।"
       );
     } finally {
@@ -69,9 +69,7 @@ function AIMCQGenerator() {
     try {
       await navigator.clipboard.writeText(
         JSON.stringify(
-          {
-            questions,
-          },
+          { questions },
           null,
           2
         )
@@ -86,9 +84,7 @@ function AIMCQGenerator() {
 
   const downloadJSON = () => {
     const data = JSON.stringify(
-      {
-        questions,
-      },
+      { questions },
       null,
       2
     );
@@ -97,12 +93,18 @@ function AIMCQGenerator() {
       type: "application/json",
     });
 
-    const url = URL.createObjectURL(blob);
+    const url =
+      URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
+    const a =
+      document.createElement("a");
+
     a.href = url;
     a.download = "questions.json";
+
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
 
     URL.revokeObjectURL(url);
   };
@@ -117,116 +119,176 @@ function AIMCQGenerator() {
     >
       <div
         style={{
-          background: "#ffffff",
+          background: "#fff",
           padding: "25px",
           borderRadius: "16px",
-          boxShadow: "0 5px 25px rgba(0,0,0,0.10)",
+          boxShadow:
+            "0 5px 25px rgba(0,0,0,.10)",
         }}
       >
+        <div
+          style={{
+            fontSize: "55px",
+            textAlign: "center",
+          }}
+        >
+          🤖
+        </div>
+
         <h1
           style={{
             textAlign: "center",
-            color: "#2563eb",
+            color: "#0f2b57",
             marginBottom: "10px",
           }}
         >
-          🤖 AI MCQ Generator
+          AI MCQ Generator
         </h1>
 
         <p
           style={{
             textAlign: "center",
-            color: "#666",
-            marginBottom: "25px",
+            fontSize: "20px",
+            marginBottom: "30px",
           }}
         >
-          Gemini AI की मदद से MCQ तैयार करें
+          विषय और परीक्षा के अनुसार MCQ तैयार करें
         </p>
 
-        {/* Topic */}
         <label>
-          <strong>Topic</strong>
+          <strong>विषय / Topic</strong>
         </label>
 
         <input
           type="text"
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onChange={(e) =>
+            setTopic(e.target.value)
+          }
           placeholder="जैसे: भारतीय संविधान"
           style={{
             width: "100%",
-            padding: "13px",
+            padding: "14px",
             marginTop: "8px",
             marginBottom: "18px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
+            borderRadius: "9px",
+            border:
+              "1px solid #cbd5e1",
             fontSize: "16px",
             boxSizing: "border-box",
           }}
         />
 
-        {/* Exam */}
         <label>
-          <strong>Exam</strong>
+          <strong>परीक्षा / Exam</strong>
         </label>
 
         <select
           value={exam}
-          onChange={(e) => setExam(e.target.value)}
+          onChange={(e) =>
+            setExam(e.target.value)
+          }
           style={{
             width: "100%",
-            padding: "13px",
+            padding: "14px",
             marginTop: "8px",
             marginBottom: "18px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
+            borderRadius: "9px",
+            border:
+              "1px solid #cbd5e1",
             fontSize: "16px",
           }}
         >
-          <option>UPPCS</option>
-          <option>UP Police</option>
-          <option>UP Home Guard</option>
-          <option>UP PET</option>
-          <option>UPSSSC</option>
-          <option>SSC CGL</option>
-          <option>SSC CHSL</option>
-          <option>RRB NTPC</option>
-          <option>RRB Group D</option>
-          <option>NDA</option>
-          <option>CTET</option>
-          <option>General Competitive Exam</option>
+          <option value="UPPCS">
+            UPPCS
+          </option>
+
+          <option value="UP Police">
+            UP Police
+          </option>
+
+          <option value="UP Home Guard">
+            UP Home Guard
+          </option>
+
+          <option value="UP PET">
+            UP PET
+          </option>
+
+          <option value="UPSSSC">
+            UPSSSC
+          </option>
+
+          <option value="SSC CGL">
+            SSC CGL
+          </option>
+
+          <option value="SSC CHSL">
+            SSC CHSL
+          </option>
+
+          <option value="RRB NTPC">
+            RRB NTPC
+          </option>
+
+          <option value="RRB Group D">
+            RRB Group D
+          </option>
+
+          <option value="NDA">
+            NDA
+          </option>
+
+          <option value="CTET">
+            CTET
+          </option>
         </select>
 
-        {/* Count */}
         <label>
-          <strong>Questions</strong>
+          <strong>प्रश्नों की संख्या</strong>
         </label>
 
         <select
           value={count}
           onChange={(e) =>
-            setCount(Number(e.target.value))
+            setCount(
+              Number(e.target.value)
+            )
           }
           style={{
             width: "100%",
-            padding: "13px",
+            padding: "14px",
             marginTop: "8px",
             marginBottom: "18px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
+            borderRadius: "9px",
+            border:
+              "1px solid #cbd5e1",
             fontSize: "16px",
           }}
         >
-          <option value="5">5 Questions</option>
-          <option value="10">10 Questions</option>
-          <option value="20">20 Questions</option>
-          <option value="30">30 Questions</option>
-          <option value="50">50 Questions</option>
+          <option value="5">
+            5 Questions
+          </option>
+
+          <option value="10">
+            10 Questions
+          </option>
+
+          <option value="20">
+            20 Questions
+          </option>
+
+          <option value="30">
+            30 Questions
+          </option>
+
+          <option value="50">
+            50 Questions
+          </option>
         </select>
 
-        {/* Language */}
         <label>
-          <strong>Language</strong>
+          <strong>भाषा / Language</strong>
         </label>
 
         <select
@@ -236,21 +298,28 @@ function AIMCQGenerator() {
           }
           style={{
             width: "100%",
-            padding: "13px",
+            padding: "14px",
             marginTop: "8px",
             marginBottom: "18px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
+            borderRadius: "9px",
+            border:
+              "1px solid #cbd5e1",
             fontSize: "16px",
           }}
         >
-          <option value="Hindi">Hindi</option>
-          <option value="English">English</option>
+          <option value="Hindi">
+            Hindi
+          </option>
+
+          <option value="English">
+            English
+          </option>
         </select>
 
-        {/* Difficulty */}
         <label>
-          <strong>Difficulty</strong>
+          <strong>
+            कठिनाई / Difficulty
+          </strong>
         </label>
 
         <select
@@ -260,27 +329,35 @@ function AIMCQGenerator() {
           }
           style={{
             width: "100%",
-            padding: "13px",
+            padding: "14px",
             marginTop: "8px",
             marginBottom: "25px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
+            borderRadius: "9px",
+            border:
+              "1px solid #cbd5e1",
             fontSize: "16px",
           }}
         >
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
+          <option value="Easy">
+            Easy
+          </option>
+
+          <option value="Medium">
+            Medium
+          </option>
+
+          <option value="Hard">
+            Hard
+          </option>
         </select>
 
-        {/* Error */}
         {error && (
           <div
             style={{
               background: "#fee2e2",
               color: "#b91c1c",
-              padding: "12px",
-              borderRadius: "8px",
+              padding: "14px",
+              borderRadius: "9px",
               marginBottom: "15px",
             }}
           >
@@ -288,22 +365,21 @@ function AIMCQGenerator() {
           </div>
         )}
 
-        {/* Generate Button */}
         <button
           type="button"
           onClick={generateMCQs}
           disabled={loading}
           style={{
             width: "100%",
-            padding: "15px",
+            padding: "16px",
             border: "none",
             borderRadius: "10px",
             background: loading
-              ? "#999"
+              ? "#94a3b8"
               : "#2563eb",
             color: "#fff",
-            fontSize: "18px",
-            fontWeight: "bold",
+            fontSize: "19px",
+            fontWeight: "700",
             cursor: loading
               ? "not-allowed"
               : "pointer",
@@ -311,13 +387,16 @@ function AIMCQGenerator() {
         >
           {loading
             ? "⏳ Gemini MCQ बना रहा है..."
-            : "🤖 Generate MCQs"}
+            : "🤖 MCQ Generate करें"}
         </button>
       </div>
 
-      {/* Result */}
       {questions.length > 0 && (
-        <div style={{ marginTop: "30px" }}>
+        <div
+          style={{
+            marginTop: "30px",
+          }}
+        >
           <div
             style={{
               display: "flex",
@@ -330,11 +409,14 @@ function AIMCQGenerator() {
               type="button"
               onClick={copyJSON}
               style={{
-                padding: "12px 18px",
-                background: "#16a34a",
+                padding:
+                  "12px 18px",
+                background:
+                  "#16a34a",
                 color: "#fff",
                 border: "none",
                 borderRadius: "8px",
+                fontWeight: "700",
                 cursor: "pointer",
               }}
             >
@@ -345,11 +427,14 @@ function AIMCQGenerator() {
               type="button"
               onClick={downloadJSON}
               style={{
-                padding: "12px 18px",
-                background: "#7c3aed",
+                padding:
+                  "12px 18px",
+                background:
+                  "#7c3aed",
                 color: "#fff",
                 border: "none",
                 borderRadius: "8px",
+                fontWeight: "700",
                 cursor: "pointer",
               }}
             >
@@ -357,70 +442,85 @@ function AIMCQGenerator() {
             </button>
           </div>
 
-          {questions.map((q, index) => (
-            <div
-              key={index}
-              style={{
-                background: "#fff",
-                padding: "20px",
-                marginBottom: "15px",
-                borderRadius: "12px",
-                boxShadow:
-                  "0 3px 15px rgba(0,0,0,0.08)",
-              }}
-            >
-              <h3>
-                Q{index + 1}. {q.question}
-              </h3>
-
-              {["A", "B", "C", "D"].map(
-                (letter) => (
-                  <div
-                    key={letter}
-                    style={{
-                      padding: "10px",
-                      marginTop: "7px",
-                      border: "1px solid #ddd",
-                      borderRadius: "7px",
-                    }}
-                  >
-                    <strong>{letter}.</strong>{" "}
-                    {q.options?.[letter] || ""}
-                  </div>
-                )
-              )}
-
+          {questions.map(
+            (q, index) => (
               <div
+                key={index}
                 style={{
-                  marginTop: "15px",
-                  padding: "12px",
-                  background: "#dcfce7",
-                  borderRadius: "8px",
+                  background: "#fff",
+                  padding: "20px",
+                  marginBottom: "15px",
+                  borderRadius: "12px",
+                  boxShadow:
+                    "0 3px 15px rgba(0,0,0,.08)",
                 }}
               >
-                <strong>
-                  ✅ सही उत्तर:
-                </strong>{" "}
-                {q.answer}
-              </div>
+                <h3
+                  style={{
+                    lineHeight: "1.6",
+                    color: "#111827",
+                  }}
+                >
+                  Q{index + 1}.{" "}
+                  {q.question}
+                </h3>
 
-              {q.explanation && (
+                {q.options &&
+                  ["A", "B", "C", "D"].map(
+                    (letter) => (
+                      <div
+                        key={letter}
+                        style={{
+                          padding: "11px",
+                          marginTop: "8px",
+                          border:
+                            "1px solid #e2e8f0",
+                          borderRadius: "8px",
+                        }}
+                      >
+                        <strong>
+                          {letter}.
+                        </strong>{" "}
+                        {q.options[letter]}
+                      </div>
+                    )
+                  )}
+
                 <div
                   style={{
-                    marginTop: "10px",
-                    padding: "12px",
-                    background: "#eff6ff",
+                    marginTop: "15px",
+                    padding: "13px",
+                    background:
+                      "#dcfce7",
                     borderRadius: "8px",
                   }}
                 >
                   <strong>
-                    📖 Explanation:
+                    ✅ सही उत्तर:
                   </strong>{" "}
-                  {q.explanation}
+                  {q.answer}
                 </div>
-              )}
-            </div>
-          ))}
+
+                {q.explanation && (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      padding: "13px",
+                      background:
+                        "#eff6ff",
+                      borderRadius: "8px",
+                      lineHeight: "1.6",
+                    }}
+                  >
+                    <strong>
+                      📖 Explanation:
+                    </strong>{" "}
+                    {q.explanation}
+                  </div>
+                )}
+              </div>
+            )
+          )}
         </div>
       )}
     </div>
