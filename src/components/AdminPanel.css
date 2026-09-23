@@ -1,5 +1,6 @@
-/* AdminPanel-specific base styles.
-   Main layout styles are inherited from ../App.css. */
+/* =========================================================
+   EXAM TEST - ADMIN PANEL CSS
+   ========================================================= */
 
 .admin-panel,
 .admin-dashboard,
@@ -10,8 +11,15 @@
   box-sizing: border-box;
 }
 
+.admin-panel *,
+.admin-dashboard *,
+.admin-shell * {
+  box-sizing: border-box;
+}
+
 .admin-panel button,
-.admin-dashboard button {
+.admin-dashboard button,
+.admin-shell button {
   cursor: pointer;
 }
 
@@ -20,7 +28,20 @@
 .admin-panel textarea,
 .admin-dashboard input,
 .admin-dashboard select,
-.admin-dashboard textarea {
+.admin-dashboard textarea,
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
   max-width: 100%;
   box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+  .admin-panel,
+  .admin-dashboard,
+  .admin-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+    overflow-x: hidden;
+  }
 }
