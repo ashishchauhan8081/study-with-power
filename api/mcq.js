@@ -1,18 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
-
-// =====================================================
-// GEMINI AI MCQ API
-// =====================================================
-
 export default async function handler(req, res) {
-  // =====================================================
+  // ============================================
   // CORS
-  // =====================================================
-
-  res.setHeader(
-    "Access-Control-Allow-Credentials",
-    "true"
-  );
+  // ============================================
 
   res.setHeader(
     "Access-Control-Allow-Origin",
@@ -21,7 +10,7 @@ export default async function handler(req, res) {
 
   res.setHeader(
     "Access-Control-Allow-Methods",
-    "GET,OPTIONS,POST"
+    "GET,POST,OPTIONS"
   );
 
   res.setHeader(
@@ -29,17 +18,13 @@ export default async function handler(req, res) {
     "Content-Type"
   );
 
-  // =====================================================
-  // OPTIONS
-  // =====================================================
-
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // =====================================================
+  // ============================================
   // ONLY POST
-  // =====================================================
+  // ============================================
 
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -49,67 +34,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ===================================================
-    // REQUEST DATA
-    // ===================================================
-
-    const body = req.body || {};
-
-    const topic =
-      typeof body.topic === "string"
-        ? body.topic.trim()
-        : "";
-
-    const exam =
-      typeof body.exam === "string"
-        ? body.exam.trim()
-        : "सामान्य प्रतियोगी परीक्षा";
-
-    let count = Number(body.count);
-
-    if (!Number.isFinite(count)) {
-      count = 5;
-    }
-
-    // Minimum 1 / Maximum 50
-    count = Math.min(
-      Math.max(Math.floor(count), 1),
-      50
-    );
-
-    const language =
-      typeof body.language === "string"
-        ? body.language.trim()
-        : "Hindi";
-
-    const difficulty =
-      typeof body.difficulty === "string"
-        ? body.difficulty.trim()
-        : "Medium";
-
-    // ===================================================
-    // TOPIC VALIDATION
-    // ===================================================
-
-    if (!topic) {
-      return res.status(400).json({
-        success: false,
-        error: "कृपया MCQ का विषय लिखें।",
-      });
-    }
-
-    // ===================================================
-    // GEMINI API KEY
-    // ===================================================
+    // ============================================
+    // API KEY
+    // ============================================
 
     const apiKey =
-      process.env.GEMINI_API_KEY?.trim();
+      process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      console.error(
-        "GEMINI_API_KEY नहीं मिली"
-      );
-
       return res.status(500).json({
         success: false,
         error:
@@ -117,61 +49,69 @@ export default async function handler(req, res) {
       });
     }
 
-    // ===================================================
-    // GEMINI CLIENT
-    // ===================================================
+    // ============================================
+    // REQUEST DATA
+    // ============================================
 
-    const ai = new GoogleGenAI({
-      apiKey: apiKey,
-    });
+    const {
+      topic,
+      exam = "UPPCS",
+      count = 5,
+      language = "Hindi",
+      difficulty = "Medium",
+    } = req.body || {};
 
-    // ===================================================
+    if (!topic || !String(topic).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "कृपया Topic डालें।",
+      });
+    }
+
+    const questionCount = Math.min(
+      Math.max(Number(count) || 5, 1),
+      50
+    );
+
+    // ============================================
     // PROMPT
-    // ===================================================
-
-    const languageInstruction =
-      language.toLowerCase() === "english"
-        ? "सभी प्रश्न, विकल्प और explanation English भाषा में होने चाहिए।"
-        : "सभी प्रश्न, विकल्प और explanation हिंदी भाषा में होने चाहिए।";
+    // ============================================
 
     const prompt = `
-आप "Exam Test" के AI MCQ Generator हैं।
+आप एक उच्च गुणवत्ता वाले प्रतियोगी परीक्षा MCQ Generator हैं।
 
-परीक्षा का नाम:
-${exam}
+परीक्षा: ${exam}
 
-विषय:
-${topic}
+विषय: ${topic}
 
-प्रश्नों की संख्या:
-${count}
+प्रश्नों की संख्या: ${questionCount}
 
-भाषा:
-${language}
+भाषा: ${language}
 
-कठिनाई स्तर:
-${difficulty}
+कठिनाई स्तर: ${difficulty}
 
-आपको प्रतियोगी परीक्षाओं के लिए उच्च गुणवत्ता वाले MCQ तैयार करने हैं।
+${language === "Hindi"
+  ? "सभी प्रश्न, विकल्प और explanations हिंदी भाषा में दें।"
+  : "All questions, options and explanations must be in English."
+}
 
 नियम:
 
-1. ${languageInstruction}
-2. प्रश्न प्रतियोगी परीक्षा स्तर के होने चाहिए।
-3. प्रत्येक प्रश्न के ठीक 4 विकल्प होने चाहिए।
-4. विकल्प A, B, C और D में हों।
-5. केवल एक सही उत्तर होना चाहिए।
-6. सही उत्तर केवल A, B, C या D में से एक होना चाहिए।
-7. प्रत्येक प्रश्न का explanation देना है।
-8. प्रश्न repeat नहीं होने चाहिए।
-9. गलत या अस्पष्ट जानकारी न दें।
-10. प्रश्न ${exam} परीक्षा के स्तर के अनुसार बनाएँ।
-11. Difficulty level ${difficulty} के अनुसार रखें।
-12. आउटपुट केवल valid JSON में दें।
-13. JSON के बाहर कोई text न दें।
-14. Markdown code block का उपयोग न करें।
+1. कुल ${questionCount} MCQ बनाएं।
+2. प्रत्येक प्रश्न के ठीक 4 विकल्प हों।
+3. विकल्प A, B, C और D हों।
+4. केवल एक सही उत्तर हो।
+5. सही उत्तर A/B/C/D में से एक हो।
+6. प्रश्न repeat नहीं होने चाहिए।
+7. प्रश्न ${exam} परीक्षा के स्तर के अनुसार हों।
+8. कठिनाई ${difficulty} के अनुसार रखें।
+9. प्रत्येक प्रश्न के साथ explanation दें।
+10. तथ्यात्मक और स्पष्ट प्रश्न बनाएं।
+11. केवल JSON return करें।
+12. JSON के बाहर कोई text न दें।
+13. Markdown code block का उपयोग न करें।
 
-JSON का exact format:
+Exact JSON format:
 
 {
   "questions": [
@@ -184,96 +124,133 @@ JSON का exact format:
         "D": "विकल्प D"
       },
       "answer": "A",
-      "explanation": "सही उत्तर का विस्तृत explanation"
+      "explanation": "सही उत्तर का explanation"
     }
   ]
 }
 `;
 
-    // ===================================================
-    // GEMINI REQUEST
-    // ===================================================
+    // ============================================
+    // GEMINI REST API
+    // ============================================
 
-    const result =
-      await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+    const url =
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-        contents: prompt,
+    const geminiResponse = await fetch(url, {
+      method: "POST",
 
-        config: {
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+
+        generationConfig: {
           temperature: 0.4,
-          responseMimeType: "application/json",
+          responseMimeType:
+            "application/json",
         },
+      }),
+    });
+
+    // ============================================
+    // GEMINI RESPONSE
+    // ============================================
+
+    const geminiData =
+      await geminiResponse.json();
+
+    if (!geminiResponse.ok) {
+      console.error(
+        "Gemini API Error:",
+        geminiData
+      );
+
+      const apiError =
+        geminiData?.error?.message ||
+        "Gemini API request failed.";
+
+      return res.status(
+        geminiResponse.status || 500
+      ).json({
+        success: false,
+        error: apiError,
       });
-
-    // ===================================================
-    // GET RESPONSE TEXT
-    // ===================================================
-
-    let text = "";
-
-    if (typeof result.text === "string") {
-      text = result.text;
-    } else if (
-      result.response &&
-      typeof result.response.text === "function"
-    ) {
-      text = result.response.text();
     }
 
-    text = String(text || "").trim();
+    // ============================================
+    // GET TEXT
+    // ============================================
 
-    // ===================================================
-    // EMPTY RESPONSE
-    // ===================================================
+    const text =
+      geminiData?.candidates?.[0]
+        ?.content?.parts?.[0]?.text;
 
     if (!text) {
+      console.error(
+        "Gemini Empty Response:",
+        geminiData
+      );
+
       return res.status(500).json({
         success: false,
         error:
-          "Gemini ने कोई response नहीं दिया।",
+          "Gemini ने कोई MCQ response नहीं दिया।",
       });
     }
 
-    // ===================================================
-    // REMOVE MARKDOWN IF ANY
-    // =====================================================
+    // ============================================
+    // CLEAN JSON
+    // ============================================
 
-    text = text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
+    let cleanText = String(text).trim();
+
+    cleanText = cleanText
+      .replace(/^```json/i, "")
+      .replace(/^```/i, "")
+      .replace(/```$/i, "")
       .trim();
 
-    // ===================================================
+    // ============================================
     // PARSE JSON
-    // ===================================================
+    // ============================================
 
     let parsed;
 
     try {
-      parsed = JSON.parse(text);
-    } catch (jsonError) {
+      parsed = JSON.parse(cleanText);
+    } catch (parseError) {
       console.error(
-        "Gemini JSON Parse Error:",
-        jsonError
+        "JSON Parse Error:",
+        parseError
       );
 
       console.error(
-        "Gemini Raw Response:",
-        text
+        "Gemini Text:",
+        cleanText
       );
 
       return res.status(500).json({
         success: false,
         error:
-          "Gemini ने सही JSON format में MCQ नहीं भेजा।",
+          "Gemini ने valid JSON नहीं भेजा।",
       });
     }
 
-    // ===================================================
-    // CHECK QUESTIONS
-    // ===================================================
+    // ============================================
+    // QUESTIONS CHECK
+    // ============================================
 
     if (
       !parsed ||
@@ -286,150 +263,102 @@ JSON का exact format:
       });
     }
 
-    // ===================================================
+    // ============================================
     // NORMALIZE QUESTIONS
-    // =====================================================
+    // ============================================
 
-    const questions = parsed.questions
-      .slice(0, count)
-      .map((item) => {
-        const answer =
-          String(item?.answer || "")
-            .trim()
-            .toUpperCase();
-
-        return {
-          question:
+    const questions =
+      parsed.questions
+        .slice(0, questionCount)
+        .map((item) => {
+          const answer =
             String(
-              item?.question || ""
-            ).trim(),
-
-          options: {
-            A: String(
-              item?.options?.A || ""
-            ).trim(),
-
-            B: String(
-              item?.options?.B || ""
-            ).trim(),
-
-            C: String(
-              item?.options?.C || ""
-            ).trim(),
-
-            D: String(
-              item?.options?.D || ""
-            ).trim(),
-          },
-
-          answer:
-            ["A", "B", "C", "D"].includes(
-              answer
+              item?.answer || ""
             )
-              ? answer
-              : "A",
+              .trim()
+              .toUpperCase();
 
-          explanation:
-            String(
-              item?.explanation || ""
-            ).trim(),
-        };
-      })
-      .filter(
-        (item) =>
-          item.question &&
-          item.options.A &&
-          item.options.B &&
-          item.options.C &&
-          item.options.D
-      );
+          return {
+            question:
+              String(
+                item?.question || ""
+              ).trim(),
 
-    // ===================================================
-    // NO VALID QUESTIONS
-    // =====================================================
+            options: {
+              A: String(
+                item?.options?.A || ""
+              ).trim(),
+
+              B: String(
+                item?.options?.B || ""
+              ).trim(),
+
+              C: String(
+                item?.options?.C || ""
+              ).trim(),
+
+              D: String(
+                item?.options?.D || ""
+              ).trim(),
+            },
+
+            answer:
+              ["A", "B", "C", "D"].includes(
+                answer
+              )
+                ? answer
+                : "A",
+
+            explanation:
+              String(
+                item?.explanation || ""
+              ).trim(),
+          };
+        })
+        .filter(
+          (item) =>
+            item.question &&
+            item.options.A &&
+            item.options.B &&
+            item.options.C &&
+            item.options.D
+        );
+
+    // ============================================
+    // VALIDATION
+    // ============================================
 
     if (!questions.length) {
       return res.status(500).json({
         success: false,
         error:
-          "Gemini ने valid MCQ नहीं बनाया।",
+          "Gemini से valid MCQ प्राप्त नहीं हुए।",
       });
     }
 
-    // ===================================================
+    // ============================================
     // SUCCESS
-    // =====================================================
-
-    console.log(
-      `Gemini ने ${questions.length} MCQ बनाए।`
-    );
+    // ============================================
 
     return res.status(200).json({
       success: true,
-      exam: exam,
-      topic: topic,
+      exam,
+      topic,
       count: questions.length,
-      questions: questions,
+      questions,
     });
 
   } catch (error) {
-    // ===================================================
-    // ERROR
-    // ===================================================
-
     console.error(
-      "Gemini API Error:",
+      "MCQ API ERROR:",
       error
     );
-
-    const message =
-      error?.message ||
-      String(error) ||
-      "Unknown error";
-
-    // ===================================================
-    // API KEY ERROR
-    // ===================================================
-
-    if (
-      message.includes("API key") ||
-      message.includes("API_KEY") ||
-      message.includes("401") ||
-      message.includes("authentication")
-    ) {
-      return res.status(500).json({
-        success: false,
-        error:
-          "Gemini API Key में समस्या है। Vercel में GEMINI_API_KEY जांचें।",
-      });
-    }
-
-    // ===================================================
-    // RATE LIMIT
-    // ===================================================
-
-    if (
-      message.includes("429") ||
-      message.includes(
-        "RESOURCE_EXHAUSTED"
-      )
-    ) {
-      return res.status(429).json({
-        success: false,
-        error:
-          "Gemini API की request limit पूरी हो गई है। थोड़ी देर बाद दोबारा प्रयास करें।",
-      });
-    }
-
-    // ===================================================
-    // GENERAL ERROR
-    // ===================================================
 
     return res.status(500).json({
       success: false,
       error:
-        "Gemini AI से MCQ बनाने में समस्या हुई।",
-      details: message,
+        error?.message ||
+        "Server में MCQ generate करने में समस्या हुई।",
     });
   }
 }
