@@ -2,7 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 
 // =====================================================
 // GEMINI AI MCQ API
-// Exam Test
 // =====================================================
 
 export default async function handler(req, res) {
@@ -72,11 +71,21 @@ export default async function handler(req, res) {
       count = 5;
     }
 
-    // Minimum 1 / Maximum 20
+    // Minimum 1 / Maximum 50
     count = Math.min(
       Math.max(Math.floor(count), 1),
-      20
+      50
     );
+
+    const language =
+      typeof body.language === "string"
+        ? body.language.trim()
+        : "Hindi";
+
+    const difficulty =
+      typeof body.difficulty === "string"
+        ? body.difficulty.trim()
+        : "Medium";
 
     // ===================================================
     // TOPIC VALIDATION
@@ -120,6 +129,11 @@ export default async function handler(req, res) {
     // PROMPT
     // ===================================================
 
+    const languageInstruction =
+      language.toLowerCase() === "english"
+        ? "सभी प्रश्न, विकल्प और explanation English भाषा में होने चाहिए।"
+        : "सभी प्रश्न, विकल्प और explanation हिंदी भाषा में होने चाहिए।";
+
     const prompt = `
 आप "Exam Test" के AI MCQ Generator हैं।
 
@@ -132,23 +146,30 @@ ${topic}
 प्रश्नों की संख्या:
 ${count}
 
-आपको प्रतियोगी परीक्षाओं के लिए MCQ तैयार करने हैं।
+भाषा:
+${language}
+
+कठिनाई स्तर:
+${difficulty}
+
+आपको प्रतियोगी परीक्षाओं के लिए उच्च गुणवत्ता वाले MCQ तैयार करने हैं।
 
 नियम:
 
-1. सभी प्रश्न हिंदी भाषा में होने चाहिए।
+1. ${languageInstruction}
 2. प्रश्न प्रतियोगी परीक्षा स्तर के होने चाहिए।
-3. प्रत्येक प्रश्न के 4 विकल्प होने चाहिए।
+3. प्रत्येक प्रश्न के ठीक 4 विकल्प होने चाहिए।
 4. विकल्प A, B, C और D में हों।
 5. केवल एक सही उत्तर होना चाहिए।
-6. सही उत्तर A/B/C/D में से केवल एक होना चाहिए।
-7. प्रत्येक प्रश्न का हिंदी में explanation देना है।
+6. सही उत्तर केवल A, B, C या D में से एक होना चाहिए।
+7. प्रत्येक प्रश्न का explanation देना है।
 8. प्रश्न repeat नहीं होने चाहिए।
 9. गलत या अस्पष्ट जानकारी न दें।
 10. प्रश्न ${exam} परीक्षा के स्तर के अनुसार बनाएँ।
-11. आउटपुट केवल JSON में दें।
-12. JSON के बाहर कोई text न दें।
-13. Markdown code block का उपयोग न करें।
+11. Difficulty level ${difficulty} के अनुसार रखें।
+12. आउटपुट केवल valid JSON में दें।
+13. JSON के बाहर कोई text न दें।
+14. Markdown code block का उपयोग न करें।
 
 JSON का exact format:
 
@@ -181,9 +202,7 @@ JSON का exact format:
 
         config: {
           temperature: 0.4,
-
-          responseMimeType:
-            "application/json",
+          responseMimeType: "application/json",
         },
       });
 
@@ -218,7 +237,7 @@ JSON का exact format:
 
     // ===================================================
     // REMOVE MARKDOWN IF ANY
-    // ===================================================
+    // =====================================================
 
     text = text
       .replace(/^```json\s*/i, "")
@@ -269,66 +288,65 @@ JSON का exact format:
 
     // ===================================================
     // NORMALIZE QUESTIONS
-    // ===================================================
+    // =====================================================
 
-    const questions =
-      parsed.questions
-        .slice(0, count)
-        .map((item) => {
-          const answer =
-            String(item?.answer || "")
-              .trim()
-              .toUpperCase();
+    const questions = parsed.questions
+      .slice(0, count)
+      .map((item) => {
+        const answer =
+          String(item?.answer || "")
+            .trim()
+            .toUpperCase();
 
-          return {
-            question:
-              String(
-                item?.question || ""
-              ).trim(),
+        return {
+          question:
+            String(
+              item?.question || ""
+            ).trim(),
 
-            options: {
-              A: String(
-                item?.options?.A || ""
-              ).trim(),
+          options: {
+            A: String(
+              item?.options?.A || ""
+            ).trim(),
 
-              B: String(
-                item?.options?.B || ""
-              ).trim(),
+            B: String(
+              item?.options?.B || ""
+            ).trim(),
 
-              C: String(
-                item?.options?.C || ""
-              ).trim(),
+            C: String(
+              item?.options?.C || ""
+            ).trim(),
 
-              D: String(
-                item?.options?.D || ""
-              ).trim(),
-            },
+            D: String(
+              item?.options?.D || ""
+            ).trim(),
+          },
 
-            answer:
-              ["A", "B", "C", "D"].includes(
-                answer
-              )
-                ? answer
-                : "A",
+          answer:
+            ["A", "B", "C", "D"].includes(
+              answer
+            )
+              ? answer
+              : "A",
 
-            explanation:
-              String(
-                item?.explanation || ""
-              ).trim(),
-          };
-        })
-        .filter(
-          (item) =>
-            item.question &&
-            item.options.A &&
-            item.options.B &&
-            item.options.C &&
-            item.options.D
-        );
+          explanation:
+            String(
+              item?.explanation || ""
+            ).trim(),
+        };
+      })
+      .filter(
+        (item) =>
+          item.question &&
+          item.options.A &&
+          item.options.B &&
+          item.options.C &&
+          item.options.D
+      );
 
     // ===================================================
     // NO VALID QUESTIONS
-    // ===================================================
+    // =====================================================
 
     if (!questions.length) {
       return res.status(500).json({
@@ -340,7 +358,7 @@ JSON का exact format:
 
     // ===================================================
     // SUCCESS
-    // ===================================================
+    // =====================================================
 
     console.log(
       `Gemini ने ${questions.length} MCQ बनाए।`
@@ -348,13 +366,9 @@ JSON का exact format:
 
     return res.status(200).json({
       success: true,
-
       exam: exam,
-
       topic: topic,
-
       count: questions.length,
-
       questions: questions,
     });
 
@@ -373,7 +387,10 @@ JSON का exact format:
       String(error) ||
       "Unknown error";
 
+    // ===================================================
     // API KEY ERROR
+    // ===================================================
+
     if (
       message.includes("API key") ||
       message.includes("API_KEY") ||
@@ -387,7 +404,10 @@ JSON का exact format:
       });
     }
 
+    // ===================================================
     // RATE LIMIT
+    // ===================================================
+
     if (
       message.includes("429") ||
       message.includes(
@@ -401,7 +421,10 @@ JSON का exact format:
       });
     }
 
+    // ===================================================
     // GENERAL ERROR
+    // ===================================================
+
     return res.status(500).json({
       success: false,
       error:
