@@ -1,245 +1,225 @@
 import React, { useMemo, useState } from "react";
 import "./CurrentAffairs.css";
 
-function CurrentAffairs({ onBack }) {
-  const [activeCategory, setActiveCategory] = useState("All");
+const currentAffairsData = [
+  {
+    id: 1,
+    category: "National",
+    icon: "🇮🇳",
+    date: "Today",
+    title: "राष्ट्रीय करंट अफेयर्स",
+    description:
+      "भारत की महत्वपूर्ण राष्ट्रीय घटनाओं, सरकारी निर्णयों और प्रमुख गतिविधियों से संबंधित करंट अफेयर्स।",
+    points: [
+      "राष्ट्रीय स्तर की महत्वपूर्ण घटनाओं पर आधारित प्रश्न।",
+      "सरकारी निर्णय एवं प्रमुख गतिविधियाँ।",
+      "प्रतियोगी परीक्षाओं के लिए महत्वपूर्ण तथ्य।",
+    ],
+  },
+  {
+    id: 2,
+    category: "International",
+    icon: "🌍",
+    date: "Today",
+    title: "अंतरराष्ट्रीय करंट अफेयर्स",
+    description:
+      "विश्व स्तर की महत्वपूर्ण घटनाओं, अंतरराष्ट्रीय संगठनों और विभिन्न देशों से संबंधित करंट अफेयर्स।",
+    points: [
+      "अंतरराष्ट्रीय संगठनों से संबंधित महत्वपूर्ण तथ्य।",
+      "विभिन्न देशों के प्रमुख घटनाक्रम।",
+      "विश्व स्तर की महत्वपूर्ण घटनाएँ।",
+    ],
+  },
+  {
+    id: 3,
+    category: "Economy",
+    icon: "💰",
+    date: "Today",
+    title: "अर्थव्यवस्था करंट अफेयर्स",
+    description:
+      "भारतीय अर्थव्यवस्था, बैंकिंग, वित्त, बजट और आर्थिक नीतियों से संबंधित महत्वपूर्ण करंट अफेयर्स।",
+    points: [
+      "बैंकिंग और वित्त से संबंधित तथ्य।",
+      "आर्थिक नीतियाँ एवं सरकारी योजनाएँ।",
+      "बजट और अर्थव्यवस्था से संबंधित प्रश्न।",
+    ],
+  },
+  {
+    id: 4,
+    category: "Science & Technology",
+    icon: "🔬",
+    date: "Today",
+    title: "विज्ञान एवं प्रौद्योगिकी",
+    description:
+      "विज्ञान, तकनीक, अंतरिक्ष, AI और नई तकनीकों से संबंधित महत्वपूर्ण करंट अफेयर्स।",
+    points: [
+      "नई तकनीक एवं वैज्ञानिक उपलब्धियाँ।",
+      "अंतरिक्ष कार्यक्रम एवं मिशन।",
+      "AI और आधुनिक तकनीक से संबंधित तथ्य।",
+    ],
+  },
+  {
+    id: 5,
+    category: "Sports",
+    icon: "🏆",
+    date: "Today",
+    title: "खेल करंट अफेयर्स",
+    description:
+      "राष्ट्रीय एवं अंतरराष्ट्रीय खेल प्रतियोगिताओं, खिलाड़ियों और प्रमुख खेल उपलब्धियों से संबंधित समाचार।",
+    points: [
+      "प्रमुख खेल प्रतियोगिताएँ।",
+      "खिलाड़ियों की उपलब्धियाँ।",
+      "महत्वपूर्ण खेल पुरस्कार एवं रिकॉर्ड।",
+    ],
+  },
+  {
+    id: 6,
+    category: "Awards",
+    icon: "🏅",
+    date: "Today",
+    title: "पुरस्कार एवं सम्मान",
+    description:
+      "राष्ट्रीय एवं अंतरराष्ट्रीय पुरस्कारों, सम्मानों और प्रमुख पुरस्कार विजेताओं से संबंधित करंट अफेयर्स।",
+    points: [
+      "राष्ट्रीय पुरस्कार एवं सम्मान।",
+      "अंतरराष्ट्रीय पुरस्कार।",
+      "प्रमुख पुरस्कार विजेता।",
+    ],
+  },
+  {
+    id: 7,
+    category: "Government Schemes",
+    icon: "🏛️",
+    date: "Today",
+    title: "सरकारी योजनाएँ",
+    description:
+      "केंद्र एवं राज्य सरकार की महत्वपूर्ण योजनाओं, नीतियों और सरकारी पहलों से संबंधित जानकारी।",
+    points: [
+      "केंद्र सरकार की प्रमुख योजनाएँ।",
+      "राज्य सरकार की महत्वपूर्ण योजनाएँ।",
+      "नई सरकारी नीतियाँ एवं पहल।",
+    ],
+  },
+];
+
+const categories = [
+  "All",
+  "National",
+  "International",
+  "Economy",
+  "Science & Technology",
+  "Sports",
+  "Awards",
+  "Government Schemes",
+];
+
+function CurrentAffairs({ onBack, onNavigate }) {
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [search, setSearch] = useState("");
-  const [selectedAffair, setSelectedAffair] = useState(null);
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
-  const categories = [
-    "All",
-    "National",
-    "International",
-    "Economy",
-    "Science & Technology",
-    "Sports",
-    "Awards",
-    "Government Schemes",
-  ];
+  const filteredArticles = useMemo(() => {
+    const searchText = search.trim().toLowerCase();
 
-  const currentAffairs = [
-    {
-      id: 1,
-      category: "National",
-      title: "राष्ट्रीय करेंट अफेयर्स",
-      description:
-        "भारत की महत्वपूर्ण राष्ट्रीय घटनाओं, सरकारी निर्णयों और प्रमुख गतिविधियों से संबंधित करेंट अफेयर्स।",
-      date: "Today",
-      icon: "🇮🇳",
-      details: [
-        "राष्ट्रीय स्तर की महत्वपूर्ण घटनाओं पर आधारित प्रश्न।",
-        "सरकारी निर्णय एवं प्रमुख गतिविधियाँ।",
-        "प्रतियोगी परीक्षाओं के लिए महत्वपूर्ण तथ्य।",
-      ],
-    },
-    {
-      id: 2,
-      category: "International",
-      title: "अंतरराष्ट्रीय करेंट अफेयर्स",
-      description:
-        "विश्व की महत्वपूर्ण घटनाओं, देशों, अंतरराष्ट्रीय संगठनों और वैश्विक गतिविधियों से संबंधित करेंट अफेयर्स।",
-      date: "Today",
-      icon: "🌍",
-      details: [
-        "अंतरराष्ट्रीय संगठनों से संबंधित घटनाएँ।",
-        "विभिन्न देशों के महत्वपूर्ण घटनाक्रम।",
-        "वैश्विक स्तर की महत्वपूर्ण घटनाएँ।",
-      ],
-    },
-    {
-      id: 3,
-      category: "Economy",
-      title: "अर्थव्यवस्था एवं बैंकिंग",
-      description:
-        "भारतीय अर्थव्यवस्था, बैंकिंग, वित्त, बजट और महत्वपूर्ण आर्थिक घटनाओं से संबंधित करेंट अफेयर्स।",
-      date: "Today",
-      icon: "💰",
-      details: [
-        "भारतीय अर्थव्यवस्था से संबंधित महत्वपूर्ण घटनाएँ।",
-        "बैंकिंग एवं वित्तीय क्षेत्र की जानकारी।",
-        "बजट और आर्थिक नीतियों से जुड़े तथ्य।",
-      ],
-    },
-    {
-      id: 4,
-      category: "Science & Technology",
-      title: "विज्ञान एवं प्रौद्योगिकी",
-      description:
-        "विज्ञान, अंतरिक्ष, AI, डिजिटल तकनीक और महत्वपूर्ण वैज्ञानिक उपलब्धियों से संबंधित करेंट अफेयर्स।",
-      date: "Today",
-      icon: "🚀",
-      details: [
-        "अंतरिक्ष एवं वैज्ञानिक मिशन।",
-        "Artificial Intelligence और नई तकनीक।",
-        "महत्वपूर्ण वैज्ञानिक उपलब्धियाँ।",
-      ],
-    },
-    {
-      id: 5,
-      category: "Sports",
-      title: "खेल करेंट अफेयर्स",
-      description:
-        "खेल प्रतियोगिताओं, खिलाड़ियों, रिकॉर्ड, चैंपियनशिप और खेल जगत की महत्वपूर्ण घटनाओं से संबंधित जानकारी।",
-      date: "Today",
-      icon: "🏆",
-      details: [
-        "महत्वपूर्ण खेल प्रतियोगिताएँ।",
-        "खिलाड़ियों और रिकॉर्ड से संबंधित तथ्य।",
-        "राष्ट्रीय एवं अंतरराष्ट्रीय खेल घटनाएँ।",
-      ],
-    },
-    {
-      id: 6,
-      category: "Awards",
-      title: "पुरस्कार एवं सम्मान",
-      description:
-        "राष्ट्रीय और अंतरराष्ट्रीय पुरस्कारों, सम्मानों तथा महत्वपूर्ण उपलब्धियों से संबंधित करेंट अफेयर्स।",
-      date: "Today",
-      icon: "🏅",
-      details: [
-        "राष्ट्रीय पुरस्कार एवं सम्मान।",
-        "अंतरराष्ट्रीय पुरस्कार।",
-        "महत्वपूर्ण व्यक्तियों एवं संस्थाओं की उपलब्धियाँ।",
-      ],
-    },
-    {
-      id: 7,
-      category: "Government Schemes",
-      title: "सरकारी योजनाएँ",
-      description:
-        "केंद्र और राज्य सरकार की महत्वपूर्ण योजनाओं, नीतियों और नई पहलों से संबंधित जानकारी।",
-      date: "Today",
-      icon: "🏛️",
-      details: [
-        "केंद्र सरकार की महत्वपूर्ण योजनाएँ।",
-        "राज्य सरकार की प्रमुख योजनाएँ।",
-        "नई सरकारी नीतियाँ एवं पहल।",
-      ],
-    },
-  ];
-
-  const filteredAffairs = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    return currentAffairs.filter((item) => {
+    return currentAffairsData.filter((item) => {
       const categoryMatch =
-        activeCategory === "All" ||
-        item.category === activeCategory;
+        selectedCategory === "All" ||
+        item.category === selectedCategory;
 
       const searchMatch =
-        keyword === "" ||
-        item.title.toLowerCase().includes(keyword) ||
-        item.description.toLowerCase().includes(keyword) ||
-        item.category.toLowerCase().includes(keyword);
+        !searchText ||
+        item.title.toLowerCase().includes(searchText) ||
+        item.description.toLowerCase().includes(searchText) ||
+        item.category.toLowerCase().includes(searchText);
 
       return categoryMatch && searchMatch;
     });
-  }, [activeCategory, search]);
+  }, [selectedCategory, search]);
 
-  const handleBack = () => {
-    if (typeof onBack === "function") {
-      onBack();
-    } else {
-      window.history.back();
-    }
+  const openArticle = (article) => {
+    setSelectedArticle(article);
   };
 
-  const closeModal = () => {
-    setSelectedAffair(null);
+  const closeArticle = () => {
+    setSelectedArticle(null);
+  };
+
+  const goToMCQ = () => {
+    closeArticle();
+
+    if (typeof onNavigate === "function") {
+      onNavigate("mcq");
+      return;
+    }
+
+    // यदि App.jsx में onNavigate नहीं दिया गया है
+    window.location.hash = "#mcq";
   };
 
   return (
     <div className="current-affairs-page">
 
-      {/* BACK BUTTON */}
-      <div className="current-affairs-container">
+      {/* Header */}
+      <section className="ca-header">
         <button
-          type="button"
-          className="back-home-btn"
-          onClick={handleBack}
+          className="ca-back-button"
+          onClick={() => {
+            if (typeof onBack === "function") {
+              onBack();
+            } else {
+              window.history.back();
+            }
+          }}
         >
           ← Home
         </button>
-      </div>
 
-      {/* HERO */}
-      <section className="current-affairs-hero">
-        <div className="hero-icon">📰</div>
+        <div className="ca-header-icon">📰</div>
 
-        <h1>
-          Current
-          <br />
-          Affairs
-        </h1>
+        <h1>Current Affairs</h1>
 
         <p>
-          Daily Current Affairs और
-          <br />
-          Current Affairs MCQ
+          Daily Current Affairs और Current Affairs MCQ
         </p>
       </section>
 
-      {/* TODAY */}
-      <section className="current-affairs-container">
-        <div className="today-card">
-          <div className="today-icon">📰</div>
-
-          <div>
-            <h2>Today's Current Affairs</h2>
-
-            <p>
-              आज के महत्वपूर्ण राष्ट्रीय और
-              अंतरराष्ट्रीय घटनाक्रम।
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* SEARCH */}
-      <section className="current-affairs-container">
-        <div className="search-box">
-          <span className="search-icon">🔍</span>
+      {/* Search */}
+      <section className="ca-search-section">
+        <div className="ca-search-box">
+          <span>🔍</span>
 
           <input
             type="text"
             value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Current Affairs खोजें..."
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
           />
 
           {search && (
             <button
-              type="button"
-              className="clear-search-btn"
+              className="ca-clear-search"
               onClick={() => setSearch("")}
             >
-              ✕
+              ×
             </button>
           )}
         </div>
       </section>
 
-      {/* CATEGORIES */}
-      <section className="current-affairs-container">
-        <h2 className="section-title">
-          📚 Categories
-        </h2>
+      {/* Categories */}
+      <section className="ca-category-section">
+        <h2>📚 Categories</h2>
 
-        <div className="category-list">
+        <div className="ca-category-list">
           {categories.map((category) => (
             <button
-              type="button"
               key={category}
-              className={`category-btn ${
-                activeCategory === category
-                  ? "active"
-                  : ""
-              }`}
-              onClick={() =>
-                setActiveCategory(category)
+              className={
+                selectedCategory === category
+                  ? "ca-category-btn active"
+                  : "ca-category-btn"
               }
+              onClick={() => setSelectedCategory(category)}
             >
               {category}
             </button>
@@ -247,222 +227,143 @@ function CurrentAffairs({ onBack }) {
         </div>
       </section>
 
-      {/* LATEST CURRENT AFFAIRS */}
-      <section className="current-affairs-container">
-        <div className="section-heading-row">
-          <h2 className="section-title">
-            📰 Latest Current Affairs
-          </h2>
+      {/* Latest */}
+      <section className="ca-latest-section">
 
-          <span className="article-count">
-            {filteredAffairs.length} Topics
-          </span>
+        <div className="ca-latest-heading">
+          <div>
+            <h2>📰 Latest Current Affairs</h2>
+            <span>{filteredArticles.length} Topics</span>
+          </div>
         </div>
 
-        <div className="affairs-list">
-          {filteredAffairs.length > 0 ? (
-            filteredAffairs.map((item) => (
+        {filteredArticles.length === 0 ? (
+          <div className="ca-no-result">
+            <div>🔍</div>
+            <h3>कोई Current Affairs नहीं मिला</h3>
+            <p>
+              कृपया दूसरा शब्द या category चुनकर दोबारा प्रयास करें।
+            </p>
+          </div>
+        ) : (
+          <div className="ca-card-grid">
+
+            {filteredArticles.map((article) => (
               <article
-                className="affair-card"
-                key={item.id}
+                className="ca-card"
+                key={article.id}
               >
-                <div className="affair-card-top">
-                  <span className="affair-category">
-                    {item.category}
+
+                <div className="ca-card-top">
+                  <span className="ca-card-category">
+                    {article.category}
                   </span>
 
-                  <span className="affair-date">
-                    📅 {item.date}
+                  <span className="ca-card-date">
+                    📅 {article.date}
                   </span>
                 </div>
 
-                <div className="affair-icon">
-                  {item.icon}
+                <div className="ca-card-icon">
+                  {article.icon}
                 </div>
 
-                <h3>{item.title}</h3>
+                <h3>{article.title}</h3>
 
-                <p>{item.description}</p>
+                <p>{article.description}</p>
 
                 <button
-                  type="button"
-                  className="read-more-btn"
-                  onClick={() =>
-                    setSelectedAffair(item)
-                  }
+                  className="ca-read-button"
+                  onClick={() => openArticle(article)}
                 >
                   पढ़ें →
                 </button>
+
               </article>
-            ))
-          ) : (
-            <div className="no-results">
-              <div className="no-results-icon">
-                🔍
-              </div>
+            ))}
 
-              <h3>
-                कोई Current Affairs नहीं मिला
-              </h3>
-
-              <p>
-                कृपया दूसरा keyword या category
-                चुनकर देखें।
-              </p>
-
-              <button
-                type="button"
-                className="reset-filter-btn"
-                onClick={() => {
-                  setSearch("");
-                  setActiveCategory("All");
-                }}
-              >
-                Filters Reset करें
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
-      {/* MCQ BANNER */}
-      <section className="current-affairs-container">
-        <div className="mcq-banner">
-          <div className="mcq-banner-icon">
-            📝
-          </div>
+      {/* Detail Modal */}
+      {selectedArticle && (
+        <div
+          className="ca-modal-overlay"
+          onClick={closeArticle}
+        >
 
-          <div className="mcq-banner-content">
-            <h2>Current Affairs MCQ</h2>
-
-            <p>
-              प्रतियोगी परीक्षाओं के लिए
-              Current Affairs MCQ का अभ्यास करें।
-            </p>
+          <div
+            className="ca-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
 
             <button
-              type="button"
-              className="mcq-start-btn"
-              onClick={() => {
-                window.scrollTo({
-                  top: 0,
-                  behavior: "smooth",
-                });
-              }}
+              className="ca-modal-close"
+              onClick={closeArticle}
+              aria-label="Close"
             >
-              MCQ Practice →
+              ×
             </button>
-          </div>
-        </div>
-      </section>
 
-      {/* EXAM PREPARATION */}
-      <section className="current-affairs-container">
-        <div className="exam-info-card">
-          <h2>🎯 Exam Preparation</h2>
+            <div className="ca-modal-header">
 
-          <p>
-            Current Affairs प्रतियोगी परीक्षाओं
-            की तैयारी का महत्वपूर्ण हिस्सा है।
-          </p>
+              <div className="ca-modal-icon">
+                {selectedArticle.icon}
+              </div>
 
-          <div className="exam-tags">
-            <span>UPPCS</span>
-            <span>UP Police</span>
-            <span>SSC</span>
-            <span>RRB</span>
-            <span>UPSSSC</span>
-            <span>Other Exams</span>
-          </div>
-        </div>
-      </section>
+              <div>
+                <span className="ca-modal-category">
+                  {selectedArticle.category}
+                </span>
 
-      <div className="current-affairs-bottom-space"></div>
+                <h2>{selectedArticle.title}</h2>
 
-      {/* =========================================
-          DETAIL MODAL
-      ========================================= */}
-
-      {selectedAffair && (
-        <div
-          className="current-affairs-modal-overlay"
-          onClick={closeModal}
-        >
-          <div
-            className="current-affairs-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="modal-header">
-              <div className="modal-title-area">
-                <div className="modal-icon">
-                  {selectedAffair.icon}
-                </div>
-
-                <div>
-                  <span className="modal-category">
-                    {selectedAffair.category}
-                  </span>
-
-                  <h2>
-                    {selectedAffair.title}
-                  </h2>
+                <div className="ca-modal-date">
+                  📅 {selectedArticle.date}
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={closeModal}
-                aria-label="Close"
-              >
-                ✕
-              </button>
             </div>
 
-            <div className="modal-date">
-              📅 {selectedAffair.date}
-            </div>
+            <div className="ca-modal-content">
 
-            <div className="modal-content">
-              <h3>
-                📖 महत्वपूर्ण जानकारी
-              </h3>
+              <h3>📖 महत्वपूर्ण जानकारी</h3>
 
               <p>
-                {selectedAffair.description}
+                {selectedArticle.description}
               </p>
 
               <ul>
-                {selectedAffair.details.map(
-                  (detail, index) => (
-                    <li key={index}>
-                      {detail}
-                    </li>
-                  )
-                )}
+                {selectedArticle.points.map((point, index) => (
+                  <li key={index}>
+                    {point}
+                  </li>
+                ))}
               </ul>
+
             </div>
 
-            <div className="modal-footer">
+            <div className="ca-modal-actions">
+
               <button
-                type="button"
-                className="modal-close-action"
-                onClick={closeModal}
+                className="ca-mcq-button"
+                onClick={goToMCQ}
+              >
+                📝 MCQ अभ्यास करें
+              </button>
+
+              <button
+                className="ca-close-button"
+                onClick={closeArticle}
               >
                 बंद करें
               </button>
 
-              <button
-                type="button"
-                className="modal-mcq-action"
-                onClick={closeModal}
-              >
-                📝 MCQ अभ्यास करें
-              </button>
             </div>
+
           </div>
+
         </div>
       )}
 
