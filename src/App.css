@@ -451,3 +451,47 @@
     font-size: 25px;
   }
 }
+
+
+/* =========================================================
+   EXAM TEST - BRAND STYLING
+   ========================================================= */
+.logo-text h2 {
+  font-weight: 950;
+  letter-spacing: -0.8px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(18, 104, 223, 0.10);
+}
+
+.exam-test-hero-title {
+  font-weight: 950 !important;
+  letter-spacing: -2.5px !important;
+  text-transform: uppercase;
+  text-shadow: 0 5px 18px rgba(18, 104, 223, 0.12);
+}
+
+.exam-test-hero-title span:first-child {
+  color: #071b41 !important;
+}
+
+.exam-test-hero-title span:last-child {
+  color: #1268df !important;
+  position: relative;
+}
+
+.exam-test-hero-title span:last-child::after {
+  content: '';
+  display: block;
+  width: 72%;
+  height: 5px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1268df, #22c55e);
+}
+
+@media (max-width: 650px) {
+  .exam-test-hero-title {
+    font-size: 40px !important;
+    letter-spacing: -1.5px !important;
+  }
+}
