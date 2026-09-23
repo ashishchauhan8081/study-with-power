@@ -40,6 +40,8 @@ import AdminPanel from "./components/AdminPanel";
 // ======================================================
 
 import AIMCQGenerator from "./components/AIMCQGenerator";
+import CurrentAffairs from "./pages/CurrentAffairs";
+
 
 // ======================================================
 // FIREBASE
@@ -2685,98 +2687,10 @@ export default function App() {
               CURRENT AFFAIRS
           ================================================= */}
 
-          {page ===
-            "current" && (
-            <>
-
-              <button
-                className="back"
-                onClick={
-                  goHome
-                }
-              >
-                ← Home
-              </button>
-
-              <div className="page-title">
-
-                <div className="big-icon">
-                  📰
-                </div>
-
-                <h1>
-                  Current Affairs
-                </h1>
-
-                <p>
-                  Daily Current Affairs
-                  और Current Affairs
-                  MCQ
-                </p>
-
-              </div>
-
-              <div className="resource-grid">
-
-                <div className="resource-card">
-
-                  <div className="icon">
-                    🗞️
-                  </div>
-
-                  <h3>
-                    Today's Current
-                    Affairs
-                  </h3>
-
-                  <p>
-                    आज के महत्वपूर्ण
-                    राष्ट्रीय और
-                    अंतरराष्ट्रीय घटनाक्रम।
-                  </p>
-
-                </div>
-
-                <div className="resource-card">
-
-                  <div className="icon">
-                    📝
-                  </div>
-
-                  <h3>
-                    Current Affairs MCQ
-                  </h3>
-
-                  <p>
-                    Current Affairs
-                    आधारित महत्वपूर्ण
-                    MCQ।
-                  </p>
-
-                </div>
-
-                <div className="resource-card">
-
-                  <div className="icon">
-                    📅
-                  </div>
-
-                  <h3>
-                    Monthly Current
-                    Affairs
-                  </h3>
-
-                  <p>
-                    पूरे महीने के
-                    महत्वपूर्ण Current
-                    Affairs।
-                  </p>
-
-                </div>
-
-              </div>
-
-            </>
+          {page === "current" && (
+            <CurrentAffairs
+              onBack={goHome}
+            />
           )}
 
           {/* =================================================
