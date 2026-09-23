@@ -16,6 +16,7 @@ const currentAffairsData = [
       "प्रतियोगी परीक्षाओं के लिए महत्वपूर्ण तथ्य।",
     ],
   },
+
   {
     id: 2,
     category: "International",
@@ -30,6 +31,7 @@ const currentAffairsData = [
       "विश्व स्तर की महत्वपूर्ण घटनाएँ।",
     ],
   },
+
   {
     id: 3,
     category: "Economy",
@@ -44,6 +46,7 @@ const currentAffairsData = [
       "बजट और अर्थव्यवस्था से संबंधित प्रश्न।",
     ],
   },
+
   {
     id: 4,
     category: "Science & Technology",
@@ -58,6 +61,7 @@ const currentAffairsData = [
       "AI और आधुनिक तकनीक से संबंधित तथ्य।",
     ],
   },
+
   {
     id: 5,
     category: "Sports",
@@ -72,6 +76,7 @@ const currentAffairsData = [
       "महत्वपूर्ण खेल पुरस्कार एवं रिकॉर्ड।",
     ],
   },
+
   {
     id: 6,
     category: "Awards",
@@ -86,6 +91,7 @@ const currentAffairsData = [
       "प्रमुख पुरस्कार विजेता।",
     ],
   },
+
   {
     id: 7,
     category: "Government Schemes",
@@ -144,6 +150,14 @@ function CurrentAffairs({ onBack, onNavigate }) {
     setSelectedArticle(null);
   };
 
+  const handleBack = () => {
+    if (typeof onBack === "function") {
+      onBack();
+    } else {
+      window.history.back();
+    }
+  };
+
   const goToMCQ = () => {
     closeArticle();
 
@@ -152,29 +166,26 @@ function CurrentAffairs({ onBack, onNavigate }) {
       return;
     }
 
-    // यदि App.jsx में onNavigate नहीं दिया गया है
     window.location.hash = "#mcq";
   };
 
   return (
     <div className="current-affairs-page">
 
-      {/* Header */}
+      {/* ================= HEADER ================= */}
       <section className="ca-header">
+
         <button
+          type="button"
           className="ca-back-button"
-          onClick={() => {
-            if (typeof onBack === "function") {
-              onBack();
-            } else {
-              window.history.back();
-            }
-          }}
+          onClick={handleBack}
         >
           ← Home
         </button>
 
-        <div className="ca-header-icon">📰</div>
+        <div className="ca-header-icon">
+          📰
+        </div>
 
         <h1>Current Affairs</h1>
 
@@ -183,36 +194,49 @@ function CurrentAffairs({ onBack, onNavigate }) {
         </p>
       </section>
 
-      {/* Search */}
+      {/* ================= SEARCH ================= */}
       <section className="ca-search-section">
+
         <div className="ca-search-box">
-          <span>🔍</span>
+
+          <span className="ca-search-icon">
+            🔍
+          </span>
 
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Current Affairs खोजें..."
+            aria-label="Search Current Affairs"
           />
 
           {search && (
             <button
+              type="button"
               className="ca-clear-search"
               onClick={() => setSearch("")}
+              aria-label="Clear search"
             >
               ×
             </button>
           )}
+
         </div>
       </section>
 
-      {/* Categories */}
+      {/* ================= CATEGORIES ================= */}
       <section className="ca-category-section">
-        <h2>📚 Categories</h2>
+
+        <h2>
+          📚 Categories
+        </h2>
 
         <div className="ca-category-list">
+
           {categories.map((category) => (
             <button
+              type="button"
               key={category}
               className={
                 selectedCategory === category
@@ -224,37 +248,61 @@ function CurrentAffairs({ onBack, onNavigate }) {
               {category}
             </button>
           ))}
+
         </div>
       </section>
 
-      {/* Latest */}
+      {/* ================= LATEST CURRENT AFFAIRS ================= */}
       <section className="ca-latest-section">
 
         <div className="ca-latest-heading">
+
           <div>
-            <h2>📰 Latest Current Affairs</h2>
-            <span>{filteredArticles.length} Topics</span>
+            <h2>
+              📰 Latest Current Affairs
+            </h2>
+
+            <span>
+              {filteredArticles.length} Topics
+            </span>
           </div>
+
         </div>
 
+        {/* NO RESULT */}
         {filteredArticles.length === 0 ? (
+
           <div className="ca-no-result">
-            <div>🔍</div>
-            <h3>कोई Current Affairs नहीं मिला</h3>
+
+            <div className="ca-no-result-icon">
+              🔍
+            </div>
+
+            <h3>
+              कोई Current Affairs नहीं मिला
+            </h3>
+
             <p>
-              कृपया दूसरा शब्द या category चुनकर दोबारा प्रयास करें।
+              कृपया दूसरा शब्द या category चुनकर
+              दोबारा प्रयास करें।
             </p>
+
           </div>
+
         ) : (
+
           <div className="ca-card-grid">
 
             {filteredArticles.map((article) => (
+
               <article
                 className="ca-card"
                 key={article.id}
               >
 
+                {/* CARD TOP */}
                 <div className="ca-card-top">
+
                   <span className="ca-card-category">
                     {article.category}
                   </span>
@@ -262,17 +310,27 @@ function CurrentAffairs({ onBack, onNavigate }) {
                   <span className="ca-card-date">
                     📅 {article.date}
                   </span>
+
                 </div>
 
+                {/* ICON */}
                 <div className="ca-card-icon">
                   {article.icon}
                 </div>
 
-                <h3>{article.title}</h3>
+                {/* TITLE */}
+                <h3>
+                  {article.title}
+                </h3>
 
-                <p>{article.description}</p>
+                {/* DESCRIPTION */}
+                <p>
+                  {article.description}
+                </p>
 
+                {/* READ */}
                 <button
+                  type="button"
                   className="ca-read-button"
                   onClick={() => openArticle(article)}
                 >
@@ -280,14 +338,18 @@ function CurrentAffairs({ onBack, onNavigate }) {
                 </button>
 
               </article>
+
             ))}
 
           </div>
+
         )}
+
       </section>
 
-      {/* Detail Modal */}
+      {/* ================= DETAIL MODAL ================= */}
       {selectedArticle && (
+
         <div
           className="ca-modal-overlay"
           onClick={closeArticle}
@@ -298,7 +360,9 @@ function CurrentAffairs({ onBack, onNavigate }) {
             onClick={(e) => e.stopPropagation()}
           >
 
+            {/* CLOSE */}
             <button
+              type="button"
               className="ca-modal-close"
               onClick={closeArticle}
               aria-label="Close"
@@ -306,47 +370,61 @@ function CurrentAffairs({ onBack, onNavigate }) {
               ×
             </button>
 
+            {/* MODAL HEADER */}
             <div className="ca-modal-header">
 
               <div className="ca-modal-icon">
                 {selectedArticle.icon}
               </div>
 
-              <div>
+              <div className="ca-modal-heading">
+
                 <span className="ca-modal-category">
                   {selectedArticle.category}
                 </span>
 
-                <h2>{selectedArticle.title}</h2>
+                <h2>
+                  {selectedArticle.title}
+                </h2>
 
                 <div className="ca-modal-date">
                   📅 {selectedArticle.date}
                 </div>
+
               </div>
 
             </div>
 
+            {/* MODAL CONTENT */}
             <div className="ca-modal-content">
 
-              <h3>📖 महत्वपूर्ण जानकारी</h3>
+              <h3>
+                📖 महत्वपूर्ण जानकारी
+              </h3>
 
               <p>
                 {selectedArticle.description}
               </p>
 
               <ul>
-                {selectedArticle.points.map((point, index) => (
-                  <li key={index}>
-                    {point}
-                  </li>
-                ))}
+
+                {selectedArticle.points.map(
+                  (point, index) => (
+                    <li key={index}>
+                      {point}
+                    </li>
+                  )
+                )}
+
               </ul>
 
             </div>
 
+            {/* ACTION BUTTONS */}
             <div className="ca-modal-actions">
 
               <button
+                type="button"
                 className="ca-mcq-button"
                 onClick={goToMCQ}
               >
@@ -354,6 +432,7 @@ function CurrentAffairs({ onBack, onNavigate }) {
               </button>
 
               <button
+                type="button"
                 className="ca-close-button"
                 onClick={closeArticle}
               >
@@ -365,6 +444,7 @@ function CurrentAffairs({ onBack, onNavigate }) {
           </div>
 
         </div>
+
       )}
 
     </div>
