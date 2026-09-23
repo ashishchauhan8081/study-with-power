@@ -38,8 +38,7 @@ export default async function handler(req, res) {
     // API KEY
     // ============================================
 
-    const apiKey =
-      process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return res.status(500).json({
@@ -90,9 +89,10 @@ export default async function handler(req, res) {
 
 कठिनाई स्तर: ${difficulty}
 
-${language === "Hindi"
-  ? "सभी प्रश्न, विकल्प और explanations हिंदी भाषा में दें।"
-  : "All questions, options and explanations must be in English."
+${
+  language === "Hindi"
+    ? "सभी प्रश्न, विकल्प और explanations हिंदी भाषा में दें।"
+    : "All questions, options and explanations must be in English."
 }
 
 नियम:
@@ -134,8 +134,11 @@ Exact JSON format:
     // GEMINI REST API
     // ============================================
 
+    // नया Gemini model
+    const model = "gemini-3.6-flash";
+
     const url =
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const geminiResponse = await fetch(url, {
       method: "POST",
@@ -158,8 +161,7 @@ Exact JSON format:
 
         generationConfig: {
           temperature: 0.4,
-          responseMimeType:
-            "application/json",
+          responseMimeType: "application/json",
         },
       }),
     });
