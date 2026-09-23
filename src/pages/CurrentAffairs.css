@@ -1,1 +1,555 @@
+/* =========================================
+   CURRENT AFFAIRS PAGE
+========================================= */
 
+.current-affairs-page {
+  min-height: 100vh;
+  background: #f4f7fc;
+  color: #09234a;
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+  padding-bottom: 40px;
+}
+
+.current-affairs-container {
+  width: calc(100% - 48px);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* =========================================
+   BACK BUTTON
+========================================= */
+
+.back-home-btn {
+  margin-top: 26px;
+  border: none;
+  background: #e8f1ff;
+  color: #075baa;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 16px 28px;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.back-home-btn:hover {
+  background: #d9e9ff;
+}
+
+.back-home-btn:active {
+  transform: scale(0.98);
+}
+
+/* =========================================
+   HERO
+========================================= */
+
+.current-affairs-hero {
+  width: calc(100% - 48px);
+  max-width: 1100px;
+  margin: 45px auto 35px;
+}
+
+.hero-icon {
+  font-size: 82px;
+  line-height: 1;
+  margin-bottom: 18px;
+}
+
+.current-affairs-hero h1 {
+  margin: 0;
+  font-size: 86px;
+  line-height: 0.98;
+  font-weight: 800;
+  letter-spacing: -3px;
+  color: #06234d;
+}
+
+.current-affairs-hero p {
+  margin-top: 50px;
+  margin-bottom: 0;
+  font-size: 43px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #09234a;
+}
+
+/* =========================================
+   TODAY CARD
+========================================= */
+
+.today-card {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  background: #f8fbff;
+  border: 1px solid #dce5f1;
+  border-radius: 28px;
+  padding: 34px;
+  margin-top: 55px;
+  box-shadow:
+    0 8px 25px rgba(15, 50, 90, 0.06);
+}
+
+.today-icon {
+  font-size: 54px;
+  min-width: 65px;
+}
+
+.today-card h2 {
+  margin: 0 0 12px;
+  font-size: 30px;
+  color: #09234a;
+}
+
+.today-card p {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.5;
+  color: #253b58;
+}
+
+/* =========================================
+   SEARCH
+========================================= */
+
+.search-box {
+  margin-top: 30px;
+  background: white;
+  border: 1px solid #d3dce8;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  height: 62px;
+  box-shadow:
+    0 5px 18px rgba(15, 50, 90, 0.05);
+}
+
+.search-icon {
+  font-size: 25px;
+  margin-right: 12px;
+}
+
+.search-box input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 19px;
+  color: #09234a;
+}
+
+.search-box input::placeholder {
+  color: #7b8796;
+}
+
+/* =========================================
+   SECTION TITLE
+========================================= */
+
+.section-title {
+  font-size: 30px;
+  margin: 40px 0 20px;
+  color: #09234a;
+}
+
+/* =========================================
+   CATEGORIES
+========================================= */
+
+.category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.category-btn {
+  border: 1px solid #d1ddea;
+  background: white;
+  color: #14375f;
+  border-radius: 14px;
+  padding: 13px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.category-btn:hover {
+  border-color: #1473e6;
+  color: #075baa;
+}
+
+.category-btn.active {
+  background: #0878ed;
+  color: white;
+  border-color: #0878ed;
+}
+
+/* =========================================
+   SECTION HEADING
+========================================= */
+
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.section-heading-row .section-title {
+  margin-bottom: 20px;
+}
+
+.article-count {
+  background: #e6f0ff;
+  color: #075baa;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* =========================================
+   AFFAIRS LIST
+========================================= */
+
+.affairs-list {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.affair-card {
+  background: white;
+  border: 1px solid #dce5f1;
+  border-radius: 22px;
+  padding: 25px;
+  box-shadow:
+    0 7px 22px rgba(15, 50, 90, 0.05);
+  transition: 0.2s;
+}
+
+.affair-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 28px rgba(15, 50, 90, 0.09);
+}
+
+.affair-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.affair-category {
+  background: #e7f1ff;
+  color: #0865bd;
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.affair-date {
+  color: #718096;
+  font-size: 13px;
+}
+
+.affair-card h3 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  color: #09234a;
+}
+
+.affair-card p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: #42546b;
+}
+
+.read-more-btn {
+  margin-top: 20px;
+  border: none;
+  background: #0878ed;
+  color: white;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.read-more-btn:hover {
+  background: #0668ce;
+}
+
+/* =========================================
+   NO RESULTS
+========================================= */
+
+.no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  background: white;
+  border: 1px solid #dce5f1;
+  border-radius: 22px;
+  padding: 50px 25px;
+}
+
+.no-results-icon {
+  font-size: 50px;
+  margin-bottom: 15px;
+}
+
+.no-results h3 {
+  margin: 0 0 10px;
+  font-size: 23px;
+}
+
+.no-results p {
+  margin: 0;
+  color: #66758a;
+  font-size: 16px;
+}
+
+/* =========================================
+   MCQ BANNER
+========================================= */
+
+.mcq-banner {
+  margin-top: 45px;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  background: linear-gradient(
+    135deg,
+    #0878ed,
+    #0757b5
+  );
+  border-radius: 26px;
+  padding: 32px;
+  color: white;
+  box-shadow:
+    0 12px 30px rgba(8, 120, 237, 0.18);
+}
+
+.mcq-banner-icon {
+  font-size: 60px;
+}
+
+.mcq-banner-content h2 {
+  margin: 0 0 10px;
+  font-size: 30px;
+}
+
+.mcq-banner-content p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.mcq-start-btn {
+  margin-top: 18px;
+  border: none;
+  background: white;
+  color: #075baa;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* =========================================
+   EXAM INFO
+========================================= */
+
+.exam-info-card {
+  margin-top: 30px;
+  background: white;
+  border: 1px solid #dce5f1;
+  border-radius: 24px;
+  padding: 30px;
+}
+
+.exam-info-card h2 {
+  margin: 0 0 12px;
+  font-size: 27px;
+}
+
+.exam-info-card p {
+  margin: 0 0 20px;
+  color: #526176;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.exam-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.exam-tags span {
+  background: #eef5ff;
+  color: #075baa;
+  border-radius: 20px;
+  padding: 9px 15px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* =========================================
+   BOTTOM SPACE
+========================================= */
+
+.current-affairs-bottom-space {
+  height: 60px;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 800px) {
+  .current-affairs-hero h1 {
+    font-size: 68px;
+  }
+
+  .current-affairs-hero p {
+    font-size: 34px;
+  }
+
+  .affairs-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+  .current-affairs-container {
+    width: calc(100% - 32px);
+  }
+
+  .current-affairs-hero {
+    width: calc(100% - 32px);
+    margin-top: 38px;
+  }
+
+  .back-home-btn {
+    font-size: 18px;
+    padding: 14px 22px;
+  }
+
+  .hero-icon {
+    font-size: 65px;
+  }
+
+  .current-affairs-hero h1 {
+    font-size: 58px;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .current-affairs-hero p {
+    margin-top: 35px;
+    font-size: 27px;
+    line-height: 1.35;
+  }
+
+  .today-card {
+    margin-top: 38px;
+    padding: 25px;
+    border-radius: 22px;
+    align-items: flex-start;
+  }
+
+  .today-icon {
+    font-size: 40px;
+    min-width: 45px;
+  }
+
+  .today-card h2 {
+    font-size: 23px;
+  }
+
+  .today-card p {
+    font-size: 16px;
+  }
+
+  .section-title {
+    font-size: 24px;
+  }
+
+  .category-list {
+    gap: 8px;
+  }
+
+  .category-btn {
+    font-size: 13px;
+    padding: 10px 13px;
+  }
+
+  .section-heading-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .article-count {
+    margin-bottom: 15px;
+  }
+
+  .affair-card {
+    padding: 20px;
+  }
+
+  .affair-card h3 {
+    font-size: 21px;
+  }
+
+  .affair-card p {
+    font-size: 15px;
+  }
+
+  .affair-card-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mcq-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 25px;
+  }
+
+  .mcq-banner-icon {
+    font-size: 48px;
+  }
+
+  .mcq-banner-content h2 {
+    font-size: 25px;
+  }
+
+  .mcq-banner-content p {
+    font-size: 15px;
+  }
+
+  .exam-info-card {
+    padding: 24px;
+  }
+}
