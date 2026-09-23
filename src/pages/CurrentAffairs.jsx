@@ -4,6 +4,7 @@ import "./CurrentAffairs.css";
 function CurrentAffairs({ onBack }) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [selectedAffair, setSelectedAffair] = useState(null);
 
   const categories = [
     "All",
@@ -24,6 +25,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "भारत की महत्वपूर्ण राष्ट्रीय घटनाओं, सरकारी निर्णयों और प्रमुख गतिविधियों से संबंधित करेंट अफेयर्स।",
       date: "Today",
+      icon: "🇮🇳",
+      details: [
+        "राष्ट्रीय स्तर की महत्वपूर्ण घटनाओं पर आधारित प्रश्न।",
+        "सरकारी निर्णय एवं प्रमुख गतिविधियाँ।",
+        "प्रतियोगी परीक्षाओं के लिए महत्वपूर्ण तथ्य।",
+      ],
     },
     {
       id: 2,
@@ -32,6 +39,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "विश्व की महत्वपूर्ण घटनाओं, देशों, अंतरराष्ट्रीय संगठनों और वैश्विक गतिविधियों से संबंधित करेंट अफेयर्स।",
       date: "Today",
+      icon: "🌍",
+      details: [
+        "अंतरराष्ट्रीय संगठनों से संबंधित घटनाएँ।",
+        "विभिन्न देशों के महत्वपूर्ण घटनाक्रम।",
+        "वैश्विक स्तर की महत्वपूर्ण घटनाएँ।",
+      ],
     },
     {
       id: 3,
@@ -40,6 +53,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "भारतीय अर्थव्यवस्था, बैंकिंग, वित्त, बजट और महत्वपूर्ण आर्थिक घटनाओं से संबंधित करेंट अफेयर्स।",
       date: "Today",
+      icon: "💰",
+      details: [
+        "भारतीय अर्थव्यवस्था से संबंधित महत्वपूर्ण घटनाएँ।",
+        "बैंकिंग एवं वित्तीय क्षेत्र की जानकारी।",
+        "बजट और आर्थिक नीतियों से जुड़े तथ्य।",
+      ],
     },
     {
       id: 4,
@@ -48,6 +67,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "विज्ञान, अंतरिक्ष, AI, डिजिटल तकनीक और महत्वपूर्ण वैज्ञानिक उपलब्धियों से संबंधित करेंट अफेयर्स।",
       date: "Today",
+      icon: "🚀",
+      details: [
+        "अंतरिक्ष एवं वैज्ञानिक मिशन।",
+        "Artificial Intelligence और नई तकनीक।",
+        "महत्वपूर्ण वैज्ञानिक उपलब्धियाँ।",
+      ],
     },
     {
       id: 5,
@@ -56,6 +81,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "खेल प्रतियोगिताओं, खिलाड़ियों, रिकॉर्ड, चैंपियनशिप और खेल जगत की महत्वपूर्ण घटनाओं से संबंधित जानकारी।",
       date: "Today",
+      icon: "🏆",
+      details: [
+        "महत्वपूर्ण खेल प्रतियोगिताएँ।",
+        "खिलाड़ियों और रिकॉर्ड से संबंधित तथ्य।",
+        "राष्ट्रीय एवं अंतरराष्ट्रीय खेल घटनाएँ।",
+      ],
     },
     {
       id: 6,
@@ -64,6 +95,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "राष्ट्रीय और अंतरराष्ट्रीय पुरस्कारों, सम्मानों तथा महत्वपूर्ण उपलब्धियों से संबंधित करेंट अफेयर्स।",
       date: "Today",
+      icon: "🏅",
+      details: [
+        "राष्ट्रीय पुरस्कार एवं सम्मान।",
+        "अंतरराष्ट्रीय पुरस्कार।",
+        "महत्वपूर्ण व्यक्तियों एवं संस्थाओं की उपलब्धियाँ।",
+      ],
     },
     {
       id: 7,
@@ -72,6 +109,12 @@ function CurrentAffairs({ onBack }) {
       description:
         "केंद्र और राज्य सरकार की महत्वपूर्ण योजनाओं, नीतियों और नई पहलों से संबंधित जानकारी।",
       date: "Today",
+      icon: "🏛️",
+      details: [
+        "केंद्र सरकार की महत्वपूर्ण योजनाएँ।",
+        "राज्य सरकार की प्रमुख योजनाएँ।",
+        "नई सरकारी नीतियाँ एवं पहल।",
+      ],
     },
   ];
 
@@ -101,23 +144,14 @@ function CurrentAffairs({ onBack }) {
     }
   };
 
-  const handleReadMore = (item) => {
-    alert(`${item.title}\n\n${item.description}`);
-  };
-
-  const handleMCQ = () => {
-    alert(
-      "Current Affairs MCQ section जल्द उपलब्ध होगा।"
-    );
+  const closeModal = () => {
+    setSelectedAffair(null);
   };
 
   return (
     <div className="current-affairs-page">
 
-      {/* ================================
-          BACK BUTTON
-      ================================= */}
-
+      {/* BACK BUTTON */}
       <div className="current-affairs-container">
         <button
           type="button"
@@ -128,10 +162,7 @@ function CurrentAffairs({ onBack }) {
         </button>
       </div>
 
-      {/* ================================
-          HERO SECTION
-      ================================= */}
-
+      {/* HERO */}
       <section className="current-affairs-hero">
         <div className="hero-icon">📰</div>
 
@@ -148,42 +179,26 @@ function CurrentAffairs({ onBack }) {
         </p>
       </section>
 
-      {/* ================================
-          TODAY CARD
-      ================================= */}
-
+      {/* TODAY */}
       <section className="current-affairs-container">
         <div className="today-card">
-
-          <div className="today-icon">
-            📰
-          </div>
+          <div className="today-icon">📰</div>
 
           <div>
-            <h2>
-              Today's Current Affairs
-            </h2>
+            <h2>Today's Current Affairs</h2>
 
             <p>
               आज के महत्वपूर्ण राष्ट्रीय और
               अंतरराष्ट्रीय घटनाक्रम।
             </p>
           </div>
-
         </div>
       </section>
 
-      {/* ================================
-          SEARCH
-      ================================= */}
-
+      {/* SEARCH */}
       <section className="current-affairs-container">
-
         <div className="search-box">
-
-          <span className="search-icon">
-            🔍
-          </span>
+          <span className="search-icon">🔍</span>
 
           <input
             type="text"
@@ -199,28 +214,20 @@ function CurrentAffairs({ onBack }) {
               type="button"
               className="clear-search-btn"
               onClick={() => setSearch("")}
-              aria-label="Clear search"
             >
               ✕
             </button>
           )}
-
         </div>
-
       </section>
 
-      {/* ================================
-          CATEGORY SECTION
-      ================================= */}
-
+      {/* CATEGORIES */}
       <section className="current-affairs-container">
-
         <h2 className="section-title">
           📚 Categories
         </h2>
 
         <div className="category-list">
-
           {categories.map((category) => (
             <button
               type="button"
@@ -237,19 +244,12 @@ function CurrentAffairs({ onBack }) {
               {category}
             </button>
           ))}
-
         </div>
-
       </section>
 
-      {/* ================================
-          LATEST CURRENT AFFAIRS
-      ================================= */}
-
+      {/* LATEST CURRENT AFFAIRS */}
       <section className="current-affairs-container">
-
         <div className="section-heading-row">
-
           <h2 className="section-title">
             📰 Latest Current Affairs
           </h2>
@@ -257,22 +257,16 @@ function CurrentAffairs({ onBack }) {
           <span className="article-count">
             {filteredAffairs.length} Topics
           </span>
-
         </div>
 
         <div className="affairs-list">
-
           {filteredAffairs.length > 0 ? (
-
             filteredAffairs.map((item) => (
-
               <article
                 className="affair-card"
                 key={item.id}
               >
-
                 <div className="affair-card-top">
-
                   <span className="affair-category">
                     {item.category}
                   </span>
@@ -280,35 +274,29 @@ function CurrentAffairs({ onBack }) {
                   <span className="affair-date">
                     📅 {item.date}
                   </span>
-
                 </div>
 
-                <h3>
-                  {item.title}
-                </h3>
+                <div className="affair-icon">
+                  {item.icon}
+                </div>
 
-                <p>
-                  {item.description}
-                </p>
+                <h3>{item.title}</h3>
+
+                <p>{item.description}</p>
 
                 <button
                   type="button"
                   className="read-more-btn"
                   onClick={() =>
-                    handleReadMore(item)
+                    setSelectedAffair(item)
                   }
                 >
                   पढ़ें →
                 </button>
-
               </article>
-
             ))
-
           ) : (
-
             <div className="no-results">
-
               <div className="no-results-icon">
                 🔍
               </div>
@@ -332,32 +320,20 @@ function CurrentAffairs({ onBack }) {
               >
                 Filters Reset करें
               </button>
-
             </div>
-
           )}
-
         </div>
-
       </section>
 
-      {/* ================================
-          CURRENT AFFAIRS MCQ
-      ================================= */}
-
+      {/* MCQ BANNER */}
       <section className="current-affairs-container">
-
         <div className="mcq-banner">
-
           <div className="mcq-banner-icon">
             📝
           </div>
 
           <div className="mcq-banner-content">
-
-            <h2>
-              Current Affairs MCQ
-            </h2>
+            <h2>Current Affairs MCQ</h2>
 
             <p>
               प्रतियोगी परीक्षाओं के लिए
@@ -367,28 +343,23 @@ function CurrentAffairs({ onBack }) {
             <button
               type="button"
               className="mcq-start-btn"
-              onClick={handleMCQ}
+              onClick={() => {
+                window.scrollTo({
+                  top: 0,
+                  behavior: "smooth",
+                });
+              }}
             >
-              MCQ शुरू करें →
+              MCQ Practice →
             </button>
-
           </div>
-
         </div>
-
       </section>
 
-      {/* ================================
-          EXAM PREPARATION
-      ================================= */}
-
+      {/* EXAM PREPARATION */}
       <section className="current-affairs-container">
-
         <div className="exam-info-card">
-
-          <h2>
-            🎯 Exam Preparation
-          </h2>
+          <h2>🎯 Exam Preparation</h2>
 
           <p>
             Current Affairs प्रतियोगी परीक्षाओं
@@ -396,25 +367,104 @@ function CurrentAffairs({ onBack }) {
           </p>
 
           <div className="exam-tags">
-
             <span>UPPCS</span>
             <span>UP Police</span>
             <span>SSC</span>
             <span>RRB</span>
             <span>UPSSSC</span>
             <span>Other Exams</span>
-
           </div>
-
         </div>
-
       </section>
 
-      {/* ================================
-          BOTTOM SPACE
-      ================================= */}
-
       <div className="current-affairs-bottom-space"></div>
+
+      {/* =========================================
+          DETAIL MODAL
+      ========================================= */}
+
+      {selectedAffair && (
+        <div
+          className="current-affairs-modal-overlay"
+          onClick={closeModal}
+        >
+          <div
+            className="current-affairs-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="modal-header">
+              <div className="modal-title-area">
+                <div className="modal-icon">
+                  {selectedAffair.icon}
+                </div>
+
+                <div>
+                  <span className="modal-category">
+                    {selectedAffair.category}
+                  </span>
+
+                  <h2>
+                    {selectedAffair.title}
+                  </h2>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={closeModal}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-date">
+              📅 {selectedAffair.date}
+            </div>
+
+            <div className="modal-content">
+              <h3>
+                📖 महत्वपूर्ण जानकारी
+              </h3>
+
+              <p>
+                {selectedAffair.description}
+              </p>
+
+              <ul>
+                {selectedAffair.details.map(
+                  (detail, index) => (
+                    <li key={index}>
+                      {detail}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="modal-close-action"
+                onClick={closeModal}
+              >
+                बंद करें
+              </button>
+
+              <button
+                type="button"
+                className="modal-mcq-action"
+                onClick={closeModal}
+              >
+                📝 MCQ अभ्यास करें
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
