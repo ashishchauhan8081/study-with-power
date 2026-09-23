@@ -110,6 +110,7 @@ ${
 11. केवल JSON return करें।
 12. JSON के बाहर कोई text न दें।
 13. Markdown code block का उपयोग न करें।
+14. उत्तर में केवल मांगी गई संख्या में प्रश्न दें।
 
 Exact JSON format:
 
@@ -131,68 +132,148 @@ Exact JSON format:
 `;
 
     // ============================================
-    // GEMINI REST API
+    // GEMINI MODELS
     // ============================================
 
-    // नया Gemini model
-    const model = "gemini-3.6-flash";
+    // पहले मुख्य model को try करेंगे।
+    // अगर high demand / rate limit मिले तो fallback model चलेगा।
 
-    const url =
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const models = [
+      "gemini-3.6-flash",
+      "gemini-3.5-flash-lite",
+    ];
 
-    const geminiResponse = await fetch(url, {
-      method: "POST",
+    let geminiResponse = null;
+    let geminiData = null;
+    let lastError = null;
 
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
+    // ============================================
+    // TRY MODELS
+    // ============================================
 
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
+    for (const model of models) {
+      const url =
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+      console.log(
+        `Trying Gemini model: ${model}`
+      );
+
+      try {
+        geminiResponse = await fetch(url, {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+
+          body: JSON.stringify({
+            contents: [
               {
-                text: prompt,
+                parts: [
+                  {
+                    text: prompt,
+                  },
+                ],
               },
             ],
-          },
-        ],
 
-        generationConfig: {
-          temperature: 0.4,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+        });
+
+        geminiData =
+          await geminiResponse.json();
+
+        // ========================================
+        // SUCCESS
+        // ========================================
+
+        if (geminiResponse.ok) {
+          console.log(
+            `Gemini success with model: ${model}`
+          );
+
+          break;
+        }
+
+        // ========================================
+        // ERROR MESSAGE
+        // ========================================
+
+        lastError =
+          geminiData?.error?.message ||
+          "Gemini API request failed.";
+
+        console.error(
+          `Gemini error with ${model}:`,
+          geminiData
+        );
+
+        // ========================================
+        // RETRY ON HIGH DEMAND / RATE LIMIT
+        // ========================================
+
+        if (
+          geminiResponse.status === 429 ||
+          geminiResponse.status === 503
+        ) {
+          console.log(
+            `Model ${model} is busy or rate limited. Trying fallback model...`
+          );
+
+          continue;
+        }
+
+        // ========================================
+        // OTHER ERROR
+        // ========================================
+
+        break;
+
+      } catch (error) {
+        lastError =
+          error?.message ||
+          "Network error while connecting to Gemini.";
+
+        console.error(
+          `Network error with ${model}:`,
+          error
+        );
+
+        // दूसरे model को try करें
+        continue;
+      }
+    }
 
     // ============================================
-    // GEMINI RESPONSE
+    // FINAL GEMINI ERROR
     // ============================================
 
-    const geminiData =
-      await geminiResponse.json();
-
-    if (!geminiResponse.ok) {
+    if (
+      !geminiResponse ||
+      !geminiResponse.ok
+    ) {
       console.error(
-        "Gemini API Error:",
+        "Gemini Final Error:",
         geminiData
       );
 
-      const apiError =
-        geminiData?.error?.message ||
-        "Gemini API request failed.";
-
       return res.status(
-        geminiResponse.status || 500
+        geminiResponse?.status || 500
       ).json({
         success: false,
-        error: apiError,
+        error:
+          lastError ||
+          "Gemini अभी व्यस्त है। कृपया कुछ देर बाद फिर प्रयास करें।",
       });
     }
 
     // ============================================
-    // GET TEXT
+    // GET TEXT FROM GEMINI
     // ============================================
 
     const text =
@@ -232,6 +313,7 @@ Exact JSON format:
 
     try {
       parsed = JSON.parse(cleanText);
+
     } catch (parseError) {
       console.error(
         "JSON Parse Error:",
@@ -351,6 +433,10 @@ Exact JSON format:
     });
 
   } catch (error) {
+    // ============================================
+    // SERVER ERROR
+    // ============================================
+
     console.error(
       "MCQ API ERROR:",
       error
