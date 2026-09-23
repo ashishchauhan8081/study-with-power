@@ -39,7 +39,7 @@ import AdminPanel from "./components/AdminPanel";
 // AI MCQ GENERATOR
 // ======================================================
 
-import AIMCQGenerator from "./pages/AIMCQGenerator";
+import AIMCQGenerator from "./components/AIMCQGenerator";
 
 // ======================================================
 // FIREBASE
