@@ -1,145 +1,129 @@
 import React, { useMemo, useState } from "react";
 import "./CurrentAffairs.css";
 
-const currentAffairsData = [
+const categories = [
   {
-    id: 1,
-    category: "National",
+    id: "all",
+    name: "All",
+    icon: "📚",
+  },
+  {
+    id: "national",
+    name: "National",
     icon: "🇮🇳",
-    date: "Today",
-    title: "राष्ट्रीय करंट अफेयर्स",
+    title: "राष्ट्रीय करेंट अफेयर्स",
     description:
-      "भारत की महत्वपूर्ण राष्ट्रीय घटनाओं, सरकारी निर्णयों और प्रमुख गतिविधियों से संबंधित करंट अफेयर्स।",
+      "भारत की महत्वपूर्ण राष्ट्रीय घटनाओं, सरकारी निर्णयों और प्रमुख गतिविधियों से संबंधित करेंट अफेयर्स।",
     points: [
       "राष्ट्रीय स्तर की महत्वपूर्ण घटनाओं पर आधारित प्रश्न।",
       "सरकारी निर्णय एवं प्रमुख गतिविधियाँ।",
       "प्रतियोगी परीक्षाओं के लिए महत्वपूर्ण तथ्य।",
     ],
   },
-
   {
-    id: 2,
-    category: "International",
+    id: "international",
+    name: "International",
     icon: "🌍",
-    date: "Today",
-    title: "अंतरराष्ट्रीय करंट अफेयर्स",
+    title: "अंतरराष्ट्रीय करेंट अफेयर्स",
     description:
-      "विश्व स्तर की महत्वपूर्ण घटनाओं, अंतरराष्ट्रीय संगठनों और विभिन्न देशों से संबंधित करंट अफेयर्स।",
+      "विश्व स्तर की महत्वपूर्ण घटनाओं, अंतरराष्ट्रीय संगठनों और विभिन्न देशों से संबंधित करेंट अफेयर्स।",
     points: [
-      "अंतरराष्ट्रीय संगठनों से संबंधित महत्वपूर्ण तथ्य।",
-      "विभिन्न देशों के प्रमुख घटनाक्रम।",
-      "विश्व स्तर की महत्वपूर्ण घटनाएँ।",
+      "अंतरराष्ट्रीय घटनाओं से संबंधित महत्वपूर्ण तथ्य।",
+      "अंतरराष्ट्रीय संगठन एवं समझौते।",
+      "विभिन्न देशों से संबंधित महत्वपूर्ण घटनाएँ।",
     ],
   },
-
   {
-    id: 3,
-    category: "Economy",
+    id: "economy",
+    name: "Economy",
     icon: "💰",
-    date: "Today",
-    title: "अर्थव्यवस्था करंट अफेयर्स",
+    title: "अर्थव्यवस्था करेंट अफेयर्स",
     description:
-      "भारतीय अर्थव्यवस्था, बैंकिंग, वित्त, बजट और आर्थिक नीतियों से संबंधित महत्वपूर्ण करंट अफेयर्स।",
+      "भारतीय अर्थव्यवस्था, बैंकिंग, वित्त, बजट और आर्थिक नीतियों से संबंधित महत्वपूर्ण करेंट अफेयर्स।",
     points: [
       "बैंकिंग और वित्त से संबंधित तथ्य।",
       "आर्थिक नीतियाँ एवं सरकारी योजनाएँ।",
       "बजट और अर्थव्यवस्था से संबंधित प्रश्न।",
     ],
   },
-
   {
-    id: 4,
-    category: "Science & Technology",
+    id: "science",
+    name: "Science & Technology",
     icon: "🔬",
-    date: "Today",
     title: "विज्ञान एवं प्रौद्योगिकी",
     description:
-      "विज्ञान, तकनीक, अंतरिक्ष, AI और नई तकनीकों से संबंधित महत्वपूर्ण करंट अफेयर्स।",
+      "विज्ञान, अंतरिक्ष, तकनीक, AI और महत्वपूर्ण वैज्ञानिक उपलब्धियों से संबंधित करेंट अफेयर्स।",
     points: [
-      "नई तकनीक एवं वैज्ञानिक उपलब्धियाँ।",
-      "अंतरिक्ष कार्यक्रम एवं मिशन।",
-      "AI और आधुनिक तकनीक से संबंधित तथ्य।",
+      "अंतरिक्ष एवं ISRO से संबंधित घटनाएँ।",
+      "नई तकनीक एवं Artificial Intelligence।",
+      "वैज्ञानिक खोज एवं महत्वपूर्ण उपलब्धियाँ।",
     ],
   },
-
   {
-    id: 5,
-    category: "Sports",
+    id: "sports",
+    name: "Sports",
     icon: "🏆",
-    date: "Today",
-    title: "खेल करंट अफेयर्स",
+    title: "खेल करेंट अफेयर्स",
     description:
-      "राष्ट्रीय एवं अंतरराष्ट्रीय खेल प्रतियोगिताओं, खिलाड़ियों और प्रमुख खेल उपलब्धियों से संबंधित समाचार।",
+      "राष्ट्रीय एवं अंतरराष्ट्रीय खेल प्रतियोगिताओं, खिलाड़ियों और महत्वपूर्ण खेल उपलब्धियों से संबंधित करेंट अफेयर्स।",
     points: [
-      "प्रमुख खेल प्रतियोगिताएँ।",
-      "खिलाड़ियों की उपलब्धियाँ।",
-      "महत्वपूर्ण खेल पुरस्कार एवं रिकॉर्ड।",
+      "महत्वपूर्ण खेल प्रतियोगिताएँ।",
+      "खिलाड़ियों एवं पुरस्कारों से संबंधित तथ्य।",
+      "राष्ट्रीय एवं अंतरराष्ट्रीय खेल उपलब्धियाँ।",
     ],
   },
-
   {
-    id: 6,
-    category: "Awards",
+    id: "awards",
+    name: "Awards",
     icon: "🏅",
-    date: "Today",
     title: "पुरस्कार एवं सम्मान",
     description:
-      "राष्ट्रीय एवं अंतरराष्ट्रीय पुरस्कारों, सम्मानों और प्रमुख पुरस्कार विजेताओं से संबंधित करंट अफेयर्स।",
+      "राष्ट्रीय एवं अंतरराष्ट्रीय पुरस्कारों, सम्मानों और महत्वपूर्ण उपलब्धियों से संबंधित करेंट अफेयर्स।",
     points: [
-      "राष्ट्रीय पुरस्कार एवं सम्मान।",
-      "अंतरराष्ट्रीय पुरस्कार।",
-      "प्रमुख पुरस्कार विजेता।",
+      "महत्वपूर्ण राष्ट्रीय पुरस्कार।",
+      "अंतरराष्ट्रीय पुरस्कार एवं सम्मान।",
+      "प्रमुख व्यक्तियों की उपलब्धियाँ।",
     ],
   },
-
   {
-    id: 7,
-    category: "Government Schemes",
+    id: "schemes",
+    name: "Government Schemes",
     icon: "🏛️",
-    date: "Today",
     title: "सरकारी योजनाएँ",
     description:
-      "केंद्र एवं राज्य सरकार की महत्वपूर्ण योजनाओं, नीतियों और सरकारी पहलों से संबंधित जानकारी।",
+      "केंद्र एवं राज्य सरकार की महत्वपूर्ण योजनाओं, नीतियों और कार्यक्रमों से संबंधित करेंट अफेयर्स।",
     points: [
-      "केंद्र सरकार की प्रमुख योजनाएँ।",
-      "राज्य सरकार की महत्वपूर्ण योजनाएँ।",
-      "नई सरकारी नीतियाँ एवं पहल।",
+      "केंद्र सरकार की महत्वपूर्ण योजनाएँ।",
+      "राज्य सरकार की प्रमुख योजनाएँ।",
+      "योजनाओं के उद्देश्य एवं लाभार्थी।",
     ],
   },
 ];
 
-const categories = [
-  "All",
-  "National",
-  "International",
-  "Economy",
-  "Science & Technology",
-  "Sports",
-  "Awards",
-  "Government Schemes",
-];
-
-function CurrentAffairs({ onBack, onNavigate }) {
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [search, setSearch] = useState("");
+function CurrentAffairs({ onBack, onMCQ }) {
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [search, setSearch] = useState("");
 
-  const filteredArticles = useMemo(() => {
-    const searchText = search.trim().toLowerCase();
+  const visibleCategories = useMemo(() => {
+    let list = categories.filter((item) => item.id !== "all");
 
-    return currentAffairsData.filter((item) => {
-      const categoryMatch =
-        selectedCategory === "All" ||
-        item.category === selectedCategory;
+    if (selectedCategory !== "all") {
+      list = list.filter((item) => item.id === selectedCategory);
+    }
 
-      const searchMatch =
-        !searchText ||
-        item.title.toLowerCase().includes(searchText) ||
-        item.description.toLowerCase().includes(searchText) ||
-        item.category.toLowerCase().includes(searchText);
+    if (search.trim()) {
+      const text = search.toLowerCase();
 
-      return categoryMatch && searchMatch;
-    });
+      list = list.filter(
+        (item) =>
+          item.name.toLowerCase().includes(text) ||
+          item.title.toLowerCase().includes(text) ||
+          item.description.toLowerCase().includes(text)
+      );
+    }
+
+    return list;
   }, [selectedCategory, search]);
 
   const openArticle = (article) => {
@@ -150,42 +134,25 @@ function CurrentAffairs({ onBack, onNavigate }) {
     setSelectedArticle(null);
   };
 
-  const handleBack = () => {
-    if (typeof onBack === "function") {
-      onBack();
+  const handleMCQ = () => {
+    setSelectedArticle(null);
+
+    if (typeof onMCQ === "function") {
+      onMCQ();
     } else {
-      window.history.back();
+      console.warn("onMCQ function App.jsx से नहीं मिला।");
     }
-  };
-
-  const goToMCQ = () => {
-    closeArticle();
-
-    if (typeof onNavigate === "function") {
-      onNavigate("mcq");
-      return;
-    }
-
-    window.location.hash = "#mcq";
   };
 
   return (
     <div className="current-affairs-page">
-
-      {/* ================= HEADER ================= */}
+      {/* Header */}
       <section className="ca-header">
-
-        <button
-          type="button"
-          className="ca-back-button"
-          onClick={handleBack}
-        >
+        <button className="back-button" onClick={onBack}>
           ← Home
         </button>
 
-        <div className="ca-header-icon">
-          📰
-        </div>
+        <div className="ca-hero-icon">📰</div>
 
         <h1>Current Affairs</h1>
 
@@ -194,259 +161,164 @@ function CurrentAffairs({ onBack, onNavigate }) {
         </p>
       </section>
 
-      {/* ================= SEARCH ================= */}
+      {/* Search */}
       <section className="ca-search-section">
-
-        <div className="ca-search-box">
-
-          <span className="ca-search-icon">
-            🔍
-          </span>
-
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Current Affairs खोजें..."
-            aria-label="Search Current Affairs"
-          />
-
-          {search && (
-            <button
-              type="button"
-              className="ca-clear-search"
-              onClick={() => setSearch("")}
-              aria-label="Clear search"
-            >
-              ×
-            </button>
-          )}
-
-        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔎 Current Affairs खोजें..."
+          className="ca-search"
+        />
       </section>
 
-      {/* ================= CATEGORIES ================= */}
-      <section className="ca-category-section">
+      {/* Categories */}
+      <section className="categories-section">
+        <h2>📚 Categories</h2>
 
-        <h2>
-          📚 Categories
-        </h2>
+        <div className="category-buttons">
+          <button
+            className={
+              selectedCategory === "all"
+                ? "category-button active"
+                : "category-button"
+            }
+            onClick={() => setSelectedCategory("all")}
+          >
+            All
+          </button>
 
-        <div className="ca-category-list">
-
-          {categories.map((category) => (
-            <button
-              type="button"
-              key={category}
-              className={
-                selectedCategory === category
-                  ? "ca-category-btn active"
-                  : "ca-category-btn"
-              }
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </button>
-          ))}
-
-        </div>
-      </section>
-
-      {/* ================= LATEST CURRENT AFFAIRS ================= */}
-      <section className="ca-latest-section">
-
-        <div className="ca-latest-heading">
-
-          <div>
-            <h2>
-              📰 Latest Current Affairs
-            </h2>
-
-            <span>
-              {filteredArticles.length} Topics
-            </span>
-          </div>
-
-        </div>
-
-        {/* NO RESULT */}
-        {filteredArticles.length === 0 ? (
-
-          <div className="ca-no-result">
-
-            <div className="ca-no-result-icon">
-              🔍
-            </div>
-
-            <h3>
-              कोई Current Affairs नहीं मिला
-            </h3>
-
-            <p>
-              कृपया दूसरा शब्द या category चुनकर
-              दोबारा प्रयास करें।
-            </p>
-
-          </div>
-
-        ) : (
-
-          <div className="ca-card-grid">
-
-            {filteredArticles.map((article) => (
-
-              <article
-                className="ca-card"
-                key={article.id}
+          {categories
+            .filter((item) => item.id !== "all")
+            .map((item) => (
+              <button
+                key={item.id}
+                className={
+                  selectedCategory === item.id
+                    ? "category-button active"
+                    : "category-button"
+                }
+                onClick={() => setSelectedCategory(item.id)}
               >
+                {item.name}
+              </button>
+            ))}
+        </div>
+      </section>
 
-                {/* CARD TOP */}
-                <div className="ca-card-top">
+      {/* Latest */}
+      <section className="latest-section">
+        <div className="latest-heading">
+          <h2>📰 Latest Current Affairs</h2>
+          <span>{visibleCategories.length} Topics</span>
+        </div>
 
-                  <span className="ca-card-category">
-                    {article.category}
+        <div className="ca-grid">
+          {visibleCategories.length === 0 ? (
+            <div className="no-result">
+              <div>🔎</div>
+              <h3>कोई Current Affairs नहीं मिला</h3>
+              <p>कृपया दूसरा शब्द खोजें।</p>
+            </div>
+          ) : (
+            visibleCategories.map((article) => (
+              <article className="ca-card" key={article.id}>
+                <div className="card-top">
+                  <span className="card-category">
+                    {article.name}
                   </span>
 
-                  <span className="ca-card-date">
-                    📅 {article.date}
+                  <span className="card-date">
+                    📅 Today
                   </span>
-
                 </div>
 
-                {/* ICON */}
-                <div className="ca-card-icon">
+                <div className="card-icon">
                   {article.icon}
                 </div>
 
-                {/* TITLE */}
-                <h3>
-                  {article.title}
-                </h3>
+                <h3>{article.title}</h3>
 
-                {/* DESCRIPTION */}
-                <p>
-                  {article.description}
-                </p>
+                <p>{article.description}</p>
 
-                {/* READ */}
                 <button
-                  type="button"
-                  className="ca-read-button"
+                  className="read-button"
                   onClick={() => openArticle(article)}
                 >
                   पढ़ें →
                 </button>
-
               </article>
-
-            ))}
-
-          </div>
-
-        )}
-
+            ))
+          )}
+        </div>
       </section>
 
-      {/* ================= DETAIL MODAL ================= */}
+      {/* Modal */}
       {selectedArticle && (
-
         <div
           className="ca-modal-overlay"
           onClick={closeArticle}
         >
-
           <div
             className="ca-modal"
             onClick={(e) => e.stopPropagation()}
           >
-
-            {/* CLOSE */}
             <button
-              type="button"
-              className="ca-modal-close"
+              className="modal-close"
               onClick={closeArticle}
               aria-label="Close"
             >
               ×
             </button>
 
-            {/* MODAL HEADER */}
-            <div className="ca-modal-header">
-
-              <div className="ca-modal-icon">
+            <div className="modal-header">
+              <div className="modal-icon">
                 {selectedArticle.icon}
               </div>
 
-              <div className="ca-modal-heading">
-
-                <span className="ca-modal-category">
-                  {selectedArticle.category}
+              <div>
+                <span className="modal-category">
+                  {selectedArticle.name}
                 </span>
 
-                <h2>
-                  {selectedArticle.title}
-                </h2>
+                <h2>{selectedArticle.title}</h2>
 
-                <div className="ca-modal-date">
-                  📅 {selectedArticle.date}
+                <div className="modal-date">
+                  📅 Today
                 </div>
-
               </div>
-
             </div>
 
-            {/* MODAL CONTENT */}
-            <div className="ca-modal-content">
+            <div className="modal-content">
+              <h3>📖 महत्वपूर्ण जानकारी</h3>
 
-              <h3>
-                📖 महत्वपूर्ण जानकारी
-              </h3>
-
-              <p>
-                {selectedArticle.description}
-              </p>
+              <p>{selectedArticle.description}</p>
 
               <ul>
-
-                {selectedArticle.points.map(
-                  (point, index) => (
-                    <li key={index}>
-                      {point}
-                    </li>
-                  )
-                )}
-
+                {selectedArticle.points.map((point, index) => (
+                  <li key={index}>{point}</li>
+                ))}
               </ul>
-
             </div>
 
-            {/* ACTION BUTTONS */}
-            <div className="ca-modal-actions">
-
+            <div className="modal-actions">
               <button
-                type="button"
-                className="ca-mcq-button"
-                onClick={goToMCQ}
+                className="mcq-practice-button"
+                onClick={handleMCQ}
               >
                 📝 MCQ अभ्यास करें
               </button>
 
               <button
-                type="button"
-                className="ca-close-button"
+                className="modal-close-button"
                 onClick={closeArticle}
               >
                 बंद करें
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 }
