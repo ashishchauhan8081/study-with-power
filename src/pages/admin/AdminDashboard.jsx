@@ -1,409 +1,1240 @@
 import React, { useEffect, useState } from "react";
-import { signOut } from "firebase/auth";
-import { auth } from "../../firebase";
+import {
+  ref,
+  push,
+  set,
+  update,
+  remove,
+  onValue,
+} from "firebase/database";
+
+import { db } from "../../firebase";
 import "./AdminDashboard.css";
 
-function AdminDashboard({ onLogout }) {
-  const [adminEmail, setAdminEmail] = useState("");
-  const [time, setTime] = useState(new Date());
+const DEFAULT_QUESTION = {
+  question: "",
+  options: {
+    A: "",
+    B: "",
+    C: "",
+    D: "",
+  },
+  answer: "A",
+  explanation: "",
+  explanationImage: "",
+};
+
+function AdminDashboard({ onBack }) {
+  const [activeMenu, setActiveMenu] = useState("dashboard");
+
+  const [tests, setTests] = useState([]);
+  const [selectedTest, setSelectedTest] = useState(null);
+
+  const [showTestForm, setShowTestForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [testForm, setTestForm] = useState({
+    exam: "UPPCS",
+    testNumber: 1,
+    title: "",
+    status: "Draft",
+    duration: 30,
+    price: 0,
+  });
+
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+
+  const [message, setMessage] = useState("");
+
+  // -----------------------------------------
+  // EXAMS
+  // -----------------------------------------
+
+  const exams = [
+    "UPPCS",
+    "UP Police",
+    "UP Home Guard",
+    "UPSSSC",
+    "UPPET",
+    "SSC CGL",
+    "SSC CHSL",
+    "RRB NTPC",
+    "RRB Group D",
+    "CTET",
+    "NDA",
+    "Bank",
+  ];
+
+  // -----------------------------------------
+  // LOAD TESTS
+  // -----------------------------------------
 
   useEffect(() => {
-    const email =
-      localStorage.getItem("adminEmail") ||
-      auth.currentUser?.email ||
-      "Admin";
+    const testsRef = ref(db, "tests");
 
-    setAdminEmail(email);
+    const unsubscribe = onValue(testsRef, (snapshot) => {
+      const data = snapshot.val();
 
-    const timer = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
+      if (!data) {
+        setTests([]);
+        return;
+      }
 
-    return () => clearInterval(timer);
+      const list = Object.entries(data).map(([id, value]) => ({
+        id,
+        ...value,
+      }));
+
+      list.sort((a, b) => {
+        return Number(a.testNumber || 0) - Number(b.testNumber || 0);
+      });
+
+      setTests(list);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // ==============================
-  // HASH NAVIGATION
-  // ==============================
-  const goTo = (hash) => {
-    window.location.hash = hash;
+  // -----------------------------------------
+  // NEW TEST
+  // -----------------------------------------
+
+  const createNewTest = () => {
+    const nextNumber =
+      tests.length > 0
+        ? Math.max(...tests.map((t) => Number(t.testNumber || 0))) + 1
+        : 1;
+
+    setTestForm({
+      exam: "UPPCS",
+      testNumber: nextNumber,
+      title: `UPPCS Test ${String(nextNumber).padStart(2, "0")}`,
+      status: "Draft",
+      duration: 30,
+      price: 0,
+    });
+
+    setQuestions([
+      {
+        id: Date.now(),
+        ...DEFAULT_QUESTION,
+        options: { ...DEFAULT_QUESTION.options },
+      },
+    ]);
+
+    setCurrentQuestion(0);
+    setSelectedTest(null);
+    setShowTestForm(true);
+    setActiveMenu("tests");
   };
 
-  // ==============================
-  // LOGOUT
-  // ==============================
-  const handleLogout = async () => {
-    const confirmLogout = window.confirm(
-      "क्या आप Admin Panel से Logout करना चाहते हैं?"
+  // -----------------------------------------
+  // EDIT TEST
+  // -----------------------------------------
+
+  const editTest = (test) => {
+    setSelectedTest(test);
+
+    setTestForm({
+      exam: test.exam || "UPPCS",
+      testNumber: test.testNumber || 1,
+      title: test.title || "",
+      status: test.status || "Draft",
+      duration: test.duration || 30,
+      price: test.price || 0,
+    });
+
+    const loadedQuestions = Array.isArray(test.questions)
+      ? test.questions
+      : test.questions
+      ? Object.values(test.questions)
+      : [];
+
+    setQuestions(
+      loadedQuestions.length
+        ? loadedQuestions.map((q) => ({
+            ...DEFAULT_QUESTION,
+            ...q,
+            options: {
+              ...DEFAULT_QUESTION.options,
+              ...(q.options || {}),
+            },
+          }))
+        : [
+            {
+              id: Date.now(),
+              ...DEFAULT_QUESTION,
+              options: { ...DEFAULT_QUESTION.options },
+            },
+          ]
     );
 
-    if (!confirmLogout) return;
+    setCurrentQuestion(0);
+    setShowTestForm(true);
+    setActiveMenu("tests");
+  };
 
-    try {
-      await signOut(auth);
+  // -----------------------------------------
+  // TEST FORM CHANGE
+  // -----------------------------------------
 
-      localStorage.removeItem("adminLoggedIn");
-      localStorage.removeItem("adminEmail");
+  const handleTestChange = (e) => {
+    const { name, value } = e.target;
 
-      if (onLogout) {
-        onLogout();
-      } else {
-        window.location.hash = "#admin-login";
-      }
-    } catch (error) {
-      console.error("Logout Error:", error);
-      alert("❌ Logout नहीं हो पाया।");
+    setTestForm((prev) => ({
+      ...prev,
+      [name]:
+        name === "testNumber" ||
+        name === "duration" ||
+        name === "price"
+          ? Number(value)
+          : value,
+    }));
+  };
+
+  // -----------------------------------------
+  // QUESTION CHANGE
+  // -----------------------------------------
+
+  const updateQuestion = (field, value) => {
+    setQuestions((prev) =>
+      prev.map((q, index) =>
+        index === currentQuestion
+          ? {
+              ...q,
+              [field]: value,
+            }
+          : q
+      )
+    );
+  };
+
+  const updateOption = (option, value) => {
+    setQuestions((prev) =>
+      prev.map((q, index) =>
+        index === currentQuestion
+          ? {
+              ...q,
+              options: {
+                ...q.options,
+                [option]: value,
+              },
+            }
+          : q
+      )
+    );
+  };
+
+  const setCorrectAnswer = (answer) => {
+    updateQuestion("answer", answer);
+  };
+
+  // -----------------------------------------
+  // ADD QUESTION
+  // -----------------------------------------
+
+  const addQuestion = () => {
+    const newQuestion = {
+      id: Date.now(),
+      ...DEFAULT_QUESTION,
+      options: { ...DEFAULT_QUESTION.options },
+    };
+
+    setQuestions((prev) => [...prev, newQuestion]);
+
+    setCurrentQuestion(questions.length);
+  };
+
+  // -----------------------------------------
+  // DELETE QUESTION
+  // -----------------------------------------
+
+  const deleteQuestion = () => {
+    if (questions.length === 1) {
+      alert("कम से कम 1 प्रश्न होना जरूरी है।");
+      return;
+    }
+
+    const updated = questions.filter(
+      (_, index) => index !== currentQuestion
+    );
+
+    setQuestions(updated);
+
+    if (currentQuestion >= updated.length) {
+      setCurrentQuestion(updated.length - 1);
     }
   };
 
-  // ==============================
-  // DASHBOARD CARDS
-  // ==============================
-  const dashboardCards = [
-    {
-      icon: "🏫",
-      title: "Manage Exams",
-      description: "नए Exam जोड़ें, Edit करें और Delete करें",
-      color: "blue",
-      action: () => goTo("#manage-exams"),
-    },
-    {
-      icon: "📚",
-      title: "Test Series",
-      description: "Exam के Test Series को Manage करें",
-      color: "purple",
-      action: () => goTo("#manage-test-series"),
-    },
-    {
-      icon: "📝",
-      title: "Test Manager",
-      description: "Test, Test Number और Questions Manage करें",
-      color: "green",
-      action: () => goTo("#test-manager"),
-    },
-    {
-      icon: "❓",
-      title: "Question Manager",
-      description: "Questions Add, Edit, Delete और Import करें",
-      color: "orange",
-      action: () => goTo("#question-manager"),
-    },
-    {
-      icon: "📰",
-      title: "Current Affairs",
-      description: "Current Affairs Questions और Content Manage करें",
-      color: "red",
-      action: () => goTo("#current-affairs"),
-    },
-    {
-      icon: "📦",
-      title: "Resources",
-      description: "Study Material और अन्य Resources Manage करें",
-      color: "cyan",
-      action: () => goTo("#resources"),
-    },
-  ];
+  // -----------------------------------------
+  // SAVE TEST
+  // -----------------------------------------
 
-  // ==============================
-  // QUICK ACTIONS
-  // ==============================
-  const quickActions = [
-    {
-      icon: "➕",
-      title: "New Exam",
-      text: "नया Exam बनाएं",
-      action: () => goTo("#manage-exams"),
-    },
-    {
-      icon: "📝",
-      title: "New Test",
-      text: "नया Test बनाएं",
-      action: () => goTo("#test-manager"),
-    },
-    {
-      icon: "❓",
-      title: "Add Question",
-      text: "Question जोड़ें",
-      action: () => goTo("#question-manager"),
-    },
-    {
-      icon: "📰",
-      title: "Current Affairs",
-      text: "Current Affairs खोलें",
-      action: () => goTo("#current-affairs"),
-    },
-  ];
+  const saveTest = async () => {
+    if (!testForm.title.trim()) {
+      alert("कृपया Test Title डालें।");
+      return;
+    }
+
+    if (questions.length === 0) {
+      alert("कम से कम 1 प्रश्न जोड़ें।");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const cleanedQuestions = questions.map((q, index) => ({
+        questionNumber: index + 1,
+        question: q.question || "",
+        options: {
+          A: q.options?.A || "",
+          B: q.options?.B || "",
+          C: q.options?.C || "",
+          D: q.options?.D || "",
+        },
+        answer: q.answer || "A",
+        explanation: q.explanation || "",
+        explanationImage: q.explanationImage || "",
+      }));
+
+      const testData = {
+        exam: testForm.exam,
+        testNumber: Number(testForm.testNumber),
+        title: testForm.title,
+        status: testForm.status,
+        duration: Number(testForm.duration),
+        price: Number(testForm.price),
+        questionCount: cleanedQuestions.length,
+        questions: cleanedQuestions,
+        updatedAt: Date.now(),
+      };
+
+      if (selectedTest?.id) {
+        await update(ref(db, `tests/${selectedTest.id}`), testData);
+        setMessage("✅ Test सफलतापूर्वक Update हो गया।");
+      } else {
+        const newRef = push(ref(db, "tests"));
+
+        await set(newRef, {
+          ...testData,
+          createdAt: Date.now(),
+        });
+
+        setMessage("✅ Test Firebase में Save हो गया।");
+      }
+
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "❌ Test Save नहीं हुआ।\n\n" +
+          (error?.message || "Firebase error")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -----------------------------------------
+  // DELETE TEST
+  // -----------------------------------------
+
+  const deleteTest = async (testId) => {
+    const confirmDelete = window.confirm(
+      "क्या आप यह पूरा Test delete करना चाहते हैं?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await remove(ref(db, `tests/${testId}`));
+      alert("✅ Test delete हो गया।");
+
+      if (selectedTest?.id === testId) {
+        setSelectedTest(null);
+        setShowTestForm(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("❌ Test delete नहीं हुआ।");
+    }
+  };
+
+  // -----------------------------------------
+  // DASHBOARD STATS
+  // -----------------------------------------
+
+  const totalTests = tests.length;
+
+  const publishedTests = tests.filter(
+    (t) => String(t.status).toLowerCase() === "published"
+  ).length;
+
+  const draftTests = tests.filter(
+    (t) => String(t.status).toLowerCase() === "draft"
+  ).length;
+
+  const totalQuestions = tests.reduce(
+    (sum, test) =>
+      sum +
+      Number(
+        test.questionCount ||
+          (Array.isArray(test.questions)
+            ? test.questions.length
+            : test.questions
+            ? Object.keys(test.questions).length
+            : 0)
+      ),
+    0
+  );
+
+  // -----------------------------------------
+  // CURRENT QUESTION
+  // -----------------------------------------
+
+  const current = questions[currentQuestion] || {
+    ...DEFAULT_QUESTION,
+    options: { ...DEFAULT_QUESTION.options },
+  };
 
   return (
-    <div className="admin-dashboard">
-      {/* =====================================
-          TOP NAVBAR
-      ====================================== */}
-      <header className="admin-navbar">
-        <div className="admin-brand">
-          <div className="admin-brand-icon">👑</div>
+    <div className="admin-wrapper">
+
+      {/* ================= HEADER ================= */}
+
+      <header className="admin-header">
+        <div className="admin-logo-area">
+          <div className="admin-logo">📚</div>
 
           <div>
             <h1>Study With Power</h1>
-            <span>Admin Control Panel</span>
+            <span>Admin Panel</span>
           </div>
         </div>
 
-        <div className="admin-nav-right">
-          <div className="admin-clock">
-            <strong>
-              {time.toLocaleTimeString("en-IN", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </strong>
+        <div className="header-right">
+          <span className="admin-online">
+            🟢 Admin Online
+          </span>
 
-            <small>
-              {time.toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </small>
-          </div>
-
-          <div className="admin-user">
-            <div className="admin-user-icon">👤</div>
-
-            <div className="admin-user-info">
-              <strong>Admin</strong>
-              <span>{adminEmail}</span>
-            </div>
-          </div>
-
-          <button className="logout-btn" onClick={handleLogout}>
-            🚪 Logout
-          </button>
+          {onBack && (
+            <button
+              className="website-btn"
+              onClick={onBack}
+            >
+              🌐 Website
+            </button>
+          )}
         </div>
       </header>
 
-      {/* =====================================
-          MAIN CONTENT
-      ====================================== */}
-      <main className="admin-main">
-        {/* WELCOME */}
-        <section className="welcome-section">
-          <div>
-            <div className="welcome-badge">🔐 ADMIN PANEL</div>
+      <div className="admin-body">
 
-            <h2>Welcome, Admin 👋</h2>
+        {/* ================= SIDEBAR ================= */}
 
-            <p>
-              यहाँ से आप Exam, Test Series, Tests, Questions और Current
-              Affairs को आसानी से Manage कर सकते हैं।
-            </p>
+        <aside className="admin-sidebar">
+
+          <button
+            className={
+              activeMenu === "dashboard"
+                ? "sidebar-item active"
+                : "sidebar-item"
+            }
+            onClick={() => {
+              setActiveMenu("dashboard");
+              setShowTestForm(false);
+            }}
+          >
+            🏠
+            <span>Dashboard</span>
+          </button>
+
+          <button
+            className={
+              activeMenu === "tests"
+                ? "sidebar-item active"
+                : "sidebar-item"
+            }
+            onClick={() => {
+              setActiveMenu("tests");
+              setShowTestForm(false);
+            }}
+          >
+            📝
+            <span>Test Series</span>
+          </button>
+
+          <button
+            className="sidebar-item"
+            onClick={createNewTest}
+          >
+            ➕
+            <span>New Test</span>
+          </button>
+
+          <div className="sidebar-divider"></div>
+
+          <div className="sidebar-title">
+            QUICK INFO
           </div>
 
-          <div className="welcome-date">
-            <span>आज की तारीख</span>
-            <strong>
-              {time.toLocaleDateString("hi-IN", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </strong>
+          <div className="sidebar-info">
+            <span>Tests</span>
+            <strong>{totalTests}</strong>
           </div>
-        </section>
 
-        {/* =====================================
-            QUICK ACTIONS
-        ====================================== */}
-        <section className="section-block">
-          <div className="section-heading">
+          <div className="sidebar-info">
+            <span>Questions</span>
+            <strong>{totalQuestions}</strong>
+          </div>
+
+        </aside>
+
+        {/* ================= MAIN ================= */}
+
+        <main className="admin-main">
+
+          {/* ================= DASHBOARD ================= */}
+
+          {activeMenu === "dashboard" && !showTestForm && (
             <div>
-              <h2>⚡ Quick Actions</h2>
-              <p>सबसे ज्यादा इस्तेमाल होने वाले विकल्प</p>
-            </div>
-          </div>
 
-          <div className="quick-grid">
-            {quickActions.map((item, index) => (
-              <button
-                key={index}
-                className="quick-card"
-                onClick={item.action}
-              >
-                <div className="quick-icon">{item.icon}</div>
-
-                <div className="quick-content">
-                  <strong>{item.title}</strong>
-                  <span>{item.text}</span>
+              <div className="page-heading">
+                <div>
+                  <h2>Admin Dashboard</h2>
+                  <p>
+                    अपने Test Series और Questions को manage करें।
+                  </p>
                 </div>
 
-                <div className="quick-arrow">→</div>
-              </button>
-            ))}
-          </div>
-        </section>
+                <button
+                  className="primary-btn"
+                  onClick={createNewTest}
+                >
+                  ➕ New Test
+                </button>
+              </div>
 
-        {/* =====================================
-            MANAGEMENT
-        ====================================== */}
-        <section className="section-block">
-          <div className="section-heading">
-            <div>
-              <h2>🛠️ Management</h2>
-              <p>Website के सभी मुख्य sections को manage करें</p>
-            </div>
-          </div>
+              {/* STAT CARDS */}
 
-          <div className="dashboard-grid">
-            {dashboardCards.map((card, index) => (
-              <button
-                key={index}
-                className={`dashboard-card ${card.color}`}
-                onClick={card.action}
-              >
-                <div className="dashboard-card-top">
-                  <div className="dashboard-card-icon">{card.icon}</div>
+              <div className="stats-grid">
 
-                  <span className="open-arrow">↗</span>
+                <div className="stat-card">
+                  <div className="stat-icon blue">
+                    📝
+                  </div>
+
+                  <div>
+                    <span>Total Tests</span>
+                    <strong>{totalTests}</strong>
+                  </div>
                 </div>
 
-                <h3>{card.title}</h3>
+                <div className="stat-card">
+                  <div className="stat-icon green">
+                    ✅
+                  </div>
 
-                <p>{card.description}</p>
-
-                <div className="card-open">
-                  Open <span>→</span>
+                  <div>
+                    <span>Published</span>
+                    <strong>{publishedTests}</strong>
+                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
-        </section>
 
-        {/* =====================================
-            TEST FLOW
-        ====================================== */}
-        <section className="section-block">
-          <div className="section-heading">
+                <div className="stat-card">
+                  <div className="stat-icon orange">
+                    📄
+                  </div>
+
+                  <div>
+                    <span>Draft Tests</span>
+                    <strong>{draftTests}</strong>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon purple">
+                    ❓
+                  </div>
+
+                  <div>
+                    <span>Total Questions</span>
+                    <strong>{totalQuestions}</strong>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* RECENT TESTS */}
+
+              <div className="panel-card">
+
+                <div className="panel-header">
+                  <div>
+                    <h3>📚 Test Series</h3>
+                    <p>सभी Tests यहाँ दिखाई देंगे।</p>
+                  </div>
+
+                  <button
+                    className="secondary-btn"
+                    onClick={() => setActiveMenu("tests")}
+                  >
+                    सभी Tests देखें →
+                  </button>
+                </div>
+
+                {tests.length === 0 ? (
+                  <div className="empty-state">
+                    <div>📭</div>
+                    <h3>अभी कोई Test नहीं है</h3>
+                    <p>
+                      पहला Test बनाने के लिए New Test पर क्लिक करें।
+                    </p>
+
+                    <button
+                      className="primary-btn"
+                      onClick={createNewTest}
+                    >
+                      ➕ पहला Test बनाएं
+                    </button>
+                  </div>
+                ) : (
+                  <div className="test-table-wrapper">
+                    <table className="test-table">
+
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Exam</th>
+                          <th>Test</th>
+                          <th>Questions</th>
+                          <th>Duration</th>
+                          <th>Price</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {tests.slice(0, 10).map((test) => (
+                          <tr key={test.id}>
+
+                            <td>
+                              {test.testNumber}
+                            </td>
+
+                            <td>
+                              <strong>
+                                {test.exam}
+                              </strong>
+                            </td>
+
+                            <td>
+                              {test.title}
+                            </td>
+
+                            <td>
+                              {test.questionCount ||
+                                (Array.isArray(test.questions)
+                                  ? test.questions.length
+                                  : 0)}
+                            </td>
+
+                            <td>
+                              {test.duration} min
+                            </td>
+
+                            <td>
+                              ₹{test.price || 0}
+                            </td>
+
+                            <td>
+                              <span
+                                className={`status-badge ${String(
+                                  test.status || "Draft"
+                                ).toLowerCase()}`}
+                              >
+                                {test.status || "Draft"}
+                              </span>
+                            </td>
+
+                            <td>
+                              <div className="action-buttons">
+
+                                <button
+                                  className="edit-btn"
+                                  onClick={() =>
+                                    editTest(test)
+                                  }
+                                >
+                                  ✏️ Edit
+                                </button>
+
+                                <button
+                                  className="delete-btn"
+                                  onClick={() =>
+                                    deleteTest(test.id)
+                                  }
+                                >
+                                  🗑️
+                                </button>
+
+                              </div>
+                            </td>
+
+                          </tr>
+                        ))}
+                      </tbody>
+
+                    </table>
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ================= TEST LIST ================= */}
+
+          {activeMenu === "tests" && !showTestForm && (
             <div>
-              <h2>📚 Test System</h2>
-              <p>Exam से Question तक पूरा flow</p>
+
+              <div className="page-heading">
+                <div>
+                  <h2>📝 Test Series</h2>
+                  <p>
+                    Exam के अनुसार Test manage करें।
+                  </p>
+                </div>
+
+                <button
+                  className="primary-btn"
+                  onClick={createNewTest}
+                >
+                  ➕ New Test
+                </button>
+              </div>
+
+              <div className="test-grid">
+
+                {tests.map((test) => (
+                  <div
+                    className="test-card"
+                    key={test.id}
+                  >
+
+                    <div className="test-card-top">
+
+                      <span className="exam-badge">
+                        {test.exam}
+                      </span>
+
+                      <span
+                        className={`status-badge ${String(
+                          test.status || "Draft"
+                        ).toLowerCase()}`}
+                      >
+                        {test.status || "Draft"}
+                      </span>
+
+                    </div>
+
+                    <h3>
+                      Test {test.testNumber} — {test.title}
+                    </h3>
+
+                    <div className="test-meta">
+
+                      <span>
+                        ❓{" "}
+                        {test.questionCount ||
+                          (Array.isArray(test.questions)
+                            ? test.questions.length
+                            : 0)}{" "}
+                        Questions
+                      </span>
+
+                      <span>
+                        ⏱️ {test.duration} Minutes
+                      </span>
+
+                      <span>
+                        💰 ₹{test.price || 0}
+                      </span>
+
+                    </div>
+
+                    <div className="test-card-actions">
+
+                      <button
+                        className="edit-btn large"
+                        onClick={() => editTest(test)}
+                      >
+                        ✏️ Manage Questions
+                      </button>
+
+                      <button
+                        className="delete-btn large"
+                        onClick={() =>
+                          deleteTest(test.id)
+                        }
+                      >
+                        🗑️ Delete
+                      </button>
+
+                    </div>
+
+                  </div>
+                ))}
+
+              </div>
+
+              {tests.length === 0 && (
+                <div className="empty-state">
+                  <div>📚</div>
+                  <h3>कोई Test उपलब्ध नहीं है</h3>
+
+                  <button
+                    className="primary-btn"
+                    onClick={createNewTest}
+                  >
+                    ➕ New Test बनाएं
+                  </button>
+                </div>
+              )}
+
             </div>
-          </div>
+          )}
 
-          <div className="flow-container">
-            <div className="flow-item">
-              <div className="flow-number">1</div>
-              <div className="flow-icon">🏫</div>
-              <h3>Exam</h3>
-              <p>UPPCS, UPPET, SSC आदि</p>
-            </div>
+          {/* ================= CREATE / EDIT TEST ================= */}
 
-            <div className="flow-line">→</div>
-
-            <div className="flow-item">
-              <div className="flow-number">2</div>
-              <div className="flow-icon">📚</div>
-              <h3>Test Series</h3>
-              <p>Series बनाएं</p>
-            </div>
-
-            <div className="flow-line">→</div>
-
-            <div className="flow-item">
-              <div className="flow-number">3</div>
-              <div className="flow-icon">📝</div>
-              <h3>Test</h3>
-              <p>Test Number, Price, Status</p>
-            </div>
-
-            <div className="flow-line">→</div>
-
-            <div className="flow-item">
-              <div className="flow-number">4</div>
-              <div className="flow-icon">❓</div>
-              <h3>Questions</h3>
-              <p>MCQ Questions</p>
-            </div>
-          </div>
-        </section>
-
-        {/* =====================================
-            TEST STATUS INFO
-        ====================================== */}
-        <section className="section-block">
-          <div className="section-heading">
+          {showTestForm && (
             <div>
-              <h2>📌 Test Settings</h2>
-              <p>Test बनाते समय इन विकल्पों का उपयोग करें</p>
-            </div>
-          </div>
 
-          <div className="settings-grid">
-            <div className="info-box">
-              <div className="info-icon">🔢</div>
-              <div>
-                <strong>Test Number</strong>
-                <span>Test 01, Test 02, Test 03...</span>
+              <div className="breadcrumb">
+                Admin → Test Series → Questions
               </div>
-            </div>
 
-            <div className="info-box">
-              <div className="info-icon">🌐</div>
-              <div>
-                <strong>Public / Unlisted</strong>
-                <span>Test को Public या Unlisted रखें</span>
+              <div className="page-heading">
+
+                <div>
+                  <h2>
+                    {selectedTest
+                      ? "✏️ Test Edit करें"
+                      : "➕ New Test बनाएं"}
+                  </h2>
+
+                  <p>
+                    Test details और questions यहाँ manage करें।
+                  </p>
+                </div>
+
+                <button
+                  className="secondary-btn"
+                  onClick={() => {
+                    setShowTestForm(false);
+                    setSelectedTest(null);
+                  }}
+                >
+                  ← Back
+                </button>
+
               </div>
-            </div>
 
-            <div className="info-box">
-              <div className="info-icon">💰</div>
-              <div>
-                <strong>Free / Paid</strong>
-                <span>₹0 Free या अपनी Price सेट करें</span>
+              {/* TEST INFORMATION */}
+
+              <div className="panel-card">
+
+                <div className="panel-header">
+                  <div>
+                    <h3>📋 Test Information</h3>
+                    <p>
+                      Test की basic information भरें।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="form-grid">
+
+                  <div className="form-group">
+                    <label>
+                      🎯 Exam
+                    </label>
+
+                    <select
+                      name="exam"
+                      value={testForm.exam}
+                      onChange={handleTestChange}
+                    >
+                      {exams.map((exam) => (
+                        <option
+                          key={exam}
+                          value={exam}
+                        >
+                          {exam}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      🔢 Test Number
+                    </label>
+
+                    <input
+                      type="number"
+                      name="testNumber"
+                      min="1"
+                      value={testForm.testNumber}
+                      onChange={handleTestChange}
+                    />
+                  </div>
+
+                  <div className="form-group full">
+                    <label>
+                      📌 Test Title
+                    </label>
+
+                    <input
+                      type="text"
+                      name="title"
+                      placeholder="जैसे: UPPCS Test 01 - History"
+                      value={testForm.title}
+                      onChange={handleTestChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      📢 Status
+                    </label>
+
+                    <select
+                      name="status"
+                      value={testForm.status}
+                      onChange={handleTestChange}
+                    >
+                      <option value="Draft">
+                        Draft
+                      </option>
+
+                      <option value="Published">
+                        Published
+                      </option>
+
+                      <option value="Unlisted">
+                        Unlisted
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      ⏱️ Duration (Minutes)
+                    </label>
+
+                    <input
+                      type="number"
+                      name="duration"
+                      min="1"
+                      value={testForm.duration}
+                      onChange={handleTestChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      💰 Price (₹)
+                    </label>
+
+                    <input
+                      type="number"
+                      name="price"
+                      min="0"
+                      value={testForm.price}
+                      onChange={handleTestChange}
+                    />
+
+                    <small>
+                      ₹0 = Free Test
+                    </small>
+                  </div>
+
+                </div>
+
               </div>
-            </div>
 
-            <div className="info-box">
-              <div className="info-icon">⏱️</div>
-              <div>
-                <strong>Duration</strong>
-                <span>Test का समय मिनट में सेट करें</span>
+              {/* QUESTION MANAGER */}
+
+              <div className="panel-card question-panel">
+
+                <div className="question-header">
+
+                  <div>
+                    <h3>❓ Question Manager</h3>
+
+                    <p>
+                      Question {currentQuestion + 1} /{" "}
+                      {questions.length}
+                    </p>
+                  </div>
+
+                  <div className="question-actions">
+
+                    <button
+                      className="add-question-btn"
+                      onClick={addQuestion}
+                    >
+                      ➕ Add Question
+                    </button>
+
+                    <button
+                      className="delete-question-btn"
+                      onClick={deleteQuestion}
+                    >
+                      🗑️ Delete Question
+                    </button>
+
+                  </div>
+
+                </div>
+
+                {/* QUESTION NUMBERS */}
+
+                <div className="question-tabs">
+
+                  {questions.map((_, index) => (
+                    <button
+                      key={index}
+                      className={
+                        currentQuestion === index
+                          ? "question-tab active"
+                          : "question-tab"
+                      }
+                      onClick={() =>
+                        setCurrentQuestion(index)
+                      }
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+
+                </div>
+
+                {/* QUESTION */}
+
+                <div className="question-box">
+
+                  <label>
+                    ❓ Question {currentQuestion + 1}
+                  </label>
+
+                  <textarea
+                    rows="4"
+                    placeholder="यहाँ प्रश्न लिखें..."
+                    value={current.question}
+                    onChange={(e) =>
+                      updateQuestion(
+                        "question",
+                        e.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                {/* OPTIONS */}
+
+                <div className="options-section">
+
+                  <h4>🔤 Options</h4>
+
+                  {["A", "B", "C", "D"].map(
+                    (option) => (
+                      <div
+                        className={`option-row ${
+                          current.answer === option
+                            ? "correct"
+                            : ""
+                        }`}
+                        key={option}
+                      >
+
+                        <div className="option-label">
+                          {option}
+                        </div>
+
+                        <input
+                          type="text"
+                          placeholder={`Option ${option}`}
+                          value={
+                            current.options?.[
+                              option
+                            ] || ""
+                          }
+                          onChange={(e) =>
+                            updateOption(
+                              option,
+                              e.target.value
+                            )
+                          }
+                        />
+
+                        <label className="correct-radio">
+
+                          <input
+                            type="radio"
+                            name={`answer-${currentQuestion}`}
+                            checked={
+                              current.answer ===
+                              option
+                            }
+                            onChange={() =>
+                              setCorrectAnswer(
+                                option
+                              )
+                            }
+                          />
+
+                          सही उत्तर
+
+                        </label>
+
+                      </div>
+                    )
+                  )}
+
+                </div>
+
+                {/* EXPLANATION */}
+
+                <div className="question-box">
+
+                  <label>
+                    💡 Explanation
+                  </label>
+
+                  <textarea
+                    rows="4"
+                    placeholder="सही उत्तर की व्याख्या लिखें..."
+                    value={current.explanation}
+                    onChange={(e) =>
+                      updateQuestion(
+                        "explanation",
+                        e.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="question-box">
+
+                  <label>
+                    🖼️ Explanation Image URL
+                    <span className="optional">
+                      Optional
+                    </span>
+                  </label>
+
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={
+                      current.explanationImage
+                    }
+                    onChange={(e) =>
+                      updateQuestion(
+                        "explanationImage",
+                        e.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                {/* NAVIGATION */}
+
+                <div className="question-navigation">
+
+                  <button
+                    className="secondary-btn"
+                    disabled={currentQuestion === 0}
+                    onClick={() =>
+                      setCurrentQuestion(
+                        (prev) =>
+                          Math.max(prev - 1, 0)
+                      )
+                    }
+                  >
+                    ← Previous
+                  </button>
+
+                  <span>
+                    {currentQuestion + 1} /{" "}
+                    {questions.length}
+                  </span>
+
+                  <button
+                    className="secondary-btn"
+                    disabled={
+                      currentQuestion ===
+                      questions.length - 1
+                    }
+                    onClick={() =>
+                      setCurrentQuestion(
+                        (prev) =>
+                          Math.min(
+                            prev + 1,
+                            questions.length - 1
+                          )
+                      )
+                    }
+                  >
+                    Next →
+                  </button>
+
+                </div>
+
               </div>
-            </div>
 
-            <div className="info-box">
-              <div className="info-icon">📥</div>
-              <div>
-                <strong>JSON Import</strong>
-                <span>Questions JSON से Import करें</span>
+              {/* SAVE */}
+
+              <div className="save-section">
+
+                {message && (
+                  <div className="success-message">
+                    {message}
+                  </div>
+                )}
+
+                <button
+                  className="save-test-btn"
+                  onClick={saveTest}
+                  disabled={loading}
+                >
+                  {loading
+                    ? "⏳ Saving..."
+                    : "💾 Save Test to Firebase"}
+                </button>
+
               </div>
+
             </div>
+          )}
 
-            <div className="info-box">
-              <div className="info-icon">📤</div>
-              <div>
-                <strong>JSON Export</strong>
-                <span>Questions को JSON में Export करें</span>
-              </div>
-            </div>
-          </div>
-        </section>
+        </main>
 
-        {/* =====================================
-            FOOTER
-        ====================================== */}
-        <footer className="admin-footer">
-          <div>
-            <strong>Study With Power</strong>
-            <span>Admin Control Panel</span>
-          </div>
+      </div>
 
-          <div>
-            <span>🔒 Secure Admin Area</span>
-          </div>
-        </footer>
-      </main>
     </div>
   );
 }
