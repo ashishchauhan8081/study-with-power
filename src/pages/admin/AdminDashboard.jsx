@@ -1,515 +1,655 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { db } from "../../firebase";
 import {
   ref,
   push,
   set,
-  update,
+  get,
   remove,
-  onValue,
 } from "firebase/database";
-
-import { db } from "../../firebase";
 import "./AdminDashboard.css";
 
-const DEFAULT_QUESTION = {
+const EXAMS = [
+  "UPPCS",
+  "UP Police",
+  "UP Home Guard",
+  "UPSSSC",
+  "UP Lekhpal",
+  "SSC",
+  "RRB NTPC",
+  "RRB Group D",
+  "CTET",
+  "Other",
+];
+
+const emptyQuestion = () => ({
+  id: Date.now() + Math.random(),
   question: "",
-  options: {
-    A: "",
-    B: "",
-    C: "",
-    D: "",
-  },
-  answer: "A",
+  options: ["", "", "", ""],
+  answer: 0,
   explanation: "",
   explanationImage: "",
-};
+});
 
-function AdminDashboard({ onBack }) {
-  const [activeMenu, setActiveMenu] = useState("dashboard");
+const emptyTest = () => ({
+  exam: "UPPCS",
+  testNumber: 1,
+  title: "UPPCS Test 01",
+  status: "draft",
+  duration: 30,
+  price: 0,
+  questions: [emptyQuestion()],
+});
+
+function AdminDashboard({ user, onLogout }) {
+  const [activeTab, setActiveTab] = useState("tests");
 
   const [tests, setTests] = useState([]);
-  const [selectedTest, setSelectedTest] = useState(null);
+  const [loadingTests, setLoadingTests] = useState(false);
 
-  const [showTestForm, setShowTestForm] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [editingTest, setEditingTest] = useState(null);
+  const [selectedQuestion, setSelectedQuestion] = useState(0);
 
-  const [testForm, setTestForm] = useState({
-    exam: "UPPCS",
-    testNumber: 1,
-    title: "",
-    status: "Draft",
-    duration: 30,
-    price: 0,
-  });
-
-  const [questions, setQuestions] = useState([]);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  // -----------------------------------------
-  // EXAMS
-  // -----------------------------------------
+  const [search, setSearch] = useState("");
+  const [filterExam, setFilterExam] = useState("All");
 
-  const exams = [
-    "UPPCS",
-    "UP Police",
-    "UP Home Guard",
-    "UPSSSC",
-    "UPPET",
-    "SSC CGL",
-    "SSC CHSL",
-    "RRB NTPC",
-    "RRB Group D",
-    "CTET",
-    "NDA",
-    "Bank",
-  ];
+  const [showTestEditor, setShowTestEditor] = useState(false);
 
-  // -----------------------------------------
-  // LOAD TESTS
-  // -----------------------------------------
+  const currentUserEmail =
+    user?.email || "cciaashish@gmail.com";
 
-  useEffect(() => {
-    const testsRef = ref(db, "tests");
+  // --------------------------------------------------
+  // Load Tests
+  // --------------------------------------------------
 
-    const unsubscribe = onValue(testsRef, (snapshot) => {
-      const data = snapshot.val();
+  const loadTests = async () => {
+    try {
+      setLoadingTests(true);
 
-      if (!data) {
+      const snapshot = await get(ref(db, "tests"));
+
+      if (!snapshot.exists()) {
         setTests([]);
         return;
       }
 
+      const data = snapshot.val();
+
       const list = Object.entries(data).map(([id, value]) => ({
         id,
         ...value,
+        questions: Array.isArray(value.questions)
+          ? value.questions
+          : [],
       }));
 
-      list.sort((a, b) => {
-        return Number(a.testNumber || 0) - Number(b.testNumber || 0);
-      });
+      list.sort(
+        (a, b) =>
+          Number(a.testNumber || 0) -
+          Number(b.testNumber || 0)
+      );
 
       setTests(list);
-    });
+    } catch (error) {
+      console.error(error);
+      setMessage("❌ Tests load नहीं हो पाए।");
+    } finally {
+      setLoadingTests(false);
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    loadTests();
   }, []);
 
-  // -----------------------------------------
-  // NEW TEST
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Create New Test
+  // --------------------------------------------------
 
   const createNewTest = () => {
-    const nextNumber =
-      tests.length > 0
-        ? Math.max(...tests.map((t) => Number(t.testNumber || 0))) + 1
-        : 1;
+    const newTest = emptyTest();
 
-    setTestForm({
-      exam: "UPPCS",
-      testNumber: nextNumber,
-      title: `UPPCS Test ${String(nextNumber).padStart(2, "0")}`,
-      status: "Draft",
-      duration: 30,
-      price: 0,
-    });
-
-    setQuestions([
-      {
-        id: Date.now(),
-        ...DEFAULT_QUESTION,
-        options: { ...DEFAULT_QUESTION.options },
-      },
-    ]);
-
-    setCurrentQuestion(0);
-    setSelectedTest(null);
-    setShowTestForm(true);
-    setActiveMenu("tests");
-  };
-
-  // -----------------------------------------
-  // EDIT TEST
-  // -----------------------------------------
-
-  const editTest = (test) => {
-    setSelectedTest(test);
-
-    setTestForm({
-      exam: test.exam || "UPPCS",
-      testNumber: test.testNumber || 1,
-      title: test.title || "",
-      status: test.status || "Draft",
-      duration: test.duration || 30,
-      price: test.price || 0,
-    });
-
-    const loadedQuestions = Array.isArray(test.questions)
-      ? test.questions
-      : test.questions
-      ? Object.values(test.questions)
-      : [];
-
-    setQuestions(
-      loadedQuestions.length
-        ? loadedQuestions.map((q) => ({
-            ...DEFAULT_QUESTION,
-            ...q,
-            options: {
-              ...DEFAULT_QUESTION.options,
-              ...(q.options || {}),
-            },
-          }))
-        : [
-            {
-              id: Date.now(),
-              ...DEFAULT_QUESTION,
-              options: { ...DEFAULT_QUESTION.options },
-            },
-          ]
+    const examTests = tests.filter(
+      (t) => t.exam === newTest.exam
     );
 
-    setCurrentQuestion(0);
-    setShowTestForm(true);
-    setActiveMenu("tests");
+    newTest.testNumber = examTests.length + 1;
+
+    newTest.title = `${newTest.exam} Test ${String(
+      newTest.testNumber
+    ).padStart(2, "0")}`;
+
+    setEditingTest(newTest);
+    setSelectedQuestion(0);
+    setShowTestEditor(true);
+    setMessage("");
   };
 
-  // -----------------------------------------
-  // TEST FORM CHANGE
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Edit Test
+  // --------------------------------------------------
 
-  const handleTestChange = (e) => {
-    const { name, value } = e.target;
+  const editTest = (test) => {
+    const copied = {
+      ...test,
+      questions: (test.questions || []).map((q) => ({
+        ...q,
+        options: [
+          ...(q.options || ["", "", "", ""]),
+        ].slice(0, 4),
+      })),
+    };
 
-    setTestForm((prev) => ({
+    if (!copied.questions.length) {
+      copied.questions = [emptyQuestion()];
+    }
+
+    setEditingTest(copied);
+    setSelectedQuestion(0);
+    setShowTestEditor(true);
+    setMessage("");
+  };
+
+  // --------------------------------------------------
+  // Delete Test
+  // --------------------------------------------------
+
+  const deleteTest = async (test) => {
+    const ok = window.confirm(
+      `क्या आप "${test.title}" को delete करना चाहते हैं?`
+    );
+
+    if (!ok) return;
+
+    try {
+      await remove(ref(db, `tests/${test.id}`));
+
+      setTests((prev) =>
+        prev.filter((item) => item.id !== test.id)
+      );
+
+      setMessage("✅ Test delete हो गया।");
+    } catch (error) {
+      console.error(error);
+      setMessage("❌ Test delete नहीं हुआ।");
+    }
+  };
+
+  // --------------------------------------------------
+  // Test Field Update
+  // --------------------------------------------------
+
+  const updateTestField = (field, value) => {
+    setEditingTest((prev) => ({
       ...prev,
-      [name]:
-        name === "testNumber" ||
-        name === "duration" ||
-        name === "price"
-          ? Number(value)
-          : value,
+      [field]: value,
     }));
   };
 
-  // -----------------------------------------
-  // QUESTION CHANGE
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Question Update
+  // --------------------------------------------------
 
-  const updateQuestion = (field, value) => {
-    setQuestions((prev) =>
-      prev.map((q, index) =>
-        index === currentQuestion
-          ? {
-              ...q,
-              [field]: value,
-            }
-          : q
-      )
-    );
-  };
+  const updateQuestion = (index, field, value) => {
+    setEditingTest((prev) => {
+      const questions = [...prev.questions];
 
-  const updateOption = (option, value) => {
-    setQuestions((prev) =>
-      prev.map((q, index) =>
-        index === currentQuestion
-          ? {
-              ...q,
-              options: {
-                ...q.options,
-                [option]: value,
-              },
-            }
-          : q
-      )
-    );
-  };
-
-  const setCorrectAnswer = (answer) => {
-    updateQuestion("answer", answer);
-  };
-
-  // -----------------------------------------
-  // ADD QUESTION
-  // -----------------------------------------
-
-  const addQuestion = () => {
-    const newQuestion = {
-      id: Date.now(),
-      ...DEFAULT_QUESTION,
-      options: { ...DEFAULT_QUESTION.options },
-    };
-
-    setQuestions((prev) => [...prev, newQuestion]);
-
-    setCurrentQuestion(questions.length);
-  };
-
-  // -----------------------------------------
-  // DELETE QUESTION
-  // -----------------------------------------
-
-  const deleteQuestion = () => {
-    if (questions.length === 1) {
-      alert("कम से कम 1 प्रश्न होना जरूरी है।");
-      return;
-    }
-
-    const updated = questions.filter(
-      (_, index) => index !== currentQuestion
-    );
-
-    setQuestions(updated);
-
-    if (currentQuestion >= updated.length) {
-      setCurrentQuestion(updated.length - 1);
-    }
-  };
-
-  // -----------------------------------------
-  // SAVE TEST
-  // -----------------------------------------
-
-  const saveTest = async () => {
-    if (!testForm.title.trim()) {
-      alert("कृपया Test Title डालें।");
-      return;
-    }
-
-    if (questions.length === 0) {
-      alert("कम से कम 1 प्रश्न जोड़ें।");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const cleanedQuestions = questions.map((q, index) => ({
-        questionNumber: index + 1,
-        question: q.question || "",
-        options: {
-          A: q.options?.A || "",
-          B: q.options?.B || "",
-          C: q.options?.C || "",
-          D: q.options?.D || "",
-        },
-        answer: q.answer || "A",
-        explanation: q.explanation || "",
-        explanationImage: q.explanationImage || "",
-      }));
-
-      const testData = {
-        exam: testForm.exam,
-        testNumber: Number(testForm.testNumber),
-        title: testForm.title,
-        status: testForm.status,
-        duration: Number(testForm.duration),
-        price: Number(testForm.price),
-        questionCount: cleanedQuestions.length,
-        questions: cleanedQuestions,
-        updatedAt: Date.now(),
+      questions[index] = {
+        ...questions[index],
+        [field]: value,
       };
 
-      if (selectedTest?.id) {
-        await update(ref(db, `tests/${selectedTest.id}`), testData);
-        setMessage("✅ Test सफलतापूर्वक Update हो गया।");
-      } else {
-        const newRef = push(ref(db, "tests"));
-
-        await set(newRef, {
-          ...testData,
-          createdAt: Date.now(),
-        });
-
-        setMessage("✅ Test Firebase में Save हो गया।");
-      }
-
-      setTimeout(() => {
-        setMessage("");
-      }, 3000);
-    } catch (error) {
-      console.error(error);
-
-      alert(
-        "❌ Test Save नहीं हुआ।\n\n" +
-          (error?.message || "Firebase error")
-      );
-    } finally {
-      setLoading(false);
-    }
+      return {
+        ...prev,
+        questions,
+      };
+    });
   };
 
-  // -----------------------------------------
-  // DELETE TEST
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Option Update
+  // --------------------------------------------------
 
-  const deleteTest = async (testId) => {
-    const confirmDelete = window.confirm(
-      "क्या आप यह पूरा Test delete करना चाहते हैं?"
+  const updateOption = (
+    questionIndex,
+    optionIndex,
+    value
+  ) => {
+    setEditingTest((prev) => {
+      const questions = [...prev.questions];
+
+      const options = [
+        ...(questions[questionIndex].options || [
+          "",
+          "",
+          "",
+          "",
+        ]),
+      ];
+
+      options[optionIndex] = value;
+
+      questions[questionIndex] = {
+        ...questions[questionIndex],
+        options,
+      };
+
+      return {
+        ...prev,
+        questions,
+      };
+    });
+  };
+
+  // --------------------------------------------------
+  // Add Question
+  // --------------------------------------------------
+
+  const addQuestion = () => {
+    setEditingTest((prev) => {
+      const questions = [
+        ...(prev.questions || []),
+        emptyQuestion(),
+      ];
+
+      return {
+        ...prev,
+        questions,
+      };
+    });
+
+    setTimeout(() => {
+      setSelectedQuestion(
+        editingTest?.questions?.length || 0
+      );
+    }, 0);
+  };
+
+  // --------------------------------------------------
+  // Delete Question
+  // --------------------------------------------------
+
+  const deleteQuestion = (index) => {
+    if (
+      !editingTest ||
+      editingTest.questions.length <= 1
+    ) {
+      alert("कम से कम 1 question होना जरूरी है।");
+      return;
+    }
+
+    const ok = window.confirm(
+      `Question ${index + 1} delete करें?`
     );
 
-    if (!confirmDelete) return;
+    if (!ok) return;
+
+    setEditingTest((prev) => {
+      const questions = prev.questions.filter(
+        (_, i) => i !== index
+      );
+
+      return {
+        ...prev,
+        questions,
+      };
+    });
+
+    setSelectedQuestion((prev) => {
+      if (prev >= editingTest.questions.length - 1) {
+        return Math.max(
+          0,
+          editingTest.questions.length - 2
+        );
+      }
+
+      if (prev > index) return prev - 1;
+
+      return prev;
+    });
+  };
+
+  // --------------------------------------------------
+  // Save Test
+  // --------------------------------------------------
+
+  const saveTest = async () => {
+    if (!editingTest) return;
+
+    if (!editingTest.title?.trim()) {
+      alert("Test Title डालिए।");
+      return;
+    }
+
+    if (!editingTest.questions?.length) {
+      alert("कम से कम 1 question डालिए।");
+      return;
+    }
+
+    const invalidQuestion =
+      editingTest.questions.findIndex(
+        (q) =>
+          !q.question?.trim() ||
+          q.options.some(
+            (option) => !String(option).trim()
+          )
+      );
+
+    if (invalidQuestion !== -1) {
+      alert(
+        `Question ${
+          invalidQuestion + 1
+        } में Question और सभी 4 Options भरना जरूरी है।`
+      );
+
+      setSelectedQuestion(invalidQuestion);
+      return;
+    }
 
     try {
-      await remove(ref(db, `tests/${testId}`));
-      alert("✅ Test delete हो गया।");
+      setSaving(true);
+      setMessage("");
 
-      if (selectedTest?.id === testId) {
-        setSelectedTest(null);
-        setShowTestForm(false);
+      const cleanQuestions =
+        editingTest.questions.map((q, index) => ({
+          id: q.id || Date.now() + index,
+          question: q.question || "",
+          options: q.options || ["", "", "", ""],
+          answer: Number(q.answer || 0),
+          explanation: q.explanation || "",
+          explanationImage:
+            q.explanationImage || "",
+        }));
+
+      const payload = {
+        exam: editingTest.exam,
+        testNumber: Number(editingTest.testNumber) || 1,
+        title: editingTest.title,
+        status: editingTest.status || "draft",
+        duration: Number(editingTest.duration) || 30,
+        price: Number(editingTest.price) || 0,
+        questions: cleanQuestions,
+        questionCount: cleanQuestions.length,
+        createdBy: currentUserEmail,
+        updatedAt: new Date().toISOString(),
+      };
+
+      let testId = editingTest.id;
+
+      if (!testId) {
+        const newRef = push(ref(db, "tests"));
+        testId = newRef.key;
+
+        await set(newRef, {
+          ...payload,
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        await set(ref(db, `tests/${testId}`), {
+          ...payload,
+          id: testId,
+          createdAt:
+            editingTest.createdAt ||
+            new Date().toISOString(),
+        });
       }
+
+      setMessage("✅ Test Firebase में successfully save हो गया।");
+
+      setShowTestEditor(false);
+      setEditingTest(null);
+
+      await loadTests();
     } catch (error) {
       console.error(error);
-      alert("❌ Test delete नहीं हुआ।");
+
+      setMessage(
+        `❌ Save Error: ${
+          error?.message || "Unknown error"
+        }`
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
-  // -----------------------------------------
-  // DASHBOARD STATS
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Filter Tests
+  // --------------------------------------------------
+
+  const filteredTests = useMemo(() => {
+    return tests.filter((test) => {
+      const matchesSearch =
+        !search ||
+        String(test.title || "")
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        String(test.exam || "")
+          .toLowerCase()
+          .includes(search.toLowerCase());
+
+      const matchesExam =
+        filterExam === "All" ||
+        test.exam === filterExam;
+
+      return matchesSearch && matchesExam;
+    });
+  }, [tests, search, filterExam]);
+
+  // --------------------------------------------------
+  // Statistics
+  // --------------------------------------------------
 
   const totalTests = tests.length;
 
   const publishedTests = tests.filter(
-    (t) => String(t.status).toLowerCase() === "published"
+    (t) => t.status === "published"
   ).length;
 
   const draftTests = tests.filter(
-    (t) => String(t.status).toLowerCase() === "draft"
+    (t) => t.status === "draft"
   ).length;
 
-  const totalQuestions = tests.reduce(
-    (sum, test) =>
-      sum +
-      Number(
-        test.questionCount ||
-          (Array.isArray(test.questions)
-            ? test.questions.length
-            : test.questions
-            ? Object.keys(test.questions).length
-            : 0)
-      ),
-    0
-  );
+  const unlistedTests = tests.filter(
+    (t) => t.status === "unlisted"
+  ).length;
 
-  // -----------------------------------------
-  // CURRENT QUESTION
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Current Question
+  // --------------------------------------------------
 
-  const current = questions[currentQuestion] || {
-    ...DEFAULT_QUESTION,
-    options: { ...DEFAULT_QUESTION.options },
-  };
+  const currentQuestion =
+    editingTest?.questions?.[selectedQuestion];
 
   return (
-    <div className="admin-wrapper">
+    <div className="admin-page">
+      {/* =========================================
+          SIDEBAR
+      ========================================= */}
 
-      {/* ================= HEADER ================= */}
-
-      <header className="admin-header">
-        <div className="admin-logo-area">
-          <div className="admin-logo">📚</div>
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <div className="brand-icon">🎓</div>
 
           <div>
-            <h1>Study With Power</h1>
+            <h2>Study With Power</h2>
             <span>Admin Panel</span>
           </div>
         </div>
 
-        <div className="header-right">
-          <span className="admin-online">
-            🟢 Admin Online
-          </span>
+        <div className="sidebar-user">
+          <div className="user-avatar">👤</div>
 
-          {onBack && (
-            <button
-              className="website-btn"
-              onClick={onBack}
-            >
-              🌐 Website
-            </button>
-          )}
+          <div className="sidebar-user-info">
+            <strong>Admin</strong>
+            <span>{currentUserEmail}</span>
+          </div>
         </div>
-      </header>
 
-      <div className="admin-body">
-
-        {/* ================= SIDEBAR ================= */}
-
-        <aside className="admin-sidebar">
-
+        <nav className="sidebar-menu">
           <button
             className={
-              activeMenu === "dashboard"
-                ? "sidebar-item active"
-                : "sidebar-item"
+              activeTab === "tests"
+                ? "menu-item active"
+                : "menu-item"
             }
-            onClick={() => {
-              setActiveMenu("dashboard");
-              setShowTestForm(false);
-            }}
+            onClick={() => setActiveTab("tests")}
           >
-            🏠
-            <span>Dashboard</span>
+            <span>📝</span>
+            Test Manager
           </button>
 
           <button
             className={
-              activeMenu === "tests"
-                ? "sidebar-item active"
-                : "sidebar-item"
+              activeTab === "resources"
+                ? "menu-item active"
+                : "menu-item"
             }
+            onClick={() => setActiveTab("resources")}
+          >
+            <span>📚</span>
+            Resources
+          </button>
+        </nav>
+
+        <div className="sidebar-bottom">
+          <button
+            className="logout-btn"
             onClick={() => {
-              setActiveMenu("tests");
-              setShowTestForm(false);
+              if (onLogout) {
+                onLogout();
+              } else {
+                window.location.reload();
+              }
             }}
           >
-            📝
-            <span>Test Series</span>
+            🚪 Logout
           </button>
+        </div>
+      </aside>
 
-          <button
-            className="sidebar-item"
-            onClick={createNewTest}
+      {/* =========================================
+          MAIN CONTENT
+      ========================================= */}
+
+      <main className="admin-main">
+        {/* Header */}
+
+        <header className="admin-header">
+          <div>
+            <div className="breadcrumb">
+              Admin → {activeTab === "tests"
+                ? "Test Manager"
+                : "Resources"}
+            </div>
+
+            <h1>
+              {activeTab === "tests"
+                ? "Exam & Test Manager"
+                : "Resources"}
+            </h1>
+
+            <p>
+              अपने सभी Exam, Test और Questions आसानी से
+              manage करें।
+            </p>
+          </div>
+
+          <div className="header-actions">
+            <button
+              className="refresh-btn"
+              onClick={loadTests}
+              disabled={loadingTests}
+            >
+              🔄 Refresh
+            </button>
+
+            <button
+              className="primary-btn"
+              onClick={createNewTest}
+            >
+              ➕ New Test
+            </button>
+          </div>
+        </header>
+
+        {message && (
+          <div
+            className={
+              message.startsWith("❌")
+                ? "alert error"
+                : "alert success"
+            }
           >
-            ➕
-            <span>New Test</span>
-          </button>
-
-          <div className="sidebar-divider"></div>
-
-          <div className="sidebar-title">
-            QUICK INFO
+            {message}
           </div>
+        )}
 
-          <div className="sidebar-info">
-            <span>Tests</span>
-            <strong>{totalTests}</strong>
-          </div>
+        {/* =========================================
+            TEST MANAGER
+        ========================================= */}
 
-          <div className="sidebar-info">
-            <span>Questions</span>
-            <strong>{totalQuestions}</strong>
-          </div>
+        {activeTab === "tests" && (
+          <>
+            {/* Statistics */}
 
-        </aside>
+            <section className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon blue">
+                  📝
+                </div>
 
-        {/* ================= MAIN ================= */}
-
-        <main className="admin-main">
-
-          {/* ================= DASHBOARD ================= */}
-
-          {activeMenu === "dashboard" && !showTestForm && (
-            <div>
-
-              <div className="page-heading">
                 <div>
-                  <h2>Admin Dashboard</h2>
+                  <span>Total Tests</span>
+                  <strong>{totalTests}</strong>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon green">
+                  ✅
+                </div>
+
+                <div>
+                  <span>Published</span>
+                  <strong>{publishedTests}</strong>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon orange">
+                  📝
+                </div>
+
+                <div>
+                  <span>Draft</span>
+                  <strong>{draftTests}</strong>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon purple">
+                  🔗
+                </div>
+
+                <div>
+                  <span>Unlisted</span>
+                  <strong>{unlistedTests}</strong>
+                </div>
+              </div>
+            </section>
+
+            {/* Test List */}
+
+            <section className="panel-card">
+              <div className="panel-header">
+                <div>
+                  <h2>📋 All Tests</h2>
                   <p>
-                    अपने Test Series और Questions को manage करें।
+                    यहाँ से Test edit, delete और manage करें।
                   </p>
                 </div>
 
@@ -521,152 +661,146 @@ function AdminDashboard({ onBack }) {
                 </button>
               </div>
 
-              {/* STAT CARDS */}
-
-              <div className="stats-grid">
-
-                <div className="stat-card">
-                  <div className="stat-icon blue">
-                    📝
-                  </div>
-
-                  <div>
-                    <span>Total Tests</span>
-                    <strong>{totalTests}</strong>
-                  </div>
+              <div className="filter-row">
+                <div className="search-box">
+                  🔍
+                  <input
+                    type="text"
+                    placeholder="Test या Exam search करें..."
+                    value={search}
+                    onChange={(e) =>
+                      setSearch(e.target.value)
+                    }
+                  />
                 </div>
 
-                <div className="stat-card">
-                  <div className="stat-icon green">
-                    ✅
-                  </div>
+                <select
+                  value={filterExam}
+                  onChange={(e) =>
+                    setFilterExam(e.target.value)
+                  }
+                >
+                  <option value="All">
+                    सभी Exams
+                  </option>
 
-                  <div>
-                    <span>Published</span>
-                    <strong>{publishedTests}</strong>
-                  </div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-icon orange">
-                    📄
-                  </div>
-
-                  <div>
-                    <span>Draft Tests</span>
-                    <strong>{draftTests}</strong>
-                  </div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-icon purple">
-                    ❓
-                  </div>
-
-                  <div>
-                    <span>Total Questions</span>
-                    <strong>{totalQuestions}</strong>
-                  </div>
-                </div>
-
+                  {EXAMS.map((exam) => (
+                    <option key={exam} value={exam}>
+                      {exam}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* RECENT TESTS */}
-
-              <div className="panel-card">
-
-                <div className="panel-header">
-                  <div>
-                    <h3>📚 Test Series</h3>
-                    <p>सभी Tests यहाँ दिखाई देंगे।</p>
-                  </div>
+              {loadingTests ? (
+                <div className="loading-box">
+                  <div className="spinner"></div>
+                  <p>Tests load हो रहे हैं...</p>
+                </div>
+              ) : filteredTests.length === 0 ? (
+                <div className="empty-box">
+                  <div>📭</div>
+                  <h3>कोई Test नहीं मिला</h3>
+                  <p>
+                    ऊपर से <b>New Test</b> पर क्लिक करके
+                    पहला Test बनाइए।
+                  </p>
 
                   <button
-                    className="secondary-btn"
-                    onClick={() => setActiveMenu("tests")}
+                    className="primary-btn"
+                    onClick={createNewTest}
                   >
-                    सभी Tests देखें →
+                    ➕ Create Test
                   </button>
                 </div>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="test-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Exam</th>
+                        <th>Test</th>
+                        <th>Questions</th>
+                        <th>Duration</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
 
-                {tests.length === 0 ? (
-                  <div className="empty-state">
-                    <div>📭</div>
-                    <h3>अभी कोई Test नहीं है</h3>
-                    <p>
-                      पहला Test बनाने के लिए New Test पर क्लिक करें।
-                    </p>
-
-                    <button
-                      className="primary-btn"
-                      onClick={createNewTest}
-                    >
-                      ➕ पहला Test बनाएं
-                    </button>
-                  </div>
-                ) : (
-                  <div className="test-table-wrapper">
-                    <table className="test-table">
-
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Exam</th>
-                          <th>Test</th>
-                          <th>Questions</th>
-                          <th>Duration</th>
-                          <th>Price</th>
-                          <th>Status</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {tests.slice(0, 10).map((test) => (
+                    <tbody>
+                      {filteredTests.map(
+                        (test, index) => (
                           <tr key={test.id}>
-
                             <td>
-                              {test.testNumber}
+                              <span className="table-number">
+                                {index + 1}
+                              </span>
                             </td>
 
                             <td>
-                              <strong>
+                              <span className="exam-badge">
                                 {test.exam}
-                              </strong>
+                              </span>
                             </td>
 
                             <td>
-                              {test.title}
+                              <div className="test-title-cell">
+                                <strong>
+                                  {test.title}
+                                </strong>
+
+                                <small>
+                                  Test No.{" "}
+                                  {test.testNumber}
+                                </small>
+                              </div>
                             </td>
 
                             <td>
-                              {test.questionCount ||
-                                (Array.isArray(test.questions)
-                                  ? test.questions.length
-                                  : 0)}
+                              <b>
+                                {
+                                  test.questions
+                                    ?.length || 0
+                                }
+                              </b>
                             </td>
 
                             <td>
-                              {test.duration} min
+                              ⏱️ {test.duration || 0} min
                             </td>
 
                             <td>
-                              ₹{test.price || 0}
+                              {Number(test.price || 0) ===
+                              0 ? (
+                                <span className="free-badge">
+                                  FREE
+                                </span>
+                              ) : (
+                                `₹${test.price}`
+                              )}
                             </td>
 
                             <td>
                               <span
-                                className={`status-badge ${String(
-                                  test.status || "Draft"
-                                ).toLowerCase()}`}
+                                className={`status-badge ${
+                                  test.status ||
+                                  "draft"
+                                }`}
                               >
-                                {test.status || "Draft"}
+                                {test.status ===
+                                "published"
+                                  ? "🟢 Published"
+                                  : test.status ===
+                                    "unlisted"
+                                  ? "🔗 Unlisted"
+                                  : "🟠 Draft"}
                               </span>
                             </td>
 
                             <td>
                               <div className="action-buttons">
-
                                 <button
                                   className="edit-btn"
                                   onClick={() =>
@@ -679,201 +813,154 @@ function AdminDashboard({ onBack }) {
                                 <button
                                   className="delete-btn"
                                   onClick={() =>
-                                    deleteTest(test.id)
+                                    deleteTest(test)
                                   }
                                 >
                                   🗑️
                                 </button>
-
                               </div>
                             </td>
-
                           </tr>
-                        ))}
-                      </tbody>
-
-                    </table>
-                  </div>
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ================= TEST LIST ================= */}
-
-          {activeMenu === "tests" && !showTestForm && (
-            <div>
-
-              <div className="page-heading">
-                <div>
-                  <h2>📝 Test Series</h2>
-                  <p>
-                    Exam के अनुसार Test manage करें।
-                  </p>
-                </div>
-
-                <button
-                  className="primary-btn"
-                  onClick={createNewTest}
-                >
-                  ➕ New Test
-                </button>
-              </div>
-
-              <div className="test-grid">
-
-                {tests.map((test) => (
-                  <div
-                    className="test-card"
-                    key={test.id}
-                  >
-
-                    <div className="test-card-top">
-
-                      <span className="exam-badge">
-                        {test.exam}
-                      </span>
-
-                      <span
-                        className={`status-badge ${String(
-                          test.status || "Draft"
-                        ).toLowerCase()}`}
-                      >
-                        {test.status || "Draft"}
-                      </span>
-
-                    </div>
-
-                    <h3>
-                      Test {test.testNumber} — {test.title}
-                    </h3>
-
-                    <div className="test-meta">
-
-                      <span>
-                        ❓{" "}
-                        {test.questionCount ||
-                          (Array.isArray(test.questions)
-                            ? test.questions.length
-                            : 0)}{" "}
-                        Questions
-                      </span>
-
-                      <span>
-                        ⏱️ {test.duration} Minutes
-                      </span>
-
-                      <span>
-                        💰 ₹{test.price || 0}
-                      </span>
-
-                    </div>
-
-                    <div className="test-card-actions">
-
-                      <button
-                        className="edit-btn large"
-                        onClick={() => editTest(test)}
-                      >
-                        ✏️ Manage Questions
-                      </button>
-
-                      <button
-                        className="delete-btn large"
-                        onClick={() =>
-                          deleteTest(test.id)
-                        }
-                      >
-                        🗑️ Delete
-                      </button>
-
-                    </div>
-
-                  </div>
-                ))}
-
-              </div>
-
-              {tests.length === 0 && (
-                <div className="empty-state">
-                  <div>📚</div>
-                  <h3>कोई Test उपलब्ध नहीं है</h3>
-
-                  <button
-                    className="primary-btn"
-                    onClick={createNewTest}
-                  >
-                    ➕ New Test बनाएं
-                  </button>
+                        )
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
+            </section>
+          </>
+        )}
 
-            </div>
-          )}
+        {/* =========================================
+            RESOURCES
+        ========================================= */}
 
-          {/* ================= CREATE / EDIT TEST ================= */}
-
-          {showTestForm && (
-            <div>
-
-              <div className="breadcrumb">
-                Admin → Test Series → Questions
+        {activeTab === "resources" && (
+          <section className="resource-grid">
+            <div className="resource-card">
+              <div className="resource-icon">
+                📚
               </div>
 
-              <div className="page-heading">
+              <h3>Study Material</h3>
 
-                <div>
-                  <h2>
-                    {selectedTest
-                      ? "✏️ Test Edit करें"
-                      : "➕ New Test बनाएं"}
-                  </h2>
+              <p>
+                PDF, Notes और अन्य study material manage
+                करें।
+              </p>
 
-                  <p>
-                    Test details और questions यहाँ manage करें।
-                  </p>
+              <button className="secondary-btn">
+                Manage Resources
+              </button>
+            </div>
+
+            <div className="resource-card">
+              <div className="resource-icon">
+                🤖
+              </div>
+
+              <h3>AI MCQ Generator</h3>
+
+              <p>
+                AI की सहायता से नए MCQ generate करें।
+              </p>
+
+              <button
+                className="secondary-btn"
+                onClick={() =>
+                  window.location.href =
+                    "/ai-mcq-generator"
+                }
+              >
+                Open Generator
+              </button>
+            </div>
+
+            <div className="resource-card">
+              <div className="resource-icon">
+                📊
+              </div>
+
+              <h3>Test Analytics</h3>
+
+              <p>
+                Test और students की performance देखें।
+              </p>
+
+              <button className="secondary-btn">
+                View Analytics
+              </button>
+            </div>
+          </section>
+        )}
+      </main>
+
+      {/* =========================================
+          TEST EDITOR MODAL
+      ========================================= */}
+
+      {showTestEditor && editingTest && (
+        <div className="editor-overlay">
+          <div className="editor-modal">
+            {/* Editor Header */}
+
+            <div className="editor-header">
+              <div>
+                <div className="editor-label">
+                  TEST EDITOR
                 </div>
 
-                <button
-                  className="secondary-btn"
-                  onClick={() => {
-                    setShowTestForm(false);
-                    setSelectedTest(null);
-                  }}
-                >
-                  ← Back
-                </button>
+                <h2>
+                  {editingTest.id
+                    ? "✏️ Test Edit करें"
+                    : "➕ New Test बनाएं"}
+                </h2>
 
+                <p>
+                  Exam → Test → Questions manage करें
+                </p>
               </div>
 
-              {/* TEST INFORMATION */}
+              <button
+                className="close-editor"
+                onClick={() => {
+                  setShowTestEditor(false);
+                  setEditingTest(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
 
-              <div className="panel-card">
+            {/* Test Information */}
 
-                <div className="panel-header">
+            <div className="editor-body">
+              <section className="editor-section">
+                <div className="section-heading">
+                  <span>📋</span>
+
                   <div>
-                    <h3>📋 Test Information</h3>
+                    <h3>Test Information</h3>
                     <p>
-                      Test की basic information भरें।
+                      Test की basic details भरें।
                     </p>
                   </div>
                 </div>
 
                 <div className="form-grid">
-
                   <div className="form-group">
-                    <label>
-                      🎯 Exam
-                    </label>
+                    <label>🎯 Exam</label>
 
                     <select
-                      name="exam"
-                      value={testForm.exam}
-                      onChange={handleTestChange}
+                      value={editingTest.exam}
+                      onChange={(e) =>
+                        updateTestField(
+                          "exam",
+                          e.target.value
+                        )
+                      }
                     >
-                      {exams.map((exam) => (
+                      {EXAMS.map((exam) => (
                         <option
                           key={exam}
                           value={exam}
@@ -885,110 +972,125 @@ function AdminDashboard({ onBack }) {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      🔢 Test Number
-                    </label>
+                    <label>🔢 Test Number</label>
 
                     <input
                       type="number"
-                      name="testNumber"
                       min="1"
-                      value={testForm.testNumber}
-                      onChange={handleTestChange}
+                      value={
+                        editingTest.testNumber
+                      }
+                      onChange={(e) =>
+                        updateTestField(
+                          "testNumber",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
 
                   <div className="form-group full">
-                    <label>
-                      📌 Test Title
-                    </label>
+                    <label>📌 Test Title</label>
 
                     <input
                       type="text"
-                      name="title"
                       placeholder="जैसे: UPPCS Test 01 - History"
-                      value={testForm.title}
-                      onChange={handleTestChange}
+                      value={editingTest.title}
+                      onChange={(e) =>
+                        updateTestField(
+                          "title",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      📢 Status
-                    </label>
+                    <label>📢 Status</label>
 
                     <select
-                      name="status"
-                      value={testForm.status}
-                      onChange={handleTestChange}
+                      value={
+                        editingTest.status || "draft"
+                      }
+                      onChange={(e) =>
+                        updateTestField(
+                          "status",
+                          e.target.value
+                        )
+                      }
                     >
-                      <option value="Draft">
-                        Draft
+                      <option value="draft">
+                        🟠 Draft
                       </option>
 
-                      <option value="Published">
-                        Published
+                      <option value="published">
+                        🟢 Public / Published
                       </option>
 
-                      <option value="Unlisted">
-                        Unlisted
+                      <option value="unlisted">
+                        🔗 Unlisted
                       </option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      ⏱️ Duration (Minutes)
-                    </label>
+                    <label>⏱️ Duration (Minutes)</label>
 
                     <input
                       type="number"
-                      name="duration"
                       min="1"
-                      value={testForm.duration}
-                      onChange={handleTestChange}
+                      value={editingTest.duration}
+                      onChange={(e) =>
+                        updateTestField(
+                          "duration",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      💰 Price (₹)
-                    </label>
+                    <label>💰 Price (₹)</label>
 
                     <input
                       type="number"
-                      name="price"
                       min="0"
-                      value={testForm.price}
-                      onChange={handleTestChange}
+                      value={editingTest.price}
+                      onChange={(e) =>
+                        updateTestField(
+                          "price",
+                          e.target.value
+                        )
+                      }
                     />
 
                     <small>
                       ₹0 = Free Test
                     </small>
                   </div>
-
                 </div>
+              </section>
 
-              </div>
+              {/* Question Manager */}
 
-              {/* QUESTION MANAGER */}
+              <section className="editor-section">
+                <div className="question-manager-heading">
+                  <div className="section-heading">
+                    <span>❓</span>
 
-              <div className="panel-card question-panel">
+                    <div>
+                      <h3>Question Manager</h3>
 
-                <div className="question-header">
-
-                  <div>
-                    <h3>❓ Question Manager</h3>
-
-                    <p>
-                      Question {currentQuestion + 1} /{" "}
-                      {questions.length}
-                    </p>
+                      <p>
+                        Total Questions:{" "}
+                        <b>
+                          {editingTest.questions.length}
+                        </b>
+                      </p>
+                    </div>
                   </div>
 
                   <div className="question-actions">
-
                     <button
                       className="add-question-btn"
                       onClick={addQuestion}
@@ -997,244 +1099,215 @@ function AdminDashboard({ onBack }) {
                     </button>
 
                     <button
-                      className="delete-question-btn"
-                      onClick={deleteQuestion}
+                      className="remove-question-btn"
+                      onClick={() =>
+                        deleteQuestion(
+                          selectedQuestion
+                        )
+                      }
                     >
                       🗑️ Delete Question
                     </button>
-
                   </div>
-
                 </div>
 
-                {/* QUESTION NUMBERS */}
+                {/* Question Numbers */}
 
                 <div className="question-tabs">
-
-                  {questions.map((_, index) => (
-                    <button
-                      key={index}
-                      className={
-                        currentQuestion === index
-                          ? "question-tab active"
-                          : "question-tab"
-                      }
-                      onClick={() =>
-                        setCurrentQuestion(index)
-                      }
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-
-                </div>
-
-                {/* QUESTION */}
-
-                <div className="question-box">
-
-                  <label>
-                    ❓ Question {currentQuestion + 1}
-                  </label>
-
-                  <textarea
-                    rows="4"
-                    placeholder="यहाँ प्रश्न लिखें..."
-                    value={current.question}
-                    onChange={(e) =>
-                      updateQuestion(
-                        "question",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                </div>
-
-                {/* OPTIONS */}
-
-                <div className="options-section">
-
-                  <h4>🔤 Options</h4>
-
-                  {["A", "B", "C", "D"].map(
-                    (option) => (
-                      <div
-                        className={`option-row ${
-                          current.answer === option
-                            ? "correct"
-                            : ""
-                        }`}
-                        key={option}
+                  {editingTest.questions.map(
+                    (_, index) => (
+                      <button
+                        key={index}
+                        className={
+                          selectedQuestion === index
+                            ? "question-tab active"
+                            : "question-tab"
+                        }
+                        onClick={() =>
+                          setSelectedQuestion(
+                            index
+                          )
+                        }
                       >
-
-                        <div className="option-label">
-                          {option}
-                        </div>
-
-                        <input
-                          type="text"
-                          placeholder={`Option ${option}`}
-                          value={
-                            current.options?.[
-                              option
-                            ] || ""
-                          }
-                          onChange={(e) =>
-                            updateOption(
-                              option,
-                              e.target.value
-                            )
-                          }
-                        />
-
-                        <label className="correct-radio">
-
-                          <input
-                            type="radio"
-                            name={`answer-${currentQuestion}`}
-                            checked={
-                              current.answer ===
-                              option
-                            }
-                            onChange={() =>
-                              setCorrectAnswer(
-                                option
-                              )
-                            }
-                          />
-
-                          सही उत्तर
-
-                        </label>
-
-                      </div>
+                        {index + 1}
+                      </button>
                     )
                   )}
-
                 </div>
 
-                {/* EXPLANATION */}
+                {currentQuestion && (
+                  <div className="question-editor">
+                    <div className="question-title">
+                      <span>
+                        Question{" "}
+                        {selectedQuestion + 1}
+                      </span>
 
-                <div className="question-box">
+                      <span className="required">
+                        * Required
+                      </span>
+                    </div>
 
-                  <label>
-                    💡 Explanation
-                  </label>
+                    <div className="form-group">
+                      <label>
+                        ❓ Question
+                      </label>
 
-                  <textarea
-                    rows="4"
-                    placeholder="सही उत्तर की व्याख्या लिखें..."
-                    value={current.explanation}
-                    onChange={(e) =>
-                      updateQuestion(
-                        "explanation",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                </div>
-
-                <div className="question-box">
-
-                  <label>
-                    🖼️ Explanation Image URL
-                    <span className="optional">
-                      Optional
-                    </span>
-                  </label>
-
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={
-                      current.explanationImage
-                    }
-                    onChange={(e) =>
-                      updateQuestion(
-                        "explanationImage",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                </div>
-
-                {/* NAVIGATION */}
-
-                <div className="question-navigation">
-
-                  <button
-                    className="secondary-btn"
-                    disabled={currentQuestion === 0}
-                    onClick={() =>
-                      setCurrentQuestion(
-                        (prev) =>
-                          Math.max(prev - 1, 0)
-                      )
-                    }
-                  >
-                    ← Previous
-                  </button>
-
-                  <span>
-                    {currentQuestion + 1} /{" "}
-                    {questions.length}
-                  </span>
-
-                  <button
-                    className="secondary-btn"
-                    disabled={
-                      currentQuestion ===
-                      questions.length - 1
-                    }
-                    onClick={() =>
-                      setCurrentQuestion(
-                        (prev) =>
-                          Math.min(
-                            prev + 1,
-                            questions.length - 1
+                      <textarea
+                        rows="4"
+                        placeholder="यहाँ प्रश्न लिखें..."
+                        value={
+                          currentQuestion.question
+                        }
+                        onChange={(e) =>
+                          updateQuestion(
+                            selectedQuestion,
+                            "question",
+                            e.target.value
                           )
-                      )
-                    }
-                  >
-                    Next →
-                  </button>
+                        }
+                      />
+                    </div>
 
-                </div>
+                    <div className="options-heading">
+                      <span>🔤</span>
+                      <h4>Options</h4>
+                    </div>
 
-              </div>
+                    <div className="options-grid">
+                      {["A", "B", "C", "D"].map(
+                        (letter, optionIndex) => (
+                          <div
+                            className="option-row"
+                            key={letter}
+                          >
+                            <div className="option-label">
+                              {letter}
+                            </div>
 
-              {/* SAVE */}
+                            <input
+                              type="text"
+                              placeholder={`Option ${letter}`}
+                              value={
+                                currentQuestion
+                                  .options[
+                                  optionIndex
+                                ] || ""
+                              }
+                              onChange={(e) =>
+                                updateOption(
+                                  selectedQuestion,
+                                  optionIndex,
+                                  e.target.value
+                                )
+                              }
+                            />
 
-              <div className="save-section">
+                            <label className="correct-option">
+                              <input
+                                type="radio"
+                                name={`answer-${selectedQuestion}`}
+                                checked={
+                                  Number(
+                                    currentQuestion.answer
+                                  ) ===
+                                  optionIndex
+                                }
+                                onChange={() =>
+                                  updateQuestion(
+                                    selectedQuestion,
+                                    "answer",
+                                    optionIndex
+                                  )
+                                }
+                              />
 
-                {message && (
-                  <div className="success-message">
-                    {message}
+                              <span>
+                                सही उत्तर
+                              </span>
+                            </label>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label>
+                        💡 Explanation
+                      </label>
+
+                      <textarea
+                        rows="4"
+                        placeholder="सही उत्तर की व्याख्या लिखें..."
+                        value={
+                          currentQuestion.explanation ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          updateQuestion(
+                            selectedQuestion,
+                            "explanation",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>
+                        🖼️ Explanation Image URL
+                        <span className="optional">
+                          Optional
+                        </span>
+                      </label>
+
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={
+                          currentQuestion.explanationImage ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          updateQuestion(
+                            selectedQuestion,
+                            "explanationImage",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                 )}
-
-                <button
-                  className="save-test-btn"
-                  onClick={saveTest}
-                  disabled={loading}
-                >
-                  {loading
-                    ? "⏳ Saving..."
-                    : "💾 Save Test to Firebase"}
-                </button>
-
-              </div>
-
+              </section>
             </div>
-          )}
 
-        </main>
+            {/* Editor Footer */}
 
-      </div>
+            <div className="editor-footer">
+              <button
+                className="cancel-btn"
+                onClick={() => {
+                  setShowTestEditor(false);
+                  setEditingTest(null);
+                }}
+              >
+                ✕ Cancel
+              </button>
 
+              <button
+                className="save-test-btn"
+                onClick={saveTest}
+                disabled={saving}
+              >
+                {saving
+                  ? "⏳ Saving..."
+                  : "💾 Save Test to Firebase"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
