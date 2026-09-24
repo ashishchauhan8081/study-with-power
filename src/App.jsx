@@ -2687,11 +2687,12 @@ export default function App() {
               CURRENT AFFAIRS
           ================================================= */}
 
-          {page === "current" && (
-            <CurrentAffairs
-              onBack={goHome}
-            />
-          )}
+         {page === "current" && (
+  <CurrentAffairs
+    onBack={goHome}
+    onMCQ={() => setPage("mcq")}
+  />
+)}
 
           {/* =================================================
               MCQ / AI MCQ GENERATOR
