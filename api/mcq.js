@@ -38,7 +38,8 @@ export default async function handler(req, res) {
     // API KEY
     // ============================================
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey =
+      process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return res.status(500).json({
@@ -55,12 +56,16 @@ export default async function handler(req, res) {
     const {
       topic,
       exam = "UPPCS",
-      count = 5,
+      count = 10,
       language = "Hindi",
       difficulty = "Medium",
+      currentAffairs = false,
     } = req.body || {};
 
-    if (!topic || !String(topic).trim()) {
+    if (
+      !topic ||
+      !String(topic).trim()
+    ) {
       return res.status(400).json({
         success: false,
         error: "कृपया Topic डालें।",
@@ -68,49 +73,152 @@ export default async function handler(req, res) {
     }
 
     const questionCount = Math.min(
-      Math.max(Number(count) || 5, 1),
+      Math.max(
+        Number(count) || 10,
+        1
+      ),
       50
     );
+
+    // ============================================
+    // CURRENT DATE
+    // ============================================
+
+    const now = new Date();
+
+    const currentDate =
+      now.toLocaleDateString(
+        "en-IN",
+        {
+          timeZone: "Asia/Kolkata",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }
+      );
 
     // ============================================
     // PROMPT
     // ============================================
 
-    const prompt = `
+    let prompt = "";
+
+    if (currentAffairs) {
+      prompt = `
+आप भारत के प्रतियोगी परीक्षा विद्यार्थियों के लिए
+Current Affairs MCQ बनाने वाले विशेषज्ञ हैं।
+
+आज की तारीख:
+${currentDate}
+
+परीक्षा:
+${exam}
+
+विषय:
+${topic}
+
+प्रश्नों की संख्या:
+${questionCount}
+
+भाषा:
+${language}
+
+कठिनाई:
+${difficulty}
+
+यह CURRENT AFFAIRS MODE है।
+
+बहुत महत्वपूर्ण नियम:
+
+1. Google Search का उपयोग करके वर्तमान और हाल की
+   वास्तविक घटनाओं की जानकारी verify करें।
+
+2. पुराने 2024 या उससे भी पुराने सामान्य प्रश्न
+   केवल इसलिए न दें क्योंकि वे आपके training knowledge
+   में उपलब्ध हैं।
+
+3. मुख्य रूप से वर्तमान तारीख के आसपास की
+   recent/current affairs घटनाओं को प्राथमिकता दें।
+
+4. यदि topic Sports है तो हाल की खेल प्रतियोगिताओं,
+   खिलाड़ियों, पुरस्कारों, रिकॉर्ड, नियुक्तियों,
+   परिणामों आदि को देखें।
+
+5. यदि topic National है तो भारत की हाल की
+   सरकारी घोषणाएँ, योजनाएँ, नियुक्तियाँ,
+   रिपोर्ट, कानून, महत्वपूर्ण घटनाएँ आदि देखें।
+
+6. यदि topic International है तो हाल की
+   अंतरराष्ट्रीय घटनाएँ, summit, agreement,
+   appointments, reports आदि देखें।
+
+7. यदि किसी तथ्य की पुष्टि नहीं हो सकती,
+   तो उसे MCQ में शामिल न करें।
+
+8. किसी तथ्य को invent न करें।
+
+9. प्रत्येक MCQ में चार विकल्प A, B, C, D हों।
+
+10. सही उत्तर केवल A, B, C या D होना चाहिए।
+
+11. Explanation छोटा लेकिन तथ्यात्मक हो।
+
+12. प्रश्न competitive examination level के हों।
+
+13. सभी प्रश्न एक-दूसरे से अलग हों।
+
+14. पुराने static GK और पुराने 2024 questions
+    को current affairs के रूप में न दें।
+
+15. केवल valid JSON दें।
+
+Exact JSON format:
+
+{
+  "questions": [
+    {
+      "question": "प्रश्न",
+      "options": {
+        "A": "विकल्प A",
+        "B": "विकल्प B",
+        "C": "विकल्प C",
+        "D": "विकल्प D"
+      },
+      "answer": "A",
+      "explanation": "सही उत्तर का संक्षिप्त explanation"
+    }
+  ]
+}
+`;
+    } else {
+      prompt = `
 आप एक उच्च गुणवत्ता वाले प्रतियोगी परीक्षा MCQ Generator हैं।
 
-परीक्षा: ${exam}
+परीक्षा:
+${exam}
 
-विषय: ${topic}
+विषय:
+${topic}
 
-प्रश्नों की संख्या: ${questionCount}
+प्रश्नों की संख्या:
+${questionCount}
 
-भाषा: ${language}
+भाषा:
+${language}
 
-कठिनाई स्तर: ${difficulty}
-
-${
-  language === "Hindi"
-    ? "सभी प्रश्न, विकल्प और explanations हिंदी भाषा में दें।"
-    : "All questions, options and explanations must be in English."
-}
+कठिनाई स्तर:
+${difficulty}
 
 नियम:
 
-1. कुल ${questionCount} MCQ बनाएं।
-2. प्रत्येक प्रश्न के ठीक 4 विकल्प हों।
-3. विकल्प A, B, C और D हों।
-4. केवल एक सही उत्तर हो।
-5. सही उत्तर A/B/C/D में से एक हो।
-6. प्रश्न repeat नहीं होने चाहिए।
-7. प्रश्न ${exam} परीक्षा के स्तर के अनुसार हों।
-8. कठिनाई ${difficulty} के अनुसार रखें।
-9. प्रत्येक प्रश्न के साथ explanation दें।
-10. तथ्यात्मक और स्पष्ट प्रश्न बनाएं।
-11. केवल JSON return करें।
-12. JSON के बाहर कोई text न दें।
-13. Markdown code block का उपयोग न करें।
-14. उत्तर में केवल मांगी गई संख्या में प्रश्न दें।
+1. प्रत्येक प्रश्न के चार विकल्प A, B, C और D हों।
+2. केवल एक सही उत्तर हो।
+3. सही उत्तर A/B/C/D में दें।
+4. प्रत्येक प्रश्न का explanation दें।
+5. प्रश्न competitive exam level के हों।
+6. प्रश्न दोहराए न जाएँ।
+7. गलत तथ्य न दें।
+8. केवल valid JSON दें।
 
 Exact JSON format:
 
@@ -130,15 +238,14 @@ Exact JSON format:
   ]
 }
 `;
+    }
 
     // ============================================
     // GEMINI MODELS
     // ============================================
 
-    // पहले मुख्य model को try करेंगे।
-    // अगर high demand / rate limit मिले तो fallback model चलेगा।
-
     const models = [
+      "gemini-3.8-flash",
       "gemini-3.6-flash",
       "gemini-3.5-flash-lite",
     ];
@@ -155,54 +262,59 @@ Exact JSON format:
       const url =
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-      console.log(
-        `Trying Gemini model: ${model}`
-      );
-
       try {
-        geminiResponse = await fetch(url, {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-
-            generationConfig: {
-              responseMimeType: "application/json",
+        const requestBody = {
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
             },
-          }),
-        });
+          ],
+
+          generationConfig: {
+            responseMimeType:
+              "application/json",
+          },
+        };
+
+        // ========================================
+        // REAL-TIME SEARCH
+        // ========================================
+
+        if (currentAffairs) {
+          requestBody.tools = [
+            {
+              google_search: {},
+            },
+          ];
+        }
+
+        geminiResponse =
+          await fetch(url, {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              "x-goog-api-key":
+                apiKey,
+            },
+
+            body: JSON.stringify(
+              requestBody
+            ),
+          });
 
         geminiData =
           await geminiResponse.json();
 
-        // ========================================
-        // SUCCESS
-        // ========================================
-
         if (geminiResponse.ok) {
-          console.log(
-            `Gemini success with model: ${model}`
-          );
-
           break;
         }
-
-        // ========================================
-        // ERROR MESSAGE
-        // ========================================
 
         lastError =
           geminiData?.error?.message ||
@@ -213,27 +325,14 @@ Exact JSON format:
           geminiData
         );
 
-        // ========================================
-        // RETRY ON HIGH DEMAND / RATE LIMIT
-        // ========================================
-
         if (
           geminiResponse.status === 429 ||
           geminiResponse.status === 503
         ) {
-          console.log(
-            `Model ${model} is busy or rate limited. Trying fallback model...`
-          );
-
           continue;
         }
 
-        // ========================================
-        // OTHER ERROR
-        // ========================================
-
         break;
-
       } catch (error) {
         lastError =
           error?.message ||
@@ -244,7 +343,6 @@ Exact JSON format:
           error
         );
 
-        // दूसरे model को try करें
         continue;
       }
     }
@@ -257,28 +355,25 @@ Exact JSON format:
       !geminiResponse ||
       !geminiResponse.ok
     ) {
-      console.error(
-        "Gemini Final Error:",
-        geminiData
-      );
-
       return res.status(
         geminiResponse?.status || 500
       ).json({
         success: false,
         error:
           lastError ||
-          "Gemini अभी व्यस्त है। कृपया कुछ देर बाद फिर प्रयास करें।",
+          "Gemini अभी उपलब्ध नहीं है। कृपया बाद में फिर प्रयास करें।",
       });
     }
 
     // ============================================
-    // GET TEXT FROM GEMINI
+    // GET TEXT
     // ============================================
 
     const text =
-      geminiData?.candidates?.[0]
-        ?.content?.parts?.[0]?.text;
+      geminiData
+        ?.candidates?.[0]
+        ?.content?.parts?.[0]
+        ?.text;
 
     if (!text) {
       console.error(
@@ -297,7 +392,8 @@ Exact JSON format:
     // CLEAN JSON
     // ============================================
 
-    let cleanText = String(text).trim();
+    let cleanText =
+      String(text).trim();
 
     cleanText = cleanText
       .replace(/^```json/i, "")
@@ -312,8 +408,8 @@ Exact JSON format:
     let parsed;
 
     try {
-      parsed = JSON.parse(cleanText);
-
+      parsed =
+        JSON.parse(cleanText);
     } catch (parseError) {
       console.error(
         "JSON Parse Error:",
@@ -338,7 +434,9 @@ Exact JSON format:
 
     if (
       !parsed ||
-      !Array.isArray(parsed.questions)
+      !Array.isArray(
+        parsed.questions
+      )
     ) {
       return res.status(500).json({
         success: false,
@@ -370,19 +468,23 @@ Exact JSON format:
 
             options: {
               A: String(
-                item?.options?.A || ""
+                item?.options?.A ||
+                  ""
               ).trim(),
 
               B: String(
-                item?.options?.B || ""
+                item?.options?.B ||
+                  ""
               ).trim(),
 
               C: String(
-                item?.options?.C || ""
+                item?.options?.C ||
+                  ""
               ).trim(),
 
               D: String(
-                item?.options?.D || ""
+                item?.options?.D ||
+                  ""
               ).trim(),
             },
 
@@ -395,7 +497,8 @@ Exact JSON format:
 
             explanation:
               String(
-                item?.explanation || ""
+                item?.explanation ||
+                  ""
               ).trim(),
           };
         })
@@ -421,22 +524,69 @@ Exact JSON format:
     }
 
     // ============================================
+    // SOURCES
+    // ============================================
+
+    const sources = [];
+
+    const groundingChunks =
+      geminiData
+        ?.candidates?.[0]
+        ?.groundingMetadata
+        ?.groundingChunks;
+
+    if (
+      Array.isArray(
+        groundingChunks
+      )
+    ) {
+      groundingChunks.forEach(
+        (chunk) => {
+          const web =
+            chunk?.web;
+
+          if (
+            web?.uri &&
+            !sources.some(
+              (item) =>
+                item.url === web.uri
+            )
+          ) {
+            sources.push({
+              title:
+                web.title ||
+                web.uri,
+
+              url: web.uri,
+            });
+          }
+        }
+      );
+    }
+
+    // ============================================
     // SUCCESS
     // ============================================
 
     return res.status(200).json({
       success: true,
+
       exam,
+
       topic,
-      count: questions.length,
+
+      currentAffairs,
+
+      date: currentDate,
+
+      count:
+        questions.length,
+
       questions,
+
+      sources,
     });
-
   } catch (error) {
-    // ============================================
-    // SERVER ERROR
-    // ============================================
-
     console.error(
       "MCQ API ERROR:",
       error
@@ -446,7 +596,7 @@ Exact JSON format:
       success: false,
       error:
         error?.message ||
-        "Server में MCQ generate करने में समस्या हुई।",
+        "Server में MCQ generate करते समय error आया।",
     });
   }
 }
