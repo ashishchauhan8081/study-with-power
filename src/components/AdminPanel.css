@@ -1,14 +1,19 @@
 /* =========================================================
-   EXAM TEST - ADMIN PANEL CSS
+   EXAM TEST - ADMIN PANEL
+   Responsive CSS
    ========================================================= */
 
 .admin-panel,
 .admin-dashboard,
 .admin-shell {
   width: 100%;
-  max-width: 100%;
+  max-width: 1500px;
   min-width: 0;
+  margin: 0 auto;
+  padding: 24px;
   box-sizing: border-box;
+  color: #071b41;
+  font-family: Arial, "Noto Sans Devanagari", sans-serif;
 }
 
 .admin-panel *,
@@ -17,11 +22,58 @@
   box-sizing: border-box;
 }
 
+/* =========================
+   PAGE HEADINGS
+   ========================= */
+
+.admin-panel h1,
+.admin-dashboard h1,
+.admin-shell h1 {
+  margin: 0 0 25px;
+  font-size: 38px;
+  font-weight: 900;
+  color: #071b41;
+}
+
+.admin-panel h2,
+.admin-dashboard h2,
+.admin-shell h2 {
+  margin: 20px 0 15px;
+  font-size: 30px;
+  font-weight: 900;
+  color: #071b41;
+}
+
+.admin-panel h3,
+.admin-dashboard h3,
+.admin-shell h3 {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+/* =========================
+   BUTTONS
+   ========================= */
+
 .admin-panel button,
 .admin-dashboard button,
 .admin-shell button {
   cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: 0.2s ease;
 }
+
+.admin-panel button:hover,
+.admin-dashboard button:hover,
+.admin-shell button:hover {
+  transform: translateY(-1px);
+}
+
+/* =========================
+   INPUT / SELECT / TEXTAREA
+   ========================= */
 
 .admin-panel input,
 .admin-panel select,
@@ -32,16 +84,527 @@
 .admin-shell input,
 .admin-shell select,
 .admin-shell textarea {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #172033;
+  font-size: 16px;
+  outline: none;
   box-sizing: border-box;
 }
 
+.admin-panel input:focus,
+.admin-panel select:focus,
+.admin-panel textarea:focus,
+.admin-dashboard input:focus,
+.admin-dashboard select:focus,
+.admin-dashboard textarea:focus,
+.admin-shell input:focus,
+.admin-shell select:focus,
+.admin-shell textarea:focus {
+  border-color: #1268df;
+  box-shadow: 0 0 0 3px rgba(18, 104, 223, 0.12);
+}
+
+.admin-panel textarea,
+.admin-dashboard textarea,
+.admin-shell textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* =========================
+   FORM LABELS
+   ========================= */
+
+.admin-panel label,
+.admin-dashboard label,
+.admin-shell label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #071b41;
+}
+
+/* =========================
+   ADMIN FORM CARD
+   ========================= */
+
+.admin-panel .admin-form,
+.admin-dashboard .admin-form,
+.admin-shell .admin-form {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #d8e4f0;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(15, 55, 100, 0.08);
+}
+
+/* =========================
+   FORM ROW
+   ========================= */
+
+.admin-panel .form-row,
+.admin-dashboard .form-row,
+.admin-shell .form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.admin-panel .form-group,
+.admin-dashboard .form-group,
+.admin-shell .form-group {
+  min-width: 0;
+}
+
+/* Full width */
+
+.admin-panel .form-group.full,
+.admin-dashboard .form-group.full,
+.admin-shell .form-group.full {
+  grid-column: 1 / -1;
+}
+
+/* =========================
+   NEW TEST BUTTON
+   ========================= */
+
+.admin-panel .new-test-btn,
+.admin-dashboard .new-test-btn,
+.admin-shell .new-test-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  background: #6d28d9;
+  color: #fff;
+  font-size: 17px;
+}
+
+.admin-panel .new-test-btn:hover,
+.admin-dashboard .new-test-btn:hover,
+.admin-shell .new-test-btn:hover {
+  background: #5b21b6;
+}
+
+/* =========================
+   QUESTION MANAGER
+   ========================= */
+
+.admin-panel .question-manager,
+.admin-dashboard .question-manager,
+.admin-shell .question-manager {
+  width: 100%;
+  margin-top: 25px;
+  padding: 22px;
+  background: #f8fbff;
+  border: 1px solid #d7e3f1;
+  border-radius: 18px;
+}
+
+/* =========================
+   QUESTION HEADER
+   ========================= */
+
+.admin-panel .question-header,
+.admin-dashboard .question-header,
+.admin-shell .question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.admin-panel .question-header h2,
+.admin-dashboard .question-header h2,
+.admin-shell .question-header h2 {
+  margin: 0;
+}
+
+/* =========================
+   ADD / DELETE QUESTION
+   ========================= */
+
+.admin-panel .add-question-btn,
+.admin-dashboard .add-question-btn,
+.admin-shell .add-question-btn {
+  padding: 11px 18px;
+  background: #1268df;
+  color: #fff;
+  font-size: 16px;
+}
+
+.admin-panel .delete-question-btn,
+.admin-dashboard .delete-question-btn,
+.admin-shell .delete-question-btn {
+  padding: 11px 18px;
+  background: #ef3340;
+  color: #fff;
+  font-size: 16px;
+}
+
+.admin-panel .add-question-btn:hover,
+.admin-dashboard .add-question-btn:hover,
+.admin-shell .add-question-btn:hover {
+  background: #0752bd;
+}
+
+.admin-panel .delete-question-btn:hover,
+.admin-dashboard .delete-question-btn:hover,
+.admin-shell .delete-question-btn:hover {
+  background: #c91f2a;
+}
+
+/* =========================
+   QUESTION CARD
+   ========================= */
+
+.admin-panel .question-card,
+.admin-dashboard .question-card,
+.admin-shell .question-card {
+  width: 100%;
+  margin-top: 18px;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #d7e3f1;
+  border-radius: 16px;
+  box-shadow: 0 7px 22px rgba(15, 55, 100, 0.07);
+}
+
+/* =========================
+   QUESTION NUMBER
+   ========================= */
+
+.admin-panel .question-number,
+.admin-dashboard .question-number,
+.admin-shell .question-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 42px;
+  margin-bottom: 15px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #1268df;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* =========================
+   QUESTION TEXT
+   ========================= */
+
+.admin-panel .question-text,
+.admin-dashboard .question-text,
+.admin-shell .question-text {
+  width: 100%;
+  min-height: 120px;
+  margin-bottom: 20px;
+}
+
+/* =========================
+   OPTIONS
+   ========================= */
+
+.admin-panel .options,
+.admin-dashboard .options,
+.admin-shell .options {
+  display: grid;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.admin-panel .option-row,
+.admin-dashboard .option-row,
+.admin-shell .option-row {
+  display: grid;
+  grid-template-columns: 35px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.admin-panel .option-label,
+.admin-dashboard .option-label,
+.admin-shell .option-label {
+  font-size: 17px;
+  font-weight: 800;
+  color: #071b41;
+}
+
+.admin-panel .correct-answer,
+.admin-dashboard .correct-answer,
+.admin-shell .correct-answer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-weight: 700;
+  color: #0752bd;
+}
+
+.admin-panel input[type="radio"],
+.admin-dashboard input[type="radio"],
+.admin-shell input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* =========================
+   EXPLANATION
+   ========================= */
+
+.admin-panel .explanation,
+.admin-dashboard .explanation,
+.admin-shell .explanation {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.admin-panel .explanation textarea,
+.admin-dashboard .explanation textarea,
+.admin-shell .explanation textarea {
+  min-height: 120px;
+}
+
+/* =========================
+   IMAGE URL
+   ========================= */
+
+.admin-panel .image-url,
+.admin-dashboard .image-url,
+.admin-shell .image-url {
+  width: 100%;
+  margin-top: 15px;
+}
+
+/* =========================
+   QUESTION NAVIGATION
+   ========================= */
+
+.admin-panel .question-navigation,
+.admin-dashboard .question-navigation,
+.admin-shell .question-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 15px 0;
+}
+
+.admin-panel .question-navigation button,
+.admin-dashboard .question-navigation button,
+.admin-shell .question-navigation button {
+  min-width: 42px;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: #e8f1fb;
+  color: #0752bd;
+  border: 1px solid #c8d9ec;
+}
+
+.admin-panel .question-navigation button.active,
+.admin-dashboard .question-navigation button.active,
+.admin-shell .question-navigation button.active {
+  background: #1268df;
+  color: #fff;
+}
+
+/* =========================
+   SAVE BUTTON
+   ========================= */
+
+.admin-panel .save-test-btn,
+.admin-dashboard .save-test-btn,
+.admin-shell .save-test-btn {
+  width: 100%;
+  margin-top: 25px;
+  padding: 15px 20px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.admin-panel .save-test-btn:hover,
+.admin-dashboard .save-test-btn:hover,
+.admin-shell .save-test-btn:hover {
+  background: #15803d;
+}
+
+/* =========================
+   STATUS
+   ========================= */
+
+.admin-panel .status,
+.admin-dashboard .status,
+.admin-shell .status {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+
 @media (max-width: 700px) {
+
   .admin-panel,
   .admin-dashboard,
   .admin-shell {
-    padding-left: 10px;
-    padding-right: 10px;
+    width: 100%;
+    padding: 14px 10px;
     overflow-x: hidden;
+  }
+
+  .admin-panel h1,
+  .admin-dashboard h1,
+  .admin-shell h1 {
+    font-size: 28px;
+    line-height: 1.2;
+    margin-bottom: 18px;
+  }
+
+  .admin-panel h2,
+  .admin-dashboard h2,
+  .admin-shell h2 {
+    font-size: 24px;
+  }
+
+  .admin-panel .admin-form,
+  .admin-dashboard .admin-form,
+  .admin-shell .admin-form {
+    padding: 15px;
+    border-radius: 14px;
+  }
+
+  .admin-panel .form-row,
+  .admin-dashboard .form-row,
+  .admin-shell .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .admin-panel .question-manager,
+  .admin-dashboard .question-manager,
+  .admin-shell .question-manager {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .admin-panel .question-card,
+  .admin-dashboard .question-card,
+  .admin-shell .question-card {
+    padding: 14px;
+  }
+
+  .admin-panel .question-header,
+  .admin-dashboard .question-header,
+  .admin-shell .question-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-panel .add-question-btn,
+  .admin-panel .delete-question-btn,
+  .admin-dashboard .add-question-btn,
+  .admin-dashboard .delete-question-btn,
+  .admin-shell .add-question-btn,
+  .admin-shell .delete-question-btn {
+    width: 100%;
+  }
+
+  .admin-panel .option-row,
+  .admin-dashboard .option-row,
+  .admin-shell .option-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .admin-panel .correct-answer,
+  .admin-dashboard .correct-answer,
+  .admin-shell .correct-answer {
+    grid-column: 2;
+  }
+
+  .admin-panel input,
+  .admin-panel select,
+  .admin-panel textarea,
+  .admin-dashboard input,
+  .admin-dashboard select,
+  .admin-dashboard textarea,
+  .admin-shell input,
+  .admin-shell select,
+  .admin-shell textarea {
+    width: 100%;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .admin-panel .save-test-btn,
+  .admin-dashboard .save-test-btn,
+  .admin-shell .save-test-btn {
+    font-size: 16px;
+    padding: 14px;
+  }
+}
+
+/* =========================
+   VERY SMALL MOBILE
+   ========================= */
+
+@media (max-width: 400px) {
+
+  .admin-panel,
+  .admin-dashboard,
+  .admin-shell {
+    padding: 10px 7px;
+  }
+
+  .admin-panel h1,
+  .admin-dashboard h1,
+  .admin-shell h1 {
+    font-size: 24px;
+  }
+
+  .admin-panel h2,
+  .admin-dashboard h2,
+  .admin-shell h2 {
+    font-size: 21px;
+  }
+
+  .admin-panel .question-card,
+  .admin-dashboard .question-card,
+  .admin-shell .question-card {
+    padding: 10px;
+  }
+
+  .admin-panel input,
+  .admin-panel select,
+  .admin-panel textarea,
+  .admin-dashboard input,
+  .admin-dashboard select,
+  .admin-dashboard textarea,
+  .admin-shell input,
+  .admin-shell select,
+  .admin-shell textarea {
+    font-size: 15px;
   }
 }
