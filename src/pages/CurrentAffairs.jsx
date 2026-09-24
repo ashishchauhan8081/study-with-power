@@ -7,6 +7,7 @@ const categories = [
     name: "All",
     icon: "📚",
   },
+
   {
     id: "national",
     name: "National",
@@ -20,6 +21,7 @@ const categories = [
       "प्रतियोगी परीक्षाओं के लिए महत्वपूर्ण तथ्य।",
     ],
   },
+
   {
     id: "international",
     name: "International",
@@ -33,6 +35,7 @@ const categories = [
       "विभिन्न देशों से संबंधित महत्वपूर्ण घटनाएँ।",
     ],
   },
+
   {
     id: "economy",
     name: "Economy",
@@ -46,6 +49,7 @@ const categories = [
       "बजट और अर्थव्यवस्था से संबंधित प्रश्न।",
     ],
   },
+
   {
     id: "science",
     name: "Science & Technology",
@@ -59,6 +63,7 @@ const categories = [
       "वैज्ञानिक खोज एवं महत्वपूर्ण उपलब्धियाँ।",
     ],
   },
+
   {
     id: "sports",
     name: "Sports",
@@ -72,6 +77,7 @@ const categories = [
       "राष्ट्रीय एवं अंतरराष्ट्रीय खेल उपलब्धियाँ।",
     ],
   },
+
   {
     id: "awards",
     name: "Awards",
@@ -85,6 +91,7 @@ const categories = [
       "प्रमुख व्यक्तियों की उपलब्धियाँ।",
     ],
   },
+
   {
     id: "schemes",
     name: "Government Schemes",
@@ -101,15 +108,23 @@ const categories = [
 ];
 
 function CurrentAffairs({ onBack, onMCQ }) {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [selectedCategory, setSelectedCategory] =
+    useState("all");
+
+  const [selectedArticle, setSelectedArticle] =
+    useState(null);
+
   const [search, setSearch] = useState("");
 
   const visibleCategories = useMemo(() => {
-    let list = categories.filter((item) => item.id !== "all");
+    let list = categories.filter(
+      (item) => item.id !== "all"
+    );
 
     if (selectedCategory !== "all") {
-      list = list.filter((item) => item.id === selectedCategory);
+      list = list.filter(
+        (item) => item.id === selectedCategory
+      );
     }
 
     if (search.trim()) {
@@ -134,193 +149,68 @@ function CurrentAffairs({ onBack, onMCQ }) {
     setSelectedArticle(null);
   };
 
+  // ============================================
+  // MCQ BUTTON
+  // ============================================
+
   const handleMCQ = () => {
     setSelectedArticle(null);
 
     if (typeof onMCQ === "function") {
       onMCQ();
     } else {
-      console.warn("onMCQ function App.jsx से नहीं मिला।");
+      console.warn(
+        "onMCQ function App.jsx से नहीं मिला।"
+      );
     }
   };
 
   return (
     <div className="current-affairs-page">
-      {/* Header */}
+
+      {/* ================= HEADER ================= */}
+
       <section className="ca-header">
-        <button className="back-button" onClick={onBack}>
+
+        <button
+          className="back-button"
+          onClick={() => {
+            if (typeof onBack === "function") {
+              onBack();
+            } else {
+              window.history.back();
+            }
+          }}
+        >
           ← Home
         </button>
 
-        <div className="ca-hero-icon">📰</div>
+        <div className="ca-hero-icon">
+          📰
+        </div>
 
-        <h1>Current Affairs</h1>
+        <h1>
+          Current Affairs
+        </h1>
 
         <p>
           Daily Current Affairs और Current Affairs MCQ
         </p>
+
       </section>
 
-      {/* Search */}
+      {/* ================= SEARCH ================= */}
+
       <section className="ca-search-section">
+
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
           placeholder="🔎 Current Affairs खोजें..."
           className="ca-search"
         />
-      </section>
 
-      {/* Categories */}
-      <section className="categories-section">
-        <h2>📚 Categories</h2>
-
-        <div className="category-buttons">
-          <button
-            className={
-              selectedCategory === "all"
-                ? "category-button active"
-                : "category-button"
-            }
-            onClick={() => setSelectedCategory("all")}
-          >
-            All
-          </button>
-
-          {categories
-            .filter((item) => item.id !== "all")
-            .map((item) => (
-              <button
-                key={item.id}
-                className={
-                  selectedCategory === item.id
-                    ? "category-button active"
-                    : "category-button"
-                }
-                onClick={() => setSelectedCategory(item.id)}
-              >
-                {item.name}
-              </button>
-            ))}
-        </div>
-      </section>
-
-      {/* Latest */}
-      <section className="latest-section">
-        <div className="latest-heading">
-          <h2>📰 Latest Current Affairs</h2>
-          <span>{visibleCategories.length} Topics</span>
-        </div>
-
-        <div className="ca-grid">
-          {visibleCategories.length === 0 ? (
-            <div className="no-result">
-              <div>🔎</div>
-              <h3>कोई Current Affairs नहीं मिला</h3>
-              <p>कृपया दूसरा शब्द खोजें।</p>
-            </div>
-          ) : (
-            visibleCategories.map((article) => (
-              <article className="ca-card" key={article.id}>
-                <div className="card-top">
-                  <span className="card-category">
-                    {article.name}
-                  </span>
-
-                  <span className="card-date">
-                    📅 Today
-                  </span>
-                </div>
-
-                <div className="card-icon">
-                  {article.icon}
-                </div>
-
-                <h3>{article.title}</h3>
-
-                <p>{article.description}</p>
-
-                <button
-                  className="read-button"
-                  onClick={() => openArticle(article)}
-                >
-                  पढ़ें →
-                </button>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      {/* Modal */}
-      {selectedArticle && (
-        <div
-          className="ca-modal-overlay"
-          onClick={closeArticle}
-        >
-          <div
-            className="ca-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="modal-close"
-              onClick={closeArticle}
-              aria-label="Close"
-            >
-              ×
-            </button>
-
-            <div className="modal-header">
-              <div className="modal-icon">
-                {selectedArticle.icon}
-              </div>
-
-              <div>
-                <span className="modal-category">
-                  {selectedArticle.name}
-                </span>
-
-                <h2>{selectedArticle.title}</h2>
-
-                <div className="modal-date">
-                  📅 Today
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-content">
-              <h3>📖 महत्वपूर्ण जानकारी</h3>
-
-              <p>{selectedArticle.description}</p>
-
-              <ul>
-                {selectedArticle.points.map((point, index) => (
-                  <li key={index}>{point}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="mcq-practice-button"
-                onClick={handleMCQ}
-              >
-                📝 MCQ अभ्यास करें
-              </button>
-
-              <button
-                className="modal-close-button"
-                onClick={closeArticle}
-              >
-                बंद करें
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default CurrentAffairs;
+      </
