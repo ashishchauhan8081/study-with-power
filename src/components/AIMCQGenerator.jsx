@@ -1,18 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-function AIMCQGenerator() {
-  const [topic, setTopic] = useState("");
+function AIMCQGenerator({
+  initialTopic = "",
+  currentAffairs = false,
+}) {
+  const [topic, setTopic] = useState(initialTopic);
   const [exam, setExam] = useState("UPPCS");
   const [count, setCount] = useState(10);
   const [language, setLanguage] = useState("Hindi");
   const [difficulty, setDifficulty] = useState("Medium");
 
   const [questions, setQuestions] = useState([]);
+  const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (initialTopic) {
+      setTopic(initialTopic);
+    }
+  }, [initialTopic]);
+
   const generateMCQs = async () => {
-    if (!topic.trim()) {
+    const finalTopic = topic.trim();
+
+    if (!finalTopic) {
       setError("कृपया Topic डालें।");
       return;
     }
@@ -20,6 +32,7 @@ function AIMCQGenerator() {
     setLoading(true);
     setError("");
     setQuestions([]);
+    setSources([]);
 
     try {
       const response = await fetch("/api/mcq", {
@@ -28,11 +41,12 @@ function AIMCQGenerator() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          topic: topic.trim(),
+          topic: finalTopic,
           exam,
           count,
           language,
           difficulty,
+          currentAffairs,
         }),
       });
 
@@ -53,6 +67,10 @@ function AIMCQGenerator() {
       }
 
       setQuestions(data.questions);
+
+      if (Array.isArray(data.sources)) {
+        setSources(data.sources);
+      }
     } catch (err) {
       console.error("AI MCQ Error:", err);
 
@@ -69,7 +87,9 @@ function AIMCQGenerator() {
     try {
       await navigator.clipboard.writeText(
         JSON.stringify(
-          { questions },
+          {
+            questions,
+          },
           null,
           2
         )
@@ -84,7 +104,9 @@ function AIMCQGenerator() {
 
   const downloadJSON = () => {
     const data = JSON.stringify(
-      { questions },
+      {
+        questions,
+      },
       null,
       2
     );
@@ -93,17 +115,16 @@ function AIMCQGenerator() {
       type: "application/json",
     });
 
-    const url =
-      URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
-    const a =
-      document.createElement("a");
+    const a = document.createElement("a");
 
     a.href = url;
-    a.download = "questions.json";
+    a.download = "current-affairs-mcq.json";
 
     document.body.appendChild(a);
     a.click();
+
     document.body.removeChild(a);
 
     URL.revokeObjectURL(url);
@@ -142,18 +163,39 @@ function AIMCQGenerator() {
             marginBottom: "10px",
           }}
         >
-          AI MCQ Generator
+          {currentAffairs
+            ? "📰 Current Affairs MCQ"
+            : "AI MCQ Generator"}
         </h1>
 
         <p
           style={{
             textAlign: "center",
-            fontSize: "20px",
+            fontSize: "18px",
             marginBottom: "30px",
           }}
         >
-          विषय और परीक्षा के अनुसार MCQ तैयार करें
+          {currentAffairs
+            ? "आज के ताजा Current Affairs से MCQ तैयार करें"
+            : "विषय और परीक्षा के अनुसार MCQ तैयार करें"}
         </p>
+
+        {currentAffairs && (
+          <div
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              padding: "14px",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              color: "#1e40af",
+              fontWeight: "600",
+            }}
+          >
+            🔎 Google Search के माध्यम से ताजा जानकारी
+            verify करके MCQ बनाए जाएंगे।
+          </div>
+        )}
 
         <label>
           <strong>विषय / Topic</strong>
@@ -165,7 +207,11 @@ function AIMCQGenerator() {
           onChange={(e) =>
             setTopic(e.target.value)
           }
-          placeholder="जैसे: भारतीय संविधान"
+          placeholder={
+            currentAffairs
+              ? "जैसे: आज के राष्ट्रीय Current Affairs"
+              : "जैसे: भारतीय संविधान"
+          }
           style={{
             width: "100%",
             padding: "14px",
@@ -215,45 +261,33 @@ function AIMCQGenerator() {
             UP PET
           </option>
 
-          <option value="UPSSSC">
-            UPSSSC
+          <option value="SSC">
+            SSC
           </option>
 
-          <option value="SSC CGL">
-            SSC CGL
+          <option value="RRB">
+            RRB
           </option>
 
-          <option value="SSC CHSL">
-            SSC CHSL
+          <option value="NTPC">
+            NTPC
           </option>
 
-          <option value="RRB NTPC">
-            RRB NTPC
-          </option>
-
-          <option value="RRB Group D">
-            RRB Group D
-          </option>
-
-          <option value="NDA">
-            NDA
-          </option>
-
-          <option value="CTET">
-            CTET
+          <option value="All Competitive Exams">
+            All Competitive Exams
           </option>
         </select>
 
         <label>
-          <strong>प्रश्नों की संख्या</strong>
+          <strong>
+            प्रश्नों की संख्या / Questions
+          </strong>
         </label>
 
         <select
           value={count}
           onChange={(e) =>
-            setCount(
-              Number(e.target.value)
-            )
+            setCount(Number(e.target.value))
           }
           style={{
             width: "100%",
@@ -266,29 +300,31 @@ function AIMCQGenerator() {
             fontSize: "16px",
           }}
         >
-          <option value="5">
+          <option value={5}>
             5 Questions
           </option>
 
-          <option value="10">
+          <option value={10}>
             10 Questions
           </option>
 
-          <option value="20">
+          <option value={20}>
             20 Questions
           </option>
 
-          <option value="30">
+          <option value={30}>
             30 Questions
           </option>
 
-          <option value="50">
+          <option value={50}>
             50 Questions
           </option>
         </select>
 
         <label>
-          <strong>भाषा / Language</strong>
+          <strong>
+            भाषा / Language
+          </strong>
         </label>
 
         <select
@@ -386,7 +422,7 @@ function AIMCQGenerator() {
           }}
         >
           {loading
-            ? "⏳ Gemini MCQ बना रहा है..."
+            ? "⏳ ताजा MCQ तैयार हो रहे हैं..."
             : "🤖 MCQ Generate करें"}
         </button>
       </div>
@@ -409,10 +445,8 @@ function AIMCQGenerator() {
               type="button"
               onClick={copyJSON}
               style={{
-                padding:
-                  "12px 18px",
-                background:
-                  "#16a34a",
+                padding: "12px 18px",
+                background: "#16a34a",
                 color: "#fff",
                 border: "none",
                 borderRadius: "8px",
@@ -427,10 +461,8 @@ function AIMCQGenerator() {
               type="button"
               onClick={downloadJSON}
               style={{
-                padding:
-                  "12px 18px",
-                background:
-                  "#7c3aed",
+                padding: "12px 18px",
+                background: "#7c3aed",
                 color: "#fff",
                 border: "none",
                 borderRadius: "8px",
@@ -443,13 +475,13 @@ function AIMCQGenerator() {
           </div>
 
           {questions.map(
-            (q, index) => (
+            (item, index) => (
               <div
                 key={index}
                 style={{
                   background: "#fff",
-                  padding: "20px",
-                  marginBottom: "15px",
+                  padding: "18px",
+                  marginBottom: "16px",
                   borderRadius: "12px",
                   boxShadow:
                     "0 3px 15px rgba(0,0,0,.08)",
@@ -457,69 +489,110 @@ function AIMCQGenerator() {
               >
                 <h3
                   style={{
-                    lineHeight: "1.6",
+                    marginTop: 0,
                     color: "#111827",
                   }}
                 >
                   Q{index + 1}.{" "}
-                  {q.question}
+                  {item.question}
                 </h3>
-
-                {q.options &&
-                  ["A", "B", "C", "D"].map(
-                    (letter) => (
-                      <div
-                        key={letter}
-                        style={{
-                          padding: "11px",
-                          marginTop: "8px",
-                          border:
-                            "1px solid #e2e8f0",
-                          borderRadius: "8px",
-                        }}
-                      >
-                        <strong>
-                          {letter}.
-                        </strong>{" "}
-                        {q.options[letter]}
-                      </div>
-                    )
-                  )}
 
                 <div
                   style={{
-                    marginTop: "15px",
-                    padding: "13px",
-                    background:
-                      "#dcfce7",
-                    borderRadius: "8px",
+                    display: "grid",
+                    gap: "8px",
                   }}
                 >
-                  <strong>
-                    ✅ सही उत्तर:
-                  </strong>{" "}
-                  {q.answer}
+                  {["A", "B", "C", "D"].map(
+                    (key) => (
+                      <div
+                        key={key}
+                        style={{
+                          padding: "12px",
+                          border:
+                            "1px solid #dbe3ef",
+                          borderRadius: "8px",
+                          background:
+                            item.answer === key
+                              ? "#dcfce7"
+                              : "#fff",
+                        }}
+                      >
+                        <strong>
+                          {key}.
+                        </strong>{" "}
+                        {item.options?.[key]}
+                      </div>
+                    )
+                  )}
                 </div>
 
-                {q.explanation && (
-                  <div
-                    style={{
-                      marginTop: "10px",
-                      padding: "13px",
-                      background:
-                        "#eff6ff",
-                      borderRadius: "8px",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    <strong>
-                      📖 Explanation:
-                    </strong>{" "}
-                    {q.explanation}
-                  </div>
-                )}
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "12px",
+                    background: "#dcfce7",
+                    borderRadius: "8px",
+                    color: "#166534",
+                    fontWeight: "700",
+                  }}
+                >
+                  ✅ सही उत्तर:{" "}
+                  {item.answer}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "10px",
+                    padding: "12px",
+                    background: "#eff6ff",
+                    borderRadius: "8px",
+                    color: "#1e3a8a",
+                  }}
+                >
+                  📖{" "}
+                  <strong>
+                    Explanation:
+                  </strong>{" "}
+                  {item.explanation}
+                </div>
               </div>
             )
+          )}
+
+          {sources.length > 0 && (
+            <div
+              style={{
+                background: "#f8fafc",
+                padding: "18px",
+                borderRadius: "12px",
+                marginTop: "20px",
+              }}
+            >
+              <h3>
+                🔎 Web Sources
+              </h3>
+
+              {sources.map(
+                (source, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {source.title ||
+                        source.url}
+                    </a>
+                  </div>
+                )
+              )}
+            </div>
           )}
         </div>
       )}
