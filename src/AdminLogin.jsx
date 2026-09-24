@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 import { auth } from "../../firebase";
 
 const ADMIN_EMAIL = "ccjashish@gmail.com";
@@ -8,7 +11,11 @@ function AdminLogin({ onLogin, onBack }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
+  // =========================
+  // ADMIN LOGIN
+  // =========================
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -20,7 +27,6 @@ function AdminLogin({ onLogin, onBack }) {
     setLoading(true);
 
     try {
-      // Firebase Email/Password Login
       const result = await signInWithEmailAndPassword(
         auth,
         email.trim(),
@@ -29,16 +35,17 @@ function AdminLogin({ onLogin, onBack }) {
 
       const user = result.user;
 
-      // केवल Admin Email को Admin Panel की अनुमति
-      if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      // केवल Admin Email को अनुमति
+      if (
+        !user.email ||
+        user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()
+      ) {
         await auth.signOut();
 
         alert("❌ यह Email Admin के लिए अधिकृत नहीं है।");
-        setLoading(false);
         return;
       }
 
-      // Login सफल
       localStorage.setItem("adminLoggedIn", "true");
       localStorage.setItem("adminEmail", user.email);
 
@@ -97,6 +104,76 @@ function AdminLogin({ onLogin, onBack }) {
     }
   };
 
+  // =========================
+  // FORGOT PASSWORD
+  // =========================
+  const handleForgotPassword = async () => {
+    const resetEmail = email.trim();
+
+    if (!resetEmail) {
+      alert("📧 पहले अपना Admin Email डालें।");
+      return;
+    }
+
+    if (resetEmail.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      alert("❌ यह Admin Email नहीं है।");
+      return;
+    }
+
+    setResetLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+
+      alert(
+        "✅ Password Reset Link आपके Email पर भेज दिया गया है।\n\n" +
+          "अपने Gmail Inbox और Spam/Junk folder को भी चेक करें।"
+      );
+    } catch (error) {
+      console.error("Password Reset Error:", error);
+
+      let message = "Password reset नहीं हो पाया।";
+
+      switch (error.code) {
+        case "auth/invalid-email":
+          message = "❌ Email गलत है।";
+          break;
+
+        case "auth/user-not-found":
+          message = "❌ इस Email से Firebase में Admin User नहीं मिला।";
+          break;
+
+        case "auth/operation-not-allowed":
+          message =
+            "❌ Firebase में Email/Password Authentication Enable नहीं है।";
+          break;
+
+        case "auth/network-request-failed":
+          message = "❌ Internet connection की समस्या है।";
+          break;
+
+        case "auth/too-many-requests":
+          message =
+            "❌ बहुत ज्यादा प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।";
+          break;
+
+        case "auth/requests-from-referer-are-blocked":
+          message =
+            "❌ यह Vercel domain Firebase Authorized Domains में नहीं है।";
+          break;
+
+        default:
+          message = `❌ Firebase Error: ${
+            error.message || error.code || "Unknown error"
+          }`;
+      }
+
+      alert(message);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div style={styles.page}>
       <div style={styles.card}>
@@ -117,7 +194,7 @@ function AdminLogin({ onLogin, onBack }) {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="username"
             style={styles.input}
-            disabled={loading}
+            disabled={loading || resetLoading}
           />
 
           {/* PASSWORD */}
@@ -130,17 +207,30 @@ function AdminLogin({ onLogin, onBack }) {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             style={styles.input}
-            disabled={loading}
+            disabled={loading || resetLoading}
           />
 
-          {/* LOGIN BUTTON */}
+          {/* FORGOT PASSWORD */}
+          <div style={styles.forgotContainer}>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading || resetLoading}
+              style={styles.forgotButton}
+            >
+              {resetLoading
+                ? "⏳ Link भेजा जा रहा है..."
+                : "🔑 Forgot Password?"}
+            </button>
+          </div>
+
+          {/* LOGIN */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || resetLoading}
             style={{
               ...styles.loginButton,
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading || resetLoading ? 0.7 : 1,
             }}
           >
             {loading ? "⏳ Login हो रहा है..." : "🔐 Admin Login"}
@@ -151,8 +241,8 @@ function AdminLogin({ onLogin, onBack }) {
         <button
           type="button"
           onClick={onBack}
+          disabled={loading || resetLoading}
           style={styles.backButton}
-          disabled={loading}
         >
           ← Website पर वापस जाएँ
         </button>
@@ -225,16 +315,32 @@ const styles = {
     background: "#ffffff",
   },
 
+  forgotContainer: {
+    textAlign: "right",
+    marginTop: "10px",
+  },
+
+  forgotButton: {
+    border: "none",
+    background: "transparent",
+    color: "#2563eb",
+    fontSize: "16px",
+    fontWeight: "700",
+    cursor: "pointer",
+    padding: "5px 0",
+  },
+
   loginButton: {
     width: "100%",
     height: "60px",
-    marginTop: "30px",
+    marginTop: "25px",
     border: "none",
     borderRadius: "12px",
     background: "#123b8f",
     color: "#ffffff",
     fontSize: "20px",
     fontWeight: "800",
+    cursor: "pointer",
   },
 
   backButton: {
