@@ -1,128 +1,204 @@
-/* =====================================================
-   EXAM TEST - ADMIN PANEL
-   ===================================================== */
+/* =========================================================
+   ADMIN PANEL - Exam Test
+   Modern responsive UI
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
 
 .admin-page {
   min-height: 100vh;
-  background: #f4f7fb;
-  color: #1f2937;
-  padding-bottom: 40px;
-  font-family: Arial, Helvetica, sans-serif;
+  width: 100%;
+  background: #f1f5f9;
+  color: #172033;
+  padding: 24px;
+  font-family:
+    Inter,
+    "Noto Sans Devanagari",
+    "Segoe UI",
+    Arial,
+    sans-serif;
 }
 
-/* ================= HEADER ================= */
+/* =========================================================
+   HEADER
+========================================================= */
 
 .admin-header {
   width: 100%;
-  box-sizing: border-box;
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  max-width: 1250px;
+  margin: 0 auto 18px;
+
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
   color: white;
-  padding: 18px 24px;
+
+  border-radius: 18px;
+  padding: 20px 24px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 15px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  gap: 18px;
+
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
 }
 
 .admin-header h1 {
   margin: 0;
-  font-size: 25px;
+  font-size: 28px;
   font-weight: 800;
+  letter-spacing: -0.3px;
 }
 
 .admin-header p {
-  margin: 5px 0 0;
+  margin: 6px 0 0;
+  color: #dbeafe;
   font-size: 14px;
-  opacity: 0.9;
 }
 
 .admin-header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .admin-email {
-  background: rgba(255, 255, 255, 0.15);
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 9px 13px;
+  border-radius: 10px;
+  font-size: 14px;
 }
 
-/* ================= TABS ================= */
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+.admin-message {
+  max-width: 1250px;
+  margin: 0 auto 18px;
+
+  padding: 13px 16px;
+  border-radius: 12px;
+
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+
+  font-weight: 700;
+}
+
+/* =========================================================
+   TABS
+========================================================= */
 
 .admin-tabs {
-  display: flex;
-  gap: 10px;
+  max-width: 1250px;
+  margin: 0 auto 18px;
+
   background: white;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  overflow-x: auto;
+  padding: 7px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+
+  display: flex;
+  gap: 7px;
+
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.06);
 }
 
 .admin-tabs button {
+  flex: 1;
+  min-height: 44px;
+
   border: none;
-  background: #f1f5f9;
-  color: #374151;
-  padding: 11px 18px;
-  border-radius: 8px;
-  cursor: pointer;
+  border-radius: 10px;
+
+  background: transparent;
+  color: #475569;
+
+  font-size: 15px;
   font-weight: 700;
-  white-space: nowrap;
+
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
 .admin-tabs button:hover {
-  background: #dbeafe;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .admin-tabs button.active {
   background: #2563eb;
   color: white;
+
+  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.25);
 }
 
-/* ================= CONTENT ================= */
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
 
 .admin-content {
+  width: 100%;
   max-width: 1250px;
-  margin: 20px auto;
-  padding: 0 15px;
+  margin: 0 auto;
 }
+
+/* =========================================================
+   CARD
+========================================================= */
 
 .admin-card {
   background: white;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.07);
-  border: 1px solid #e5e7eb;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+
+  padding: 22px;
+  margin-bottom: 18px;
+
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
 }
 
 .card-title {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+
   gap: 15px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .card-title h2 {
   margin: 0;
-  font-size: 21px;
+  color: #172554;
+
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .card-title p {
   margin: 5px 0 0;
-  color: #6b7280;
+
+  color: #64748b;
   font-size: 14px;
 }
 
-/* ================= FORM ================= */
+/* =========================================================
+   FORM GRID
+========================================================= */
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 18px;
 }
 
 .form-group {
@@ -131,51 +207,119 @@
   gap: 7px;
 }
 
-.form-group label {
-  font-weight: 700;
-  font-size: 14px;
-  color: #374151;
+.form-group-full {
+  grid-column: 1 / -1;
 }
+
+.form-group label {
+  color: #334155;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   INPUTS
+========================================================= */
 
 .form-group input,
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+.admin-card input,
+.admin-card select,
+.admin-card textarea {
   width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 11px 12px;
+
+  min-height: 44px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #172033;
+
+  padding: 10px 13px;
+
   font-size: 15px;
-  background: white;
+
   outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
-.form-group textarea {
+.form-group textarea,
+.admin-card textarea {
   min-height: 110px;
   resize: vertical;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+  border-color: #94a3b8;
 }
 
-/* ================= BUTTONS ================= */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.admin-card input:focus,
+.admin-card select:focus,
+.admin-card textarea:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.12);
+
+  background: #f8fbff;
+}
+
+.form-group small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .admin-btn {
   border: none;
-  border-radius: 8px;
+
+  min-height: 42px;
+
   padding: 10px 16px;
-  cursor: pointer;
+
+  border-radius: 10px;
+
   font-size: 14px;
   font-weight: 700;
-  transition: 0.2s;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .admin-btn:hover {
   transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 12px rgba(15, 23, 42, 0.14);
+}
+
+.admin-btn:active {
+  transform: translateY(0);
+}
+
+.admin-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .admin-btn.primary {
@@ -184,8 +328,8 @@
 }
 
 .admin-btn.secondary {
-  background: #0f766e;
-  color: white;
+  background: #e2e8f0;
+  color: #1e293b;
 }
 
 .admin-btn.danger {
@@ -193,327 +337,326 @@
   color: white;
 }
 
-.admin-btn.success {
-  background: #16a34a;
-  color: white;
+/* =========================================================
+   QUESTION TOP ACTIONS
+========================================================= */
+
+.question-top-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
 }
 
-.admin-btn.warning {
-  background: #f59e0b;
-  color: white;
-}
+/* =========================================================
+   QUESTION EDITOR
+========================================================= */
 
-.admin-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
+.options-editor {
+  margin-top: 18px;
 
-/* ================= QUESTION AREA ================= */
+  padding: 18px;
 
-.question-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 20px;
-}
-
-.question-list {
   background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 12px;
-  max-height: 650px;
-  overflow-y: auto;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
 }
 
-.question-list-title {
-  font-weight: 800;
+.options-editor h3 {
+  margin: 0 0 14px;
+
+  color: #1e3a8a;
+  font-size: 18px;
+}
+
+.option-row {
+  display: grid;
+
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+
+  align-items: center;
+
+  gap: 10px;
+
   margin-bottom: 10px;
 }
 
-.question-list button {
-  width: 100%;
-  border: none;
-  text-align: left;
-  padding: 9px 11px;
-  margin-bottom: 6px;
-  border-radius: 7px;
-  cursor: pointer;
-  background: white;
-  border: 1px solid #e5e7eb;
-}
+.option-label {
+  width: 40px;
+  height: 40px;
 
-.question-list button.active {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.question-editor {
-  min-width: 0;
-}
-
-.question-number {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 14px;
-}
-
-/* ================= OPTIONS ================= */
-
-.options-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 15px;
-}
-
-.option-box {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  padding: 10px;
-  border-radius: 8px;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #2563eb;
+  color: white;
+
+  font-weight: 800;
 }
 
-.option-box input[type="radio"] {
+.answer-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  white-space: nowrap;
+
+  color: #166534;
+  font-weight: 700;
+}
+
+.answer-radio input {
   width: 18px;
   height: 18px;
 }
 
-.option-box input[type="text"] {
-  flex: 1;
-  border: 1px solid #d1d5db;
-  border-radius: 7px;
-  padding: 10px;
-  min-width: 0;
-}
-
-/* ================= QUESTION ACTIONS ================= */
-
-.question-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
-}
+/* =========================================================
+   QUESTION NAVIGATION
+========================================================= */
 
 .question-navigation {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
   margin-top: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 15px;
 }
 
-/* ================= TEST LIST ================= */
+.question-navigation span {
+  min-width: 90px;
+
+  text-align: center;
+
+  padding: 9px 14px;
+
+  border-radius: 10px;
+
+  background: #eff6ff;
+  color: #1d4ed8;
+
+  font-weight: 800;
+}
+
+/* =========================================================
+   SAVE
+========================================================= */
+
+.save-area {
+  margin-top: 20px;
+
+  display: flex;
+  justify-content: center;
+}
+
+.save-test-btn {
+  min-width: 240px;
+
+  padding: 13px 22px;
+
+  font-size: 16px;
+}
+
+/* =========================================================
+   TEST LIST
+========================================================= */
 
 .test-list {
   display: grid;
   gap: 12px;
 }
 
-.test-item {
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 15px;
+.test-list-item {
   display: flex;
+
   align-items: center;
   justify-content: space-between;
+
   gap: 15px;
+
+  padding: 16px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+
+  background: #ffffff;
+
+  transition: 0.2s ease;
 }
 
-.test-info h3 {
-  margin: 0 0 6px;
-  font-size: 17px;
+.test-list-item:hover {
+  border-color: #93c5fd;
+
+  box-shadow:
+    0 5px 15px rgba(37, 99, 235, 0.08);
 }
 
-.test-info p {
-  margin: 3px 0;
-  color: #6b7280;
+.test-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.test-list-info strong {
+  color: #172554;
+  font-size: 16px;
+}
+
+.test-list-info span {
+  color: #64748b;
   font-size: 13px;
 }
 
-.test-actions {
+.test-list-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-/* ================= STATUS ================= */
+/* =========================================================
+   EMPTY BOX
+========================================================= */
 
-.status-badge {
-  display: inline-block;
-  padding: 4px 9px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-}
+.empty-box {
+  padding: 35px 20px;
 
-.status-draft {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-public {
-  background: #dcfce7;
-  color: #166534;
-}
-
-/* ================= MESSAGE ================= */
-
-.admin-message {
-  max-width: 1250px;
-  margin: 15px auto 0;
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
-  font-weight: 700;
-}
-
-/* ================= LOADING ================= */
-
-.admin-loading {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-/* ================= ACCESS DENIED ================= */
-
-.admin-denied {
-  max-width: 500px;
-  margin: 80px auto;
-  background: white;
-  padding: 35px;
-  border-radius: 15px;
   text-align: center;
-  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
-}
 
-.denied-icon {
-  font-size: 55px;
-  margin-bottom: 15px;
-}
-
-.admin-denied h2 {
-  margin: 0 0 10px;
-}
-
-.admin-denied p {
-  color: #6b7280;
-  line-height: 1.6;
-}
-
-/* ================= RESOURCE ================= */
-
-.resource-item {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 12px;
   background: #f8fafc;
+
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+
+  color: #64748b;
 }
 
-.resource-item input,
-.resource-item textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 7px;
-  margin-bottom: 10px;
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.admin-footer {
+  max-width: 1250px;
+
+  margin: 25px auto 0;
+
+  padding: 18px;
+
+  text-align: center;
+
+  color: #64748b;
+
+  font-size: 13px;
 }
 
-/* ================= MOBILE ================= */
+/* =========================================================
+   MOBILE
+========================================================= */
 
-@media (max-width: 768px) {
+@media (max-width: 800px) {
+  .admin-page {
+    padding: 12px;
+  }
+
   .admin-header {
-    padding: 15px;
+    padding: 16px;
+
     flex-direction: column;
     align-items: flex-start;
   }
 
   .admin-header h1 {
-    font-size: 21px;
+    font-size: 22px;
   }
 
   .admin-header-right {
     width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
   }
 
   .admin-email {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 1;
   }
 
   .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .question-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .options-grid {
-    grid-template-columns: 1fr;
+  .form-group-full {
+    grid-column: auto;
   }
 
   .card-title {
-    flex-direction: column;
     align-items: flex-start;
+    flex-direction: column;
   }
 
-  .test-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .test-actions {
+  .question-top-actions {
     width: 100%;
   }
 
-  .test-actions .admin-btn {
+  .question-top-actions .admin-btn {
     flex: 1;
   }
 
-  .admin-content {
-    padding: 0 10px;
+  .option-row {
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
-  .admin-card {
-    padding: 15px;
+  .answer-radio {
+    grid-column: 2;
   }
-}
 
-/* ================= SMALL MOBILE ================= */
+  .test-list-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-@media (max-width: 480px) {
-  .admin-tabs {
-    padding: 10px;
+  .test-list-actions {
+    width: 100%;
+  }
+
+  .test-list-actions .admin-btn {
+    flex: 1;
   }
 
   .admin-tabs button {
-    padding: 9px 12px;
     font-size: 13px;
   }
+}
 
-  .admin-btn {
-    padding: 9px 12px;
-    font-size: 13px;
+@media (max-width: 480px) {
+  .admin-page {
+    padding: 8px;
   }
 
   .admin-card {
-    border-radius: 10px;
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .admin-header {
+    border-radius: 12px;
+  }
+
+  .admin-header-right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-email {
+    width: 100%;
+    text-align: center;
+  }
+
+  .question-navigation {
+    gap: 7px;
+  }
+
+  .save-test-btn {
+    width: 100%;
+    min-width: 0;
   }
 }
