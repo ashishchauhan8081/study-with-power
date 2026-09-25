@@ -1,5 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { db } from "../../firebase";
+
 import {
   ref,
   push,
@@ -7,6 +13,7 @@ import {
   get,
   remove,
 } from "firebase/database";
+
 import "./AdminDashboard.css";
 
 /* =========================================================
@@ -32,10 +39,20 @@ const EXAMS = [
 
 const emptyQuestion = () => ({
   id: Date.now() + Math.random(),
+
   question: "",
-  options: ["", "", "", ""],
+
+  options: [
+    "",
+    "",
+    "",
+    "",
+  ],
+
   answer: 0,
+
   explanation: "",
+
   explanationImage: "",
 });
 
@@ -43,43 +60,264 @@ const emptyQuestion = () => ({
    EMPTY TEST
 ========================================================= */
 
-const emptyTest = (testNumber = 1) => ({
+const emptyTest = (
+  testNumber = 1
+) => ({
   exam: "UPPCS",
+
   testNumber,
-  title: `UPPCS Test ${String(testNumber).padStart(2, "0")}`,
+
+  title: `UPPCS Test ${String(
+    testNumber
+  ).padStart(2, "0")}`,
+
   status: "draft",
+
   duration: 30,
+
   price: 0,
-  questions: [emptyQuestion()],
+
+  questions: [
+    emptyQuestion(),
+  ],
 });
+
+/* =========================================================
+   NORMALIZE / CONVERT QUESTIONS JSON
+========================================================= */
+
+const normalizeQuestions = (data) => {
+  let questions = [];
+
+  /* -----------------------------------------------
+     JSON ARRAY
+  ----------------------------------------------- */
+
+  if (Array.isArray(data)) {
+    questions = data;
+  }
+
+  /* -----------------------------------------------
+     { questions: [] }
+  ----------------------------------------------- */
+
+  else if (
+    Array.isArray(data?.questions)
+  ) {
+    questions = data.questions;
+  }
+
+  /* -----------------------------------------------
+     { data: [] }
+  ----------------------------------------------- */
+
+  else if (
+    Array.isArray(data?.data)
+  ) {
+    questions = data.data;
+  }
+
+  if (!questions.length) {
+    return [];
+  }
+
+  return questions.map(
+    (q, index) => {
+      let answer = q?.answer;
+
+      /* -------------------------------------------
+         ANSWER A/B/C/D
+      ------------------------------------------- */
+
+      if (
+        typeof answer === "string"
+      ) {
+        const answerUpper =
+          answer
+            .trim()
+            .toUpperCase();
+
+        if (
+          answerUpper === "A"
+        ) {
+          answer = 0;
+        }
+
+        else if (
+          answerUpper === "B"
+        ) {
+          answer = 1;
+        }
+
+        else if (
+          answerUpper === "C"
+        ) {
+          answer = 2;
+        }
+
+        else if (
+          answerUpper === "D"
+        ) {
+          answer = 3;
+        }
+
+        else if (
+          !isNaN(
+            Number(answer)
+          )
+        ) {
+          answer = Number(
+            answer
+          );
+        }
+
+        else {
+          answer = 0;
+        }
+      }
+
+      answer = Number(answer);
+
+      if (
+        isNaN(answer) ||
+        answer < 0 ||
+        answer > 3
+      ) {
+        answer = 0;
+      }
+
+      /* -------------------------------------------
+         RETURN NORMAL QUESTION
+      ------------------------------------------- */
+
+      return {
+        id:
+          q?.id ||
+          Date.now() +
+            index +
+            Math.random(),
+
+        question:
+          q?.question ||
+          q?.questionText ||
+          q?.text ||
+          "",
+
+        options: [
+          q?.options?.[0] ||
+            q?.optionA ||
+            q?.A ||
+            "",
+
+          q?.options?.[1] ||
+            q?.optionB ||
+            q?.B ||
+            "",
+
+          q?.options?.[2] ||
+            q?.optionC ||
+            q?.C ||
+            "",
+
+          q?.options?.[3] ||
+            q?.optionD ||
+            q?.D ||
+            "",
+        ],
+
+        answer,
+
+        explanation:
+          q?.explanation ||
+          q?.solution ||
+          "",
+
+        explanationImage:
+          q?.explanationImage ||
+          q?.image ||
+          "",
+      };
+    }
+  );
+};
 
 /* =========================================================
    ADMIN DASHBOARD
 ========================================================= */
 
-function AdminDashboard({ user, onLogout }) {
-  /* -------------------------------------------------------
+function AdminDashboard({
+  user,
+  onLogout,
+}) {
+  /* =======================================================
      STATES
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  const [activeTab, setActiveTab] = useState("tests");
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState("tests");
 
-  const [tests, setTests] = useState([]);
-  const [loadingTests, setLoadingTests] = useState(false);
+  const [
+    tests,
+    setTests,
+  ] = useState([]);
 
-  const [editingTest, setEditingTest] = useState(null);
-  const [selectedQuestion, setSelectedQuestion] = useState(0);
+  const [
+    loadingTests,
+    setLoadingTests,
+  ] = useState(false);
 
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [
+    editingTest,
+    setEditingTest,
+  ] = useState(null);
 
-  const [search, setSearch] = useState("");
-  const [filterExam, setFilterExam] = useState("All");
+  const [
+    selectedQuestion,
+    setSelectedQuestion,
+  ] = useState(0);
 
-  const [showTestEditor, setShowTestEditor] = useState(false);
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
+
+  const [
+    message,
+    setMessage,
+  ] = useState("");
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  const [
+    filterExam,
+    setFilterExam,
+  ] = useState("All");
+
+  const [
+    showTestEditor,
+    setShowTestEditor,
+  ] = useState(false);
+
+  const [
+    importingQuestions,
+    setImportingQuestions,
+  ] = useState(false);
+
+  const [
+    importInputKey,
+    setImportInputKey,
+  ] = useState(
+    Date.now()
+  );
 
   const currentUserEmail =
-    user?.email || "cciaashish@gmail.com";
+    user?.email ||
+    "cciaashish@gmail.com";
 
   /* =======================================================
      LOAD TESTS
@@ -88,56 +326,93 @@ function AdminDashboard({ user, onLogout }) {
   const loadTests = async () => {
     try {
       setLoadingTests(true);
+
       setMessage("");
 
-      const snapshot = await get(ref(db, "tests"));
+      const snapshot =
+        await get(
+          ref(db, "tests")
+        );
 
       if (!snapshot.exists()) {
         setTests([]);
+
         return;
       }
 
-      const data = snapshot.val();
+      const data =
+        snapshot.val();
 
-      const list = Object.entries(data).map(
-        ([id, value]) => ({
-          id,
-          ...value,
-          questions: Array.isArray(value?.questions)
-            ? value.questions.map((q) => ({
-                ...q,
-                options: [
-                  ...(q?.options || [
-                    "",
-                    "",
-                    "",
-                    "",
-                  ]),
-                ].slice(0, 4),
-              }))
-            : [],
-        })
-      );
+      const list =
+        Object.entries(
+          data
+        ).map(
+          ([id, value]) => ({
+            id,
+
+            ...value,
+
+            questions:
+              Array.isArray(
+                value?.questions
+              )
+                ? value.questions.map(
+                    (q) => ({
+                      ...q,
+
+                      options: [
+                        ...(q?.options ||
+                          [
+                            "",
+                            "",
+                            "",
+                            "",
+                          ]),
+                      ].slice(
+                        0,
+                        4
+                      ),
+                    })
+                  )
+                : [],
+          })
+        );
 
       list.sort(
         (a, b) =>
-          Number(a.testNumber || 0) -
-          Number(b.testNumber || 0)
+          Number(
+            a.testNumber || 0
+          ) -
+          Number(
+            b.testNumber || 0
+          )
       );
 
       setTests(list);
-    } catch (error) {
-      console.error("Load tests error:", error);
+    }
+
+    catch (error) {
+      console.error(
+        "Load tests error:",
+        error
+      );
 
       setMessage(
         `❌ Tests load नहीं हो पाए: ${
-          error?.message || "Unknown error"
+          error?.message ||
+          "Unknown error"
         }`
       );
-    } finally {
+    }
+
+    finally {
       setLoadingTests(false);
     }
   };
+
+  /* =======================================================
+     LOAD ON START
+  ======================================================= */
 
   useEffect(() => {
     loadTests();
@@ -148,17 +423,33 @@ function AdminDashboard({ user, onLogout }) {
   ======================================================= */
 
   const createNewTest = () => {
-    const examTests = tests.filter(
-      (test) => test.exam === "UPPCS"
+    const examTests =
+      tests.filter(
+        (test) =>
+          test.exam ===
+          "UPPCS"
+      );
+
+    const nextNumber =
+      examTests.length + 1;
+
+    const newTest =
+      emptyTest(
+        nextNumber
+      );
+
+    setEditingTest(
+      newTest
     );
 
-    const nextNumber = examTests.length + 1;
+    setSelectedQuestion(
+      0
+    );
 
-    const newTest = emptyTest(nextNumber);
+    setShowTestEditor(
+      true
+    );
 
-    setEditingTest(newTest);
-    setSelectedQuestion(0);
-    setShowTestEditor(true);
     setMessage("");
   };
 
@@ -166,47 +457,84 @@ function AdminDashboard({ user, onLogout }) {
      EDIT TEST
   ======================================================= */
 
-  const editTest = (test) => {
+  const editTest = (
+    test
+  ) => {
     const copiedTest = {
       ...test,
 
-      testNumber: Number(test.testNumber || 1),
-      duration: Number(test.duration || 30),
-      price: Number(test.price || 0),
+      testNumber: Number(
+        test.testNumber || 1
+      ),
+
+      duration: Number(
+        test.duration || 30
+      ),
+
+      price: Number(
+        test.price || 0
+      ),
 
       questions:
-        Array.isArray(test.questions) &&
+        Array.isArray(
+          test.questions
+        ) &&
         test.questions.length
-          ? test.questions.map((q) => ({
-              id:
-                q?.id ||
-                Date.now() + Math.random(),
+          ? test.questions.map(
+              (q) => ({
+                id:
+                  q?.id ||
+                  Date.now() +
+                    Math.random(),
 
-              question: q?.question || "",
-
-              options: [
-                ...(q?.options || [
+                question:
+                  q?.question ||
                   "",
-                  "",
-                  "",
-                  "",
-                ]),
-              ].slice(0, 4),
 
-              answer: Number(q?.answer || 0),
+                options: [
+                  ...(q?.options ||
+                    [
+                      "",
+                      "",
+                      "",
+                      "",
+                    ]),
+                ].slice(
+                  0,
+                  4
+                ),
 
-              explanation:
-                q?.explanation || "",
+                answer:
+                  Number(
+                    q?.answer || 0
+                  ),
 
-              explanationImage:
-                q?.explanationImage || "",
-            }))
-          : [emptyQuestion()],
+                explanation:
+                  q?.explanation ||
+                  "",
+
+                explanationImage:
+                  q?.explanationImage ||
+                  "",
+              })
+            )
+          : [
+              emptyQuestion(),
+            ],
     };
 
-    setEditingTest(copiedTest);
-    setSelectedQuestion(0);
-    setShowTestEditor(true);
+    setEditingTest(
+      copiedTest
+    );
+
+    setSelectedQuestion(
+      0
+    );
+
+    setShowTestEditor(
+      true
+    );
+
     setMessage("");
   };
 
@@ -214,27 +542,53 @@ function AdminDashboard({ user, onLogout }) {
      DELETE TEST
   ======================================================= */
 
-  const deleteTest = async (test) => {
-    const ok = window.confirm(
-      `क्या आप "${test?.title || "Test"}" को delete करना चाहते हैं?`
-    );
-
-    if (!ok) return;
-
-    try {
-      await remove(ref(db, `tests/${test.id}`));
-
-      setTests((prev) =>
-        prev.filter((item) => item.id !== test.id)
+  const deleteTest = async (
+    test
+  ) => {
+    const ok =
+      window.confirm(
+        `क्या आप "${
+          test?.title ||
+          "Test"
+        }" को delete करना चाहते हैं?`
       );
 
-      setMessage("✅ Test successfully delete हो गया।");
-    } catch (error) {
-      console.error("Delete test error:", error);
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await remove(
+        ref(
+          db,
+          `tests/${test.id}`
+        )
+      );
+
+      setTests(
+        (prev) =>
+          prev.filter(
+            (item) =>
+              item.id !==
+              test.id
+          )
+      );
+
+      setMessage(
+        "✅ Test successfully delete हो गया।"
+      );
+    }
+
+    catch (error) {
+      console.error(
+        "Delete test error:",
+        error
+      );
 
       setMessage(
         `❌ Test delete नहीं हुआ: ${
-          error?.message || "Unknown error"
+          error?.message ||
+          "Unknown error"
         }`
       );
     }
@@ -244,15 +598,24 @@ function AdminDashboard({ user, onLogout }) {
      UPDATE TEST FIELD
   ======================================================= */
 
-  const updateTestField = (field, value) => {
-    setEditingTest((prev) => {
-      if (!prev) return prev;
+  const updateTestField = (
+    field,
+    value
+  ) => {
+    setEditingTest(
+      (prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      return {
-        ...prev,
-        [field]: value,
-      };
-    });
+        return {
+          ...prev,
+
+          [field]:
+            value,
+        };
+      }
+    );
   };
 
   /* =======================================================
@@ -264,21 +627,35 @@ function AdminDashboard({ user, onLogout }) {
     field,
     value
   ) => {
-    setEditingTest((prev) => {
-      if (!prev) return prev;
+    setEditingTest(
+      (prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      const questions = [...prev.questions];
+        const questions = [
+          ...(prev.questions ||
+            []),
+        ];
 
-      questions[questionIndex] = {
-        ...questions[questionIndex],
-        [field]: value,
-      };
+        questions[
+          questionIndex
+        ] = {
+          ...questions[
+            questionIndex
+          ],
 
-      return {
-        ...prev,
-        questions,
-      };
-    });
+          [field]:
+            value,
+        };
+
+        return {
+          ...prev,
+
+          questions,
+        };
+      }
+    );
   };
 
   /* =======================================================
@@ -290,32 +667,49 @@ function AdminDashboard({ user, onLogout }) {
     optionIndex,
     value
   ) => {
-    setEditingTest((prev) => {
-      if (!prev) return prev;
+    setEditingTest(
+      (prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      const questions = [...prev.questions];
+        const questions = [
+          ...(prev.questions ||
+            []),
+        ];
 
-      const options = [
-        ...(questions[questionIndex]?.options || [
-          "",
-          "",
-          "",
-          "",
-        ]),
-      ];
+        const options = [
+          ...(questions[
+            questionIndex
+          ]?.options || [
+            "",
+            "",
+            "",
+            "",
+          ]),
+        ];
 
-      options[optionIndex] = value;
+        options[
+          optionIndex
+        ] = value;
 
-      questions[questionIndex] = {
-        ...questions[questionIndex],
-        options,
-      };
+        questions[
+          questionIndex
+        ] = {
+          ...questions[
+            questionIndex
+          ],
 
-      return {
-        ...prev,
-        questions,
-      };
-    });
+          options,
+        };
+
+        return {
+          ...prev,
+
+          questions,
+        };
+      }
+    );
   };
 
   /* =======================================================
@@ -323,28 +717,34 @@ function AdminDashboard({ user, onLogout }) {
   ======================================================= */
 
   const addQuestion = () => {
-    const newQuestion = emptyQuestion();
+    const newQuestion =
+      emptyQuestion();
 
-    setEditingTest((prev) => {
-      if (!prev) return prev;
+    setEditingTest(
+      (prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      const questions = [
-        ...(prev.questions || []),
-        newQuestion,
-      ];
+        const questions = [
+          ...(prev.questions ||
+            []),
+          newQuestion,
+        ];
 
-      return {
-        ...prev,
-        questions,
-      };
-    });
+        /*
+         * नई Question का index
+         */
+        setSelectedQuestion(
+          questions.length - 1
+        );
 
-    /*
-      नई question का index:
-      current questions length
-    */
-    setSelectedQuestion(
-      editingTest?.questions?.length || 0
+        return {
+          ...prev,
+
+          questions,
+        };
+      }
     );
   };
 
@@ -352,60 +752,398 @@ function AdminDashboard({ user, onLogout }) {
      DELETE QUESTION
   ======================================================= */
 
-  const deleteQuestion = (index) => {
-    if (!editingTest) return;
-
-    if (editingTest.questions.length <= 1) {
-      alert(
-        "कम से कम 1 Question होना जरूरी है।"
-      );
+  const deleteQuestion = (
+    index
+  ) => {
+    if (!editingTest) {
       return;
     }
 
-    const ok = window.confirm(
-      `Question ${index + 1} delete करें?`
-    );
-
-    if (!ok) return;
-
-    const totalBeforeDelete =
-      editingTest.questions.length;
-
-    setEditingTest((prev) => {
-      const questions = prev.questions.filter(
-        (_, i) => i !== index
+    if (
+      editingTest.questions
+        .length <= 1
+    ) {
+      alert(
+        "कम से कम 1 Question होना जरूरी है।"
       );
 
-      return {
-        ...prev,
-        questions,
-      };
-    });
+      return;
+    }
 
-    setSelectedQuestion((prev) => {
-      if (index === prev) {
-        return Math.min(
-          prev,
-          totalBeforeDelete - 2
-        );
+    const ok =
+      window.confirm(
+        `Question ${
+          index + 1
+        } delete करें?`
+      );
+
+    if (!ok) {
+      return;
+    }
+
+    const totalBeforeDelete =
+      editingTest.questions
+        .length;
+
+    setEditingTest(
+      (prev) => {
+        const questions =
+          prev.questions.filter(
+            (_, i) =>
+              i !== index
+          );
+
+        return {
+          ...prev,
+
+          questions,
+        };
       }
+    );
 
-      if (index < prev) {
-        return prev - 1;
+    setSelectedQuestion(
+      (prev) => {
+        if (
+          index === prev
+        ) {
+          return Math.min(
+            prev,
+            totalBeforeDelete -
+              2
+          );
+        }
+
+        if (
+          index < prev
+        ) {
+          return prev - 1;
+        }
+
+        return prev;
       }
-
-      return prev;
-    });
+    );
   };
 
   /* =======================================================
-     NEW TEST / RESET
+     IMPORT QUESTIONS JSON
+  ======================================================= */
+
+  const handleImportQuestionsJSON =
+    async (event) => {
+      const file =
+        event.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      try {
+        setImportingQuestions(
+          true
+        );
+
+        setMessage("");
+
+        const text =
+          await file.text();
+
+        let data;
+
+        /* -------------------------------------------
+           READ JSON
+        ------------------------------------------- */
+
+        try {
+          data =
+            JSON.parse(text);
+        }
+
+        catch (error) {
+          alert(
+            "❌ JSON file सही format में नहीं है।"
+          );
+
+          return;
+        }
+
+        /* -------------------------------------------
+           CONVERT QUESTIONS
+        ------------------------------------------- */
+
+        const importedQuestions =
+          normalizeQuestions(
+            data
+          );
+
+        if (
+          !importedQuestions.length
+        ) {
+          alert(
+            "❌ JSON में कोई Question नहीं मिला।"
+          );
+
+          return;
+        }
+
+        /* -------------------------------------------
+           VALIDATE
+        ------------------------------------------- */
+
+        const invalidQuestion =
+          importedQuestions.findIndex(
+            (q) => {
+              const options =
+                q?.options ||
+                [];
+
+              return (
+                !q?.question
+                  ?.trim() ||
+                options.length !==
+                  4 ||
+                options.some(
+                  (option) =>
+                    !String(
+                      option ||
+                        ""
+                    ).trim()
+                )
+              );
+            }
+          );
+
+        if (
+          invalidQuestion !==
+          -1
+        ) {
+          alert(
+            `Question ${
+              invalidQuestion +
+              1
+            } में Question और सभी 4 Options भरना जरूरी है।`
+          );
+
+          setSelectedQuestion(
+            invalidQuestion
+          );
+
+          return;
+        }
+
+        /* -------------------------------------------
+           ASK REPLACE OR ADD
+        ------------------------------------------- */
+
+        const replace =
+          window.confirm(
+            `JSON में ${importedQuestions.length} Questions मिले हैं।\n\n` +
+              `OK दबाएँ = पुराने Questions हटाकर JSON Questions डालें\n\n` +
+              `Cancel दबाएँ = JSON Questions को पुराने Questions के साथ जोड़ें`
+          );
+
+        /* -------------------------------------------
+           UPDATE TEST
+        ------------------------------------------- */
+
+        setEditingTest(
+          (prev) => {
+            if (!prev) {
+              return prev;
+            }
+
+            const finalQuestions =
+              replace
+                ? importedQuestions
+                : [
+                    ...(prev.questions ||
+                      []),
+                    ...importedQuestions,
+                  ];
+
+            return {
+              ...prev,
+
+              questions:
+                finalQuestions,
+            };
+          }
+        );
+
+        setSelectedQuestion(
+          0
+        );
+
+        setMessage(
+          `✅ ${importedQuestions.length} Questions JSON से Import हो गए। अब नीचे "Save Test to Firebase" दबाएँ।`
+        );
+      }
+
+      catch (error) {
+        console.error(
+          "Import JSON error:",
+          error
+        );
+
+        alert(
+          `❌ JSON Import Error: ${
+            error?.message ||
+            "Unknown error"
+          }`
+        );
+      }
+
+      finally {
+        setImportingQuestions(
+          false
+        );
+
+        /*
+         * Same file दोबारा select करने के लिए
+         */
+        setImportInputKey(
+          Date.now()
+        );
+      }
+    };
+
+  /* =======================================================
+     EXPORT QUESTIONS JSON
+  ======================================================= */
+
+  const exportQuestionsJSON =
+    () => {
+      if (
+        !editingTest?.questions
+          ?.length
+      ) {
+        alert(
+          "Export करने के लिए कोई Question नहीं है।"
+        );
+
+        return;
+      }
+
+      const exportData = {
+        exam:
+          editingTest.exam,
+
+        testNumber:
+          Number(
+            editingTest.testNumber ||
+              1
+          ),
+
+        title:
+          editingTest.title ||
+          "",
+
+        questions:
+          editingTest.questions.map(
+            (q, index) => ({
+              id:
+                index + 1,
+
+              question:
+                q?.question ||
+                "",
+
+              options: [
+                ...(q?.options ||
+                  [
+                    "",
+                    "",
+                    "",
+                    "",
+                  ]),
+              ].slice(
+                0,
+                4
+              ),
+
+              answer:
+                Number(
+                  q?.answer || 0
+                ),
+
+              explanation:
+                q?.explanation ||
+                "",
+
+              explanationImage:
+                q?.explanationImage ||
+                "",
+            })
+          ),
+      };
+
+      const json =
+        JSON.stringify(
+          exportData,
+          null,
+          2
+        );
+
+      const blob =
+        new Blob(
+          [json],
+          {
+            type:
+              "application/json",
+          }
+        );
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+      const a =
+        document.createElement(
+          "a"
+        );
+
+      a.href = url;
+
+      a.download =
+        `${
+          editingTest.exam ||
+          "exam"
+        }-test-${
+          editingTest.testNumber ||
+          1
+        }-questions.json`;
+
+      document.body.appendChild(
+        a
+      );
+
+      a.click();
+
+      document.body.removeChild(
+        a
+      );
+
+      URL.revokeObjectURL(
+        url
+      );
+    };
+
+  /* =======================================================
+     CLOSE EDITOR
   ======================================================= */
 
   const closeEditor = () => {
-    setShowTestEditor(false);
-    setEditingTest(null);
-    setSelectedQuestion(0);
+    setShowTestEditor(
+      false
+    );
+
+    setEditingTest(
+      null
+    );
+
+    setSelectedQuestion(
+      0
+    );
   };
 
   /* =======================================================
@@ -413,65 +1151,101 @@ function AdminDashboard({ user, onLogout }) {
   ======================================================= */
 
   const saveTest = async () => {
-    if (!editingTest) return;
+    if (!editingTest) {
+      return;
+    }
 
     /* -----------------------------------------------
        VALIDATION
     ----------------------------------------------- */
 
     if (!editingTest.exam) {
-      alert("Exam select करें।");
+      alert(
+        "Exam select करें।"
+      );
+
       return;
     }
 
     if (
       !editingTest.testNumber ||
-      Number(editingTest.testNumber) < 1
+      Number(
+        editingTest.testNumber
+      ) < 1
     ) {
-      alert("Valid Test Number डालें।");
+      alert(
+        "Valid Test Number डालें।"
+      );
+
       return;
     }
 
-    if (!editingTest.title?.trim()) {
-      alert("Test Title डालिए।");
+    if (
+      !editingTest.title?.trim()
+    ) {
+      alert(
+        "Test Title डालिए।"
+      );
+
       return;
     }
 
     if (
       !editingTest.duration ||
-      Number(editingTest.duration) < 1
+      Number(
+        editingTest.duration
+      ) < 1
     ) {
-      alert("Duration सही डालिए।");
+      alert(
+        "Duration सही डालिए।"
+      );
+
       return;
     }
 
-    if (!editingTest.questions?.length) {
-      alert("कम से कम 1 Question डालिए।");
+    if (
+      !editingTest.questions?.length
+    ) {
+      alert(
+        "कम से कम 1 Question डालिए।"
+      );
+
       return;
     }
 
     const invalidQuestion =
-      editingTest.questions.findIndex((q) => {
-        const options = q?.options || [];
+      editingTest.questions.findIndex(
+        (q) => {
+          const options =
+            q?.options || [];
 
-        return (
-          !q?.question?.trim() ||
-          options.length !== 4 ||
-          options.some(
-            (option) =>
-              !String(option || "").trim()
-          )
-        );
-      });
+          return (
+            !q?.question?.trim() ||
+            options.length !==
+              4 ||
+            options.some(
+              (option) =>
+                !String(
+                  option || ""
+                ).trim()
+            )
+          );
+        }
+      );
 
-    if (invalidQuestion !== -1) {
+    if (
+      invalidQuestion !==
+      -1
+    ) {
       alert(
         `Question ${
           invalidQuestion + 1
         } में Question और सभी 4 Options भरना जरूरी है।`
       );
 
-      setSelectedQuestion(invalidQuestion);
+      setSelectedQuestion(
+        invalidQuestion
+      );
 
       return;
     }
@@ -482,58 +1256,81 @@ function AdminDashboard({ user, onLogout }) {
 
     try {
       setSaving(true);
+
       setMessage("");
 
       const cleanQuestions =
         editingTest.questions.map(
-          (question, index) => ({
+          (
+            question,
+            index
+          ) => ({
             id:
               question?.id ||
-              Date.now() + index,
+              Date.now() +
+                index,
 
             question:
-              question?.question || "",
+              question?.question ||
+              "",
 
             options: [
-              ...(question?.options || [
-                "",
-                "",
-                "",
-                "",
-              ]),
-            ].slice(0, 4),
-
-            answer: Number(
-              question?.answer || 0
+              ...(question?.options ||
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                ]),
+            ].slice(
+              0,
+              4
             ),
 
+            answer:
+              Number(
+                question?.answer ||
+                  0
+              ),
+
             explanation:
-              question?.explanation || "",
+              question?.explanation ||
+              "",
 
             explanationImage:
-              question?.explanationImage || "",
+              question?.explanationImage ||
+              "",
           })
         );
 
       const payload = {
-        exam: editingTest.exam,
+        exam:
+          editingTest.exam,
 
         testNumber:
-          Number(editingTest.testNumber) || 1,
+          Number(
+            editingTest.testNumber
+          ) || 1,
 
         title:
           editingTest.title.trim(),
 
         status:
-          editingTest.status || "draft",
+          editingTest.status ||
+          "draft",
 
         duration:
-          Number(editingTest.duration) || 30,
+          Number(
+            editingTest.duration
+          ) || 30,
 
         price:
-          Number(editingTest.price) || 0,
+          Number(
+            editingTest.price
+          ) || 0,
 
-        questions: cleanQuestions,
+        questions:
+          cleanQuestions,
 
         questionCount:
           cleanQuestions.length,
@@ -548,27 +1345,36 @@ function AdminDashboard({ user, onLogout }) {
           new Date().toISOString(),
       };
 
-      let testId = editingTest.id;
+      let testId =
+        editingTest.id;
 
       /* -----------------------------------------------
          NEW TEST
       ----------------------------------------------- */
 
       if (!testId) {
-        const newRef = push(
-          ref(db, "tests")
+        const newRef =
+          push(
+            ref(
+              db,
+              "tests"
+            )
+          );
+
+        testId =
+          newRef.key;
+
+        await set(
+          newRef,
+          {
+            ...payload,
+
+            id: testId,
+
+            createdAt:
+              new Date().toISOString(),
+          }
         );
-
-        testId = newRef.key;
-
-        await set(newRef, {
-          ...payload,
-
-          id: testId,
-
-          createdAt:
-            new Date().toISOString(),
-        });
       }
 
       /* -----------------------------------------------
@@ -577,7 +1383,10 @@ function AdminDashboard({ user, onLogout }) {
 
       else {
         await set(
-          ref(db, `tests/${testId}`),
+          ref(
+            db,
+            `tests/${testId}`
+          ),
           {
             ...payload,
 
@@ -597,7 +1406,9 @@ function AdminDashboard({ user, onLogout }) {
       closeEditor();
 
       await loadTests();
-    } catch (error) {
+    }
+
+    catch (error) {
       console.error(
         "Save test error:",
         error
@@ -609,7 +1420,9 @@ function AdminDashboard({ user, onLogout }) {
           "Unknown Firebase error"
         }`
       );
-    } finally {
+    }
+
+    finally {
       setSaving(false);
     }
   };
@@ -618,69 +1431,104 @@ function AdminDashboard({ user, onLogout }) {
      FILTER TESTS
   ======================================================= */
 
-  const filteredTests = useMemo(() => {
-    return tests.filter((test) => {
-      const searchText =
-        search.trim().toLowerCase();
+  const filteredTests =
+    useMemo(() => {
+      return tests.filter(
+        (test) => {
+          const searchText =
+            search
+              .trim()
+              .toLowerCase();
 
-      const matchesSearch =
-        !searchText ||
-        String(test?.title || "")
-          .toLowerCase()
-          .includes(searchText) ||
-        String(test?.exam || "")
-          .toLowerCase()
-          .includes(searchText) ||
-        String(test?.testNumber || "")
-          .toLowerCase()
-          .includes(searchText);
+          const matchesSearch =
+            !searchText ||
+            String(
+              test?.title || ""
+            )
+              .toLowerCase()
+              .includes(
+                searchText
+              ) ||
+            String(
+              test?.exam || ""
+            )
+              .toLowerCase()
+              .includes(
+                searchText
+              ) ||
+            String(
+              test?.testNumber ||
+                ""
+            )
+              .toLowerCase()
+              .includes(
+                searchText
+              );
 
-      const matchesExam =
-        filterExam === "All" ||
-        test?.exam === filterExam;
+          const matchesExam =
+            filterExam ===
+              "All" ||
+            test?.exam ===
+              filterExam;
 
-      return (
-        matchesSearch &&
-        matchesExam
+          return (
+            matchesSearch &&
+            matchesExam
+          );
+        }
       );
-    });
-  }, [
-    tests,
-    search,
-    filterExam,
-  ]);
+    }, [
+      tests,
+      search,
+      filterExam,
+    ]);
 
   /* =======================================================
      STATISTICS
   ======================================================= */
 
-  const totalTests = tests.length;
+  const totalTests =
+    tests.length;
 
-  const publishedTests = tests.filter(
-    (test) =>
-      test.status === "published" ||
-      test.status === "public"
-  ).length;
+  const publishedTests =
+    tests.filter(
+      (test) =>
+        test.status ===
+          "published" ||
+        test.status ===
+          "public"
+    ).length;
 
-  const draftTests = tests.filter(
-    (test) =>
-      !test.status ||
-      test.status === "draft"
-  ).length;
+  const draftTests =
+    tests.filter(
+      (test) =>
+        !test.status ||
+        test.status ===
+          "draft"
+    ).length;
 
-  const unlistedTests = tests.filter(
-    (test) =>
-      test.status === "unlisted"
-  ).length;
+  const unlistedTests =
+    tests.filter(
+      (test) =>
+        test.status ===
+        "unlisted"
+    ).length;
 
-  const totalQuestions = tests.reduce(
-    (total, test) =>
-      total +
-      (Array.isArray(test.questions)
-        ? test.questions.length
-        : 0),
-    0
-  );
+  const totalQuestions =
+    tests.reduce(
+      (
+        total,
+        test
+      ) =>
+        total +
+        (Array.isArray(
+          test.questions
+        )
+          ? test.questions
+              .length
+          : 0),
+      0
+    );
 
   /* =======================================================
      CURRENT QUESTION
@@ -751,30 +1599,42 @@ function AdminDashboard({ user, onLogout }) {
           <button
             type="button"
             className={
-              activeTab === "tests"
+              activeTab ===
+              "tests"
                 ? "menu-item active"
                 : "menu-item"
             }
             onClick={() =>
-              setActiveTab("tests")
+              setActiveTab(
+                "tests"
+              )
             }
           >
-            <span>📝</span>
+            <span>
+              📝
+            </span>
+
             Test Manager
           </button>
 
           <button
             type="button"
             className={
-              activeTab === "resources"
+              activeTab ===
+              "resources"
                 ? "menu-item active"
                 : "menu-item"
             }
             onClick={() =>
-              setActiveTab("resources")
+              setActiveTab(
+                "resources"
+              )
             }
           >
-            <span>📚</span>
+            <span>
+              📚
+            </span>
+
             Resources
           </button>
 
@@ -790,7 +1650,9 @@ function AdminDashboard({ user, onLogout }) {
             onClick={() => {
               if (onLogout) {
                 onLogout();
-              } else {
+              }
+
+              else {
                 window.location.reload();
               }
             }}
@@ -816,20 +1678,23 @@ function AdminDashboard({ user, onLogout }) {
 
             <div className="breadcrumb">
               Admin →{" "}
-              {activeTab === "tests"
+              {activeTab ===
+              "tests"
                 ? "Test Manager"
                 : "Resources"}
             </div>
 
             <h1>
-              {activeTab === "tests"
+              {activeTab ===
+              "tests"
                 ? "Exam & Test Manager"
                 : "Resources Manager"}
             </h1>
 
             <p>
-              अपने सभी Exam, Test और
-              Questions आसानी से manage करें।
+              अपने सभी Exam,
+              Test और Questions
+              आसानी से manage करें।
             </p>
 
           </div>
@@ -839,17 +1704,24 @@ function AdminDashboard({ user, onLogout }) {
             <button
               type="button"
               className="refresh-btn"
-              onClick={loadTests}
-              disabled={loadingTests}
+              onClick={
+                loadTests
+              }
+              disabled={
+                loadingTests
+              }
             >
               🔄 Refresh
             </button>
 
-            {activeTab === "tests" && (
+            {activeTab ===
+              "tests" && (
               <button
                 type="button"
                 className="primary-btn"
-                onClick={createNewTest}
+                onClick={
+                  createNewTest
+                }
               >
                 ➕ New Test
               </button>
@@ -864,7 +1736,9 @@ function AdminDashboard({ user, onLogout }) {
         {message && (
           <div
             className={
-              message.startsWith("❌")
+              message.startsWith(
+                "❌"
+              )
                 ? "alert error"
                 : "alert success"
             }
@@ -877,7 +1751,8 @@ function AdminDashboard({ user, onLogout }) {
             TEST MANAGER
         ================================================= */}
 
-        {activeTab === "tests" && (
+        {activeTab ===
+          "tests" && (
           <>
 
             {/* STATISTICS */}
@@ -989,8 +1864,9 @@ function AdminDashboard({ user, onLogout }) {
                   </h2>
 
                   <p>
-                    यहाँ से Test edit,
-                    delete और manage करें।
+                    यहाँ से Test
+                    edit, delete और
+                    manage करें।
                   </p>
 
                 </div>
@@ -998,7 +1874,9 @@ function AdminDashboard({ user, onLogout }) {
                 <button
                   type="button"
                   className="primary-btn"
-                  onClick={createNewTest}
+                  onClick={
+                    createNewTest
+                  }
                 >
                   ➕ New Test
                 </button>
@@ -1018,10 +1896,15 @@ function AdminDashboard({ user, onLogout }) {
                   <input
                     type="text"
                     placeholder="Test या Exam search करें..."
-                    value={search}
-                    onChange={(e) =>
+                    value={
+                      search
+                    }
+                    onChange={(
+                      e
+                    ) =>
                       setSearch(
-                        e.target.value
+                        e.target
+                          .value
                       )
                     }
                   />
@@ -1029,10 +1912,15 @@ function AdminDashboard({ user, onLogout }) {
                 </div>
 
                 <select
-                  value={filterExam}
-                  onChange={(e) =>
+                  value={
+                    filterExam
+                  }
+                  onChange={(
+                    e
+                  ) =>
                     setFilterExam(
-                      e.target.value
+                      e.target
+                        .value
                     )
                   }
                 >
@@ -1041,14 +1929,18 @@ function AdminDashboard({ user, onLogout }) {
                     सभी Exams
                   </option>
 
-                  {EXAMS.map((exam) => (
-                    <option
-                      key={exam}
-                      value={exam}
-                    >
-                      {exam}
-                    </option>
-                  ))}
+                  {EXAMS.map(
+                    (exam) => (
+                      <option
+                        key={exam}
+                        value={
+                          exam
+                        }
+                      >
+                        {exam}
+                      </option>
+                    )
+                  )}
 
                 </select>
 
@@ -1057,6 +1949,7 @@ function AdminDashboard({ user, onLogout }) {
               {/* LOADING */}
 
               {loadingTests ? (
+
                 <div className="loading-box">
 
                   <div className="spinner"></div>
@@ -1066,9 +1959,9 @@ function AdminDashboard({ user, onLogout }) {
                   </p>
 
                 </div>
-              ) : filteredTests.length === 0 ? (
 
-                /* EMPTY */
+              ) : filteredTests.length ===
+                0 ? (
 
                 <div className="empty-box">
 
@@ -1082,7 +1975,9 @@ function AdminDashboard({ user, onLogout }) {
 
                   <p>
                     ऊपर से{" "}
-                    <b>New Test</b>{" "}
+                    <b>
+                      New Test
+                    </b>{" "}
                     पर क्लिक करके
                     पहला Test बनाइए।
                   </p>
@@ -1090,7 +1985,9 @@ function AdminDashboard({ user, onLogout }) {
                   <button
                     type="button"
                     className="primary-btn"
-                    onClick={createNewTest}
+                    onClick={
+                      createNewTest
+                    }
                   >
                     ➕ Create Test
                   </button>
@@ -1098,8 +1995,6 @@ function AdminDashboard({ user, onLogout }) {
                 </div>
 
               ) : (
-
-                /* TABLE */
 
                 <div className="table-wrapper">
 
@@ -1148,22 +2043,32 @@ function AdminDashboard({ user, onLogout }) {
                     <tbody>
 
                       {filteredTests.map(
-                        (test, index) => (
+                        (
+                          test,
+                          index
+                        ) => (
 
                           <tr
-                            key={test.id}
+                            key={
+                              test.id
+                            }
                           >
 
                             <td>
+
                               <span className="table-number">
-                                {index + 1}
+                                {index +
+                                  1}
                               </span>
+
                             </td>
 
                             <td>
 
                               <span className="exam-badge">
-                                {test.exam}
+                                {
+                                  test.exam
+                                }
                               </span>
 
                             </td>
@@ -1173,14 +2078,18 @@ function AdminDashboard({ user, onLogout }) {
                               <div className="test-title-cell">
 
                                 <strong>
-                                  {test.title ||
-                                    "Untitled Test"}
+                                  {
+                                    test.title ||
+                                    "Untitled Test"
+                                  }
                                 </strong>
 
                                 <small>
                                   Test No.{" "}
-                                  {test.testNumber ||
-                                    "-"}
+                                  {
+                                    test.testNumber ||
+                                    "-"
+                                  }
                                 </small>
 
                               </div>
@@ -1193,7 +2102,8 @@ function AdminDashboard({ user, onLogout }) {
                                 {Array.isArray(
                                   test.questions
                                 )
-                                  ? test.questions
+                                  ? test
+                                      .questions
                                       .length
                                   : 0}
                               </b>
@@ -1202,16 +2112,20 @@ function AdminDashboard({ user, onLogout }) {
 
                             <td>
                               ⏱️{" "}
-                              {test.duration ||
-                                0}{" "}
+                              {
+                                test.duration ||
+                                0
+                              }{" "}
                               min
                             </td>
 
                             <td>
 
                               {Number(
-                                test.price || 0
-                              ) === 0 ? (
+                                test.price ||
+                                  0
+                              ) ===
+                              0 ? (
 
                                 <span className="free-badge">
                                   FREE
@@ -1233,9 +2147,9 @@ function AdminDashboard({ user, onLogout }) {
                               >
 
                                 {test.status ===
-                                "published" ||
+                                  "published" ||
                                 test.status ===
-                                "public"
+                                  "public"
                                   ? "🟢 Public"
                                   : test.status ===
                                     "unlisted"
@@ -1300,7 +2214,8 @@ function AdminDashboard({ user, onLogout }) {
             RESOURCES
         ================================================= */}
 
-        {activeTab === "resources" && (
+        {activeTab ===
+          "resources" && (
 
           <section className="resource-grid">
 
@@ -1315,8 +2230,10 @@ function AdminDashboard({ user, onLogout }) {
               </h3>
 
               <p>
-                PDF, Notes और अन्य
-                study material manage करें।
+                PDF, Notes और
+                अन्य study
+                material manage
+                करें।
               </p>
 
               <button
@@ -1339,8 +2256,9 @@ function AdminDashboard({ user, onLogout }) {
               </h3>
 
               <p>
-                AI की सहायता से नए
-                MCQ generate करें।
+                AI की सहायता से
+                नए MCQ generate
+                करें।
               </p>
 
               <button
@@ -1367,8 +2285,9 @@ function AdminDashboard({ user, onLogout }) {
               </h3>
 
               <p>
-                Test और students की
-                performance देखें।
+                Test और students
+                की performance
+                देखें।
               </p>
 
               <button
@@ -1414,8 +2333,9 @@ function AdminDashboard({ user, onLogout }) {
                   </h2>
 
                   <p>
-                    Exam → Test → Questions
-                    manage करें
+                    Exam → Test →
+                    Questions manage
+                    करें
                   </p>
 
                 </div>
@@ -1423,7 +2343,9 @@ function AdminDashboard({ user, onLogout }) {
                 <button
                   type="button"
                   className="close-editor"
-                  onClick={closeEditor}
+                  onClick={
+                    closeEditor
+                  }
                 >
                   ✕
                 </button>
@@ -1475,20 +2397,29 @@ function AdminDashboard({ user, onLogout }) {
                         value={
                           editingTest.exam
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           updateTestField(
                             "exam",
-                            e.target.value
+                            e.target
+                              .value
                           )
                         }
                       >
 
                         {EXAMS.map(
-                          (exam) => (
+                          (
+                            exam
+                          ) => (
 
                             <option
-                              key={exam}
-                              value={exam}
+                              key={
+                                exam
+                              }
+                              value={
+                                exam
+                              }
                             >
                               {exam}
                             </option>
@@ -1514,10 +2445,13 @@ function AdminDashboard({ user, onLogout }) {
                         value={
                           editingTest.testNumber
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           updateTestField(
                             "testNumber",
-                            e.target.value
+                            e.target
+                              .value
                           )
                         }
                       />
@@ -1538,10 +2472,13 @@ function AdminDashboard({ user, onLogout }) {
                         value={
                           editingTest.title
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           updateTestField(
                             "title",
-                            e.target.value
+                            e.target
+                              .value
                           )
                         }
                       />
@@ -1561,10 +2498,13 @@ function AdminDashboard({ user, onLogout }) {
                           editingTest.status ||
                           "draft"
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           updateTestField(
                             "status",
-                            e.target.value
+                            e.target
+                              .value
                           )
                         }
                       >
@@ -1600,10 +2540,13 @@ function AdminDashboard({ user, onLogout }) {
                         value={
                           editingTest.duration
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           updateTestField(
                             "duration",
-                            e.target.value
+                            e.target
+                              .value
                           )
                         }
                       />
@@ -1624,10 +2567,13 @@ function AdminDashboard({ user, onLogout }) {
                         value={
                           editingTest.price
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           updateTestField(
                             "price",
-                            e.target.value
+                            e.target
+                              .value
                           )
                         }
                       />
@@ -1647,6 +2593,8 @@ function AdminDashboard({ user, onLogout }) {
                 ========================================= */}
 
                 <section className="editor-section">
+
+                  {/* QUESTION MANAGER HEADER */}
 
                   <div className="question-manager-heading">
 
@@ -1677,7 +2625,64 @@ function AdminDashboard({ user, onLogout }) {
 
                     </div>
 
+                    {/* =====================================
+                        QUESTION ACTION BUTTONS
+                    ===================================== */}
+
                     <div className="question-actions">
+
+                      {/* HIDDEN FILE INPUT */}
+
+                      <input
+                        key={
+                          importInputKey
+                        }
+                        id="questions-json-input"
+                        type="file"
+                        accept=".json,application/json"
+                        style={{
+                          display:
+                            "none",
+                        }}
+                        onChange={
+                          handleImportQuestionsJSON
+                        }
+                      />
+
+                      {/* IMPORT JSON */}
+
+                      <button
+                        type="button"
+                        className="add-question-btn"
+                        onClick={() =>
+                          document
+                            .getElementById(
+                              "questions-json-input"
+                            )
+                            ?.click()
+                        }
+                        disabled={
+                          importingQuestions
+                        }
+                      >
+                        {importingQuestions
+                          ? "⏳ Importing..."
+                          : "📥 Import Questions JSON"}
+                      </button>
+
+                      {/* EXPORT JSON */}
+
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={
+                          exportQuestionsJSON
+                        }
+                      >
+                        📤 Export Questions JSON
+                      </button>
+
+                      {/* ADD QUESTION */}
 
                       <button
                         type="button"
@@ -1688,6 +2693,8 @@ function AdminDashboard({ user, onLogout }) {
                       >
                         ➕ Add Question
                       </button>
+
+                      {/* DELETE QUESTION */}
 
                       <button
                         type="button"
@@ -1705,16 +2712,53 @@ function AdminDashboard({ user, onLogout }) {
 
                   </div>
 
+                  {/* IMPORT INFORMATION */}
+
+                  <div
+                    style={{
+                      margin:
+                        "15px 0",
+                      padding:
+                        "12px 15px",
+                      background:
+                        "#eef7ff",
+                      border:
+                        "1px solid #c8e3ff",
+                      borderRadius:
+                        "10px",
+                      color:
+                        "#075985",
+                      fontSize:
+                        "14px",
+                    }}
+                  >
+                    💡 <b>JSON Import:</b>{" "}
+                    Questions JSON
+                    file चुनें। Import
+                    के बाद Questions
+                    नीचे दिखाई देंगे।
+                    फिर{" "}
+                    <b>
+                      Save Test to Firebase
+                    </b>{" "}
+                    दबाएँ।
+                  </div>
+
                   {/* QUESTION TABS */}
 
                   <div className="question-tabs">
 
                     {editingTest.questions.map(
-                      (_, index) => (
+                      (
+                        _,
+                        index
+                      ) => (
 
                         <button
                           type="button"
-                          key={index}
+                          key={
+                            index
+                          }
                           className={
                             selectedQuestion ===
                             index
@@ -1727,7 +2771,8 @@ function AdminDashboard({ user, onLogout }) {
                             )
                           }
                         >
-                          {index + 1}
+                          {index +
+                            1}
                         </button>
 
                       )
@@ -1745,7 +2790,8 @@ function AdminDashboard({ user, onLogout }) {
 
                         <span>
                           Question{" "}
-                          {selectedQuestion + 1}
+                          {selectedQuestion +
+                            1}
                         </span>
 
                         <span className="required">
@@ -1769,11 +2815,14 @@ function AdminDashboard({ user, onLogout }) {
                             currentQuestion.question ||
                             ""
                           }
-                          onChange={(e) =>
+                          onChange={(
+                            e
+                          ) =>
                             updateQuestion(
                               selectedQuestion,
                               "question",
-                              e.target.value
+                              e.target
+                                .value
                             )
                           }
                         />
@@ -1809,11 +2858,15 @@ function AdminDashboard({ user, onLogout }) {
 
                             <div
                               className="option-row"
-                              key={letter}
+                              key={
+                                letter
+                              }
                             >
 
                               <div className="option-label">
-                                {letter}
+                                {
+                                  letter
+                                }
                               </div>
 
                               <input
@@ -1823,13 +2876,17 @@ function AdminDashboard({ user, onLogout }) {
                                   currentQuestion
                                     .options?.[
                                     optionIndex
-                                  ] || ""
+                                  ] ||
+                                  ""
                                 }
-                                onChange={(e) =>
+                                onChange={(
+                                  e
+                                ) =>
                                   updateOption(
                                     selectedQuestion,
                                     optionIndex,
-                                    e.target.value
+                                    e.target
+                                      .value
                                   )
                                 }
                               />
@@ -1882,11 +2939,14 @@ function AdminDashboard({ user, onLogout }) {
                             currentQuestion.explanation ||
                             ""
                           }
-                          onChange={(e) =>
+                          onChange={(
+                            e
+                          ) =>
                             updateQuestion(
                               selectedQuestion,
                               "explanation",
-                              e.target.value
+                              e.target
+                                .value
                             )
                           }
                         />
@@ -1898,7 +2958,8 @@ function AdminDashboard({ user, onLogout }) {
                       <div className="form-group">
 
                         <label>
-                          🖼️ Explanation Image URL{" "}
+                          🖼️ Explanation
+                          Image URL{" "}
                           <span className="optional">
                             Optional
                           </span>
@@ -1911,11 +2972,14 @@ function AdminDashboard({ user, onLogout }) {
                             currentQuestion.explanationImage ||
                             ""
                           }
-                          onChange={(e) =>
+                          onChange={(
+                            e
+                          ) =>
                             updateQuestion(
                               selectedQuestion,
                               "explanationImage",
-                              e.target.value
+                              e.target
+                                .value
                             )
                           }
                         />
@@ -1935,10 +2999,13 @@ function AdminDashboard({ user, onLogout }) {
                           }
                           onClick={() =>
                             setSelectedQuestion(
-                              (prev) =>
+                              (
+                                prev
+                              ) =>
                                 Math.max(
                                   0,
-                                  prev - 1
+                                  prev -
+                                    1
                                 )
                             )
                           }
@@ -1948,7 +3015,8 @@ function AdminDashboard({ user, onLogout }) {
 
                         <span>
                           Question{" "}
-                          {selectedQuestion + 1}{" "}
+                          {selectedQuestion +
+                            1}{" "}
                           /{" "}
                           {
                             editingTest
@@ -1962,19 +3030,23 @@ function AdminDashboard({ user, onLogout }) {
                           className="secondary-btn"
                           disabled={
                             selectedQuestion ===
-                            editingTest.questions
+                            editingTest
+                              .questions
                               .length -
                               1
                           }
                           onClick={() =>
                             setSelectedQuestion(
-                              (prev) =>
+                              (
+                                prev
+                              ) =>
                                 Math.min(
                                   editingTest
                                     .questions
                                     .length -
                                     1,
-                                  prev + 1
+                                  prev +
+                                    1
                                 )
                             )
                           }
@@ -1999,7 +3071,9 @@ function AdminDashboard({ user, onLogout }) {
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={closeEditor}
+                  onClick={
+                    closeEditor
+                  }
                 >
                   ✕ Cancel
                 </button>
@@ -2007,8 +3081,12 @@ function AdminDashboard({ user, onLogout }) {
                 <button
                   type="button"
                   className="save-test-btn"
-                  onClick={saveTest}
-                  disabled={saving}
+                  onClick={
+                    saveTest
+                  }
+                  disabled={
+                    saving
+                  }
                 >
                   {saving
                     ? "⏳ Saving..."
