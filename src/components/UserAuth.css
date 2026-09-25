@@ -1,1 +1,482 @@
+/* ======================================================
+   USER AUTH OVERLAY
+====================================================== */
 
+.user-auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background:
+    rgba(15, 23, 42, 0.65);
+
+  backdrop-filter:
+    blur(5px);
+
+  overflow-y: auto;
+}
+
+
+/* ======================================================
+   AUTH BOX
+====================================================== */
+
+.user-auth-box {
+  position: relative;
+
+  width: 100%;
+  max-width: 500px;
+
+  background: #ffffff;
+
+  border-radius: 22px;
+
+  padding: 30px;
+
+  box-sizing: border-box;
+
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.25);
+
+  margin: 20px auto;
+}
+
+
+/* ======================================================
+   CLOSE BUTTON
+====================================================== */
+
+.user-auth-close {
+  position: absolute;
+
+  top: 12px;
+  right: 15px;
+
+  width: 38px;
+  height: 38px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #f1f5f9;
+
+  color: #334155;
+
+  font-size: 26px;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-auth-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+
+/* ======================================================
+   HEADER
+====================================================== */
+
+.user-auth-header {
+  text-align: center;
+
+  margin-bottom: 24px;
+}
+
+.user-auth-logo {
+  width: 70px;
+  height: 70px;
+
+  margin: auto;
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #7c3aed
+    );
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 38px;
+
+  box-shadow:
+    0 10px 25px
+    rgba(37, 99, 235, 0.25);
+}
+
+.user-auth-header h1 {
+  margin:
+    15px 0 6px;
+
+  font-size: 28px;
+
+  color: #1e3a8a;
+}
+
+.user-auth-header p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 15px;
+}
+
+
+/* ======================================================
+   FORM
+====================================================== */
+
+.user-auth-box form {
+  width: 100%;
+}
+
+.user-auth-box label {
+  display: block;
+
+  margin-top: 15px;
+  margin-bottom: 7px;
+
+  color: #1e293b;
+
+  font-size: 15px;
+
+  font-weight: 700;
+}
+
+.user-auth-box input,
+.user-auth-box select {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 13px 14px;
+
+  border:
+    1px solid #cbd5e1;
+
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #0f172a;
+
+  font-size: 16px;
+
+  outline: none;
+
+  transition:
+    0.2s ease;
+}
+
+.user-auth-box input:focus,
+.user-auth-box select:focus {
+  border-color:
+    #2563eb;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(37, 99, 235, 0.12);
+}
+
+
+/* ======================================================
+   MAIN BUTTON
+====================================================== */
+
+.auth-main-btn {
+  width: 100%;
+
+  margin-top: 22px;
+
+  padding: 14px;
+
+  border: none;
+
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #1d4ed8
+    );
+
+  color: #ffffff;
+
+  font-size: 17px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    0.2s ease;
+}
+
+.auth-main-btn:hover {
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 8px 20px
+    rgba(37, 99, 235, 0.25);
+}
+
+.auth-main-btn:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* ======================================================
+   ERROR
+====================================================== */
+
+.auth-error {
+  padding: 12px 14px;
+
+  margin-bottom: 15px;
+
+  border-radius: 10px;
+
+  background: #fee2e2;
+
+  border:
+    1px solid #fecaca;
+
+  color: #991b1b;
+
+  font-size: 14px;
+
+  line-height: 1.5;
+}
+
+
+/* ======================================================
+   SUCCESS
+====================================================== */
+
+.auth-success {
+  padding: 12px 14px;
+
+  margin-bottom: 15px;
+
+  border-radius: 10px;
+
+  background: #dcfce7;
+
+  border:
+    1px solid #bbf7d0;
+
+  color: #166534;
+
+  font-size: 14px;
+
+  line-height: 1.5;
+}
+
+
+/* ======================================================
+   FORGOT PASSWORD
+====================================================== */
+
+.forgot-btn {
+  width: 100%;
+
+  margin-top: 12px;
+
+  padding: 11px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #2563eb;
+
+  font-size: 15px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.forgot-btn:hover {
+  text-decoration: underline;
+}
+
+
+/* ======================================================
+   DIVIDER
+====================================================== */
+
+.auth-divider {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  margin:
+    14px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+
+  flex: 1;
+
+  height: 1px;
+
+  background:
+    #e2e8f0;
+}
+
+.auth-divider span {
+  color: #94a3b8;
+
+  font-size: 14px;
+}
+
+
+/* ======================================================
+   CREATE ACCOUNT
+====================================================== */
+
+.create-account-btn {
+  width: 100%;
+
+  padding: 13px;
+
+  border:
+    1px solid #2563eb;
+
+  border-radius: 11px;
+
+  background: #eff6ff;
+
+  color: #1d4ed8;
+
+  font-size: 16px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.create-account-btn:hover {
+  background: #dbeafe;
+}
+
+
+/* ======================================================
+   SWITCH
+====================================================== */
+
+.auth-switch {
+  text-align: center;
+
+  margin-top: 18px;
+
+  color: #64748b;
+
+  font-size: 15px;
+}
+
+.auth-switch button {
+  border: none;
+
+  background: transparent;
+
+  color: #2563eb;
+
+  font-size: 15px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  margin-left: 5px;
+}
+
+.auth-switch button:hover {
+  text-decoration: underline;
+}
+
+
+/* ======================================================
+   NOTE
+====================================================== */
+
+.auth-note {
+  margin-top: 18px;
+
+  padding: 12px;
+
+  border-radius: 10px;
+
+  background: #f8fafc;
+
+  color: #64748b;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+
+  text-align: center;
+}
+
+
+/* ======================================================
+   MOBILE
+====================================================== */
+
+@media (max-width: 600px) {
+
+  .user-auth-overlay {
+    padding: 10px;
+  }
+
+  .user-auth-box {
+    padding: 24px 18px;
+
+    border-radius: 18px;
+  }
+
+  .user-auth-header h1 {
+    font-size: 24px;
+  }
+
+  .user-auth-logo {
+    width: 60px;
+    height: 60px;
+
+    font-size: 32px;
+  }
+
+  .user-auth-box input,
+  .user-auth-box select {
+    font-size: 16px;
+
+    padding: 12px;
+  }
+
+}
