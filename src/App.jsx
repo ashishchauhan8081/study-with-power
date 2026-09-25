@@ -248,7 +248,9 @@ function normalizeQuestions(questions) {
 // ======================================================
 
 function getCorrectIndex(question) {
-  const options = Array.isArray(question?.options)
+  const options = Array.isArray(
+    question?.options
+  )
     ? question.options
     : [];
 
@@ -362,46 +364,64 @@ async function findEmailByMobile(mobile) {
   return new Promise((resolve, reject) => {
     const usersRef = ref(db, "users");
 
+    let finished = false;
+
+    const finish = (callback, value) => {
+      if (finished) return;
+
+      finished = true;
+
+      try {
+        unsubscribe();
+      } catch {}
+
+      callback(value);
+    };
+
     const unsubscribe = onValue(
       usersRef,
       (snapshot) => {
         try {
-          const data = snapshot.val() || {};
+          const data =
+            snapshot.val() || {};
 
           const normalizedMobile =
-            String(mobile).replace(/\D/g, "");
+            String(mobile)
+              .replace(/\D/g, "");
 
           let foundEmail = "";
 
-          Object.values(data).forEach((userData) => {
-            if (!userData) return;
+          Object.values(data).forEach(
+            (userData) => {
+              if (!userData) return;
 
-            const savedMobile =
-              String(userData.mobile || "")
-                .replace(/\D/g, "");
+              const savedMobile =
+                String(
+                  userData.mobile || ""
+                ).replace(/\D/g, "");
 
-            if (
-              savedMobile === normalizedMobile &&
-              userData.email
-            ) {
-              foundEmail =
-                String(userData.email)
-                  .trim()
-                  .toLowerCase();
+              if (
+                savedMobile ===
+                  normalizedMobile &&
+                userData.email
+              ) {
+                foundEmail =
+                  String(
+                    userData.email
+                  )
+                    .trim()
+                    .toLowerCase();
+              }
             }
-          });
+          );
 
-          unsubscribe();
-
-          resolve(foundEmail);
+          finish(resolve, foundEmail);
         } catch (error) {
-          unsubscribe();
-          reject(error);
+          finish(reject, error);
         }
       },
       (error) => {
-        unsubscribe();
-        reject(error);
+        finish(reject, error);
       }
     );
   });
@@ -416,10 +436,18 @@ function RegisterPage({
   onLogin,
   onClose,
 }) {
-  const [name, setName] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] =
+    useState("");
+
+  const [mobile, setMobile] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
   const [preparation, setPreparation] =
     useState("");
 
@@ -430,32 +458,36 @@ function RegisterPage({
     e.preventDefault();
 
     if (!name.trim()) {
-      alert("कृपया अपना नाम डालें।");
+      alert(
+        "❌ कृपया अपना पूरा नाम डालें।"
+      );
       return;
     }
 
     if (!/^[0-9]{10}$/.test(mobile)) {
       alert(
-        "कृपया 10 अंकों का Mobile Number डालें।"
+        "❌ कृपया सही 10 अंकों का Mobile Number डालें।"
       );
       return;
     }
 
     if (!email.trim()) {
-      alert("कृपया Email ID डालें।");
+      alert(
+        "❌ कृपया Email ID डालें।"
+      );
       return;
     }
 
     if (password.length < 6) {
       alert(
-        "Password कम से कम 6 characters का होना चाहिए।"
+        "❌ Password कम से कम 6 characters का होना चाहिए।"
       );
       return;
     }
 
     if (!preparation) {
       alert(
-        "कृपया बताएं कि आप किस परीक्षा की तैयारी कर रहे हैं।"
+        "❌ कृपया अपना Exam चुनें।"
       );
       return;
     }
@@ -463,38 +495,103 @@ function RegisterPage({
     try {
       setLoading(true);
 
+      const cleanEmail =
+        email.trim().toLowerCase();
+
+      // ------------------------------------------
+      // MOBILE DUPLICATE CHECK
+      // ------------------------------------------
+
+      let existingEmail = "";
+
+      try {
+        existingEmail =
+          await findEmailByMobile(
+            mobile
+          );
+      } catch (mobileError) {
+        console.warn(
+          "Mobile lookup failed:",
+          mobileError
+        );
+
+        /*
+         * Mobile lookup Firebase Rules से blocked
+         * होने पर registration को रोकेंगे नहीं।
+         *
+         * Firebase Authentication Email duplicate
+         * को खुद handle करेगा।
+         */
+      }
+
+      if (existingEmail) {
+        alert(
+          "❌ यह Mobile Number पहले से registered है।\n\nकृपया Login करें।"
+        );
+
+        return;
+      }
+
+      // ------------------------------------------
+      // FIREBASE AUTHENTICATION
+      // ------------------------------------------
+
       const result =
         await createUserWithEmailAndPassword(
           auth,
-          email.trim().toLowerCase(),
+          cleanEmail,
           password
         );
 
-      const newUser = result.user;
+      const newUser =
+        result.user;
 
-      await updateProfile(newUser, {
-        displayName: name.trim(),
-      });
+      // ------------------------------------------
+      // DISPLAY NAME
+      // ------------------------------------------
+
+      await updateProfile(
+        newUser,
+        {
+          displayName:
+            name.trim(),
+        }
+      );
+
+      // ------------------------------------------
+      // USER PROFILE
+      // ------------------------------------------
 
       await set(
-        ref(db, `users/${newUser.uid}`),
+        ref(
+          db,
+          `users/${newUser.uid}`
+        ),
         {
           uid: newUser.uid,
+
           name: name.trim(),
-          mobile,
-          email:
-            email.trim().toLowerCase(),
-          preparation,
+
+          mobile: mobile,
+
+          email: cleanEmail,
+
+          preparation:
+            preparation,
+
           createdAt:
             new Date().toISOString(),
         }
       );
 
-      alert("✅ Registration सफल हुआ।");
+      alert(
+        "✅ Account सफलतापूर्वक बन गया!"
+      );
 
       if (onSuccess) {
         onSuccess(newUser);
       }
+
     } catch (error) {
       console.error(
         "Registration Error:",
@@ -506,28 +603,59 @@ function RegisterPage({
         "auth/email-already-in-use"
       ) {
         alert(
-          "❌ यह Email पहले से registered है।"
+          "❌ यह Email पहले से registered है।\n\nयदि यह आपका account है तो Login करें।"
         );
-      } else if (
+      }
+
+      else if (
         error.code ===
         "auth/invalid-email"
       ) {
         alert(
           "❌ Email ID सही नहीं है।"
         );
-      } else if (
+      }
+
+      else if (
         error.code ===
         "auth/weak-password"
       ) {
         alert(
-          "❌ Password बहुत कमजोर है।"
-        );
-      } else {
-        alert(
-          "❌ Registration Error:\n" +
-            error.message
+          "❌ Password कम से कम 6 characters का रखें।"
         );
       }
+
+      else if (
+        error.code ===
+        "auth/network-request-failed"
+      ) {
+        alert(
+          "❌ Internet connection की समस्या है।"
+        );
+      }
+
+      else if (
+        error.code ===
+        "PERMISSION_DENIED" ||
+        error.message?.includes(
+          "PERMISSION_DENIED"
+        )
+      ) {
+        alert(
+          "❌ Firebase Database Permission Denied.\n\nFirebase Realtime Database Rules check करें।"
+        );
+      }
+
+      else {
+        alert(
+          "❌ Registration Error:\n" +
+            (
+              error.message ||
+              "कुछ समस्या हुई।"
+            )
+        );
+      }
+
     } finally {
       setLoading(false);
     }
@@ -535,37 +663,54 @@ function RegisterPage({
 
   return (
     <div className="auth-overlay">
+
       <div className="auth-card">
 
         <div className="auth-icon">
           📝
         </div>
 
-        <h1>Create Account</h1>
+        <h1>
+          Create Account
+        </h1>
 
         <p>
           Exam Test पर अपना account बनाएं
         </p>
 
-        <form onSubmit={handleRegister}>
+        <form
+          onSubmit={handleRegister}
+        >
 
-          <label>👤 पूरा नाम</label>
+          {/* NAME */}
+
+          <label>
+            👤 पूरा नाम
+          </label>
 
           <input
             type="text"
-            placeholder="अपना नाम"
+            placeholder="अपना पूरा नाम"
             value={name}
             onChange={(e) =>
-              setName(e.target.value)
+              setName(
+                e.target.value
+              )
             }
+            autoComplete="name"
           />
 
-          <label>📱 Mobile Number</label>
+          {/* MOBILE */}
+
+          <label>
+            📱 Mobile Number
+          </label>
 
           <input
             type="tel"
-            maxLength="10"
-            placeholder="10 digit mobile number"
+            inputMode="numeric"
+            maxLength={10}
+            placeholder="10 अंकों का Mobile Number"
             value={mobile}
             onChange={(e) =>
               setMobile(
@@ -575,29 +720,47 @@ function RegisterPage({
                 )
               )
             }
+            autoComplete="tel"
           />
 
-          <label>📧 Email ID</label>
+          {/* EMAIL */}
+
+          <label>
+            📧 Email ID
+          </label>
 
           <input
             type="email"
             placeholder="example@gmail.com"
             value={email}
             onChange={(e) =>
-              setEmail(e.target.value)
+              setEmail(
+                e.target.value
+              )
             }
+            autoComplete="email"
           />
 
-          <label>🔐 Create Password</label>
+          {/* PASSWORD */}
+
+          <label>
+            🔐 Create Password
+          </label>
 
           <input
             type="password"
             placeholder="कम से कम 6 characters"
+            minLength={6}
             value={password}
             onChange={(e) =>
-              setPassword(e.target.value)
+              setPassword(
+                e.target.value
+              )
             }
+            autoComplete="new-password"
           />
+
+          {/* EXAM */}
 
           <label>
             🎯 आप किस परीक्षा की तैयारी कर रहे हैं?
@@ -606,26 +769,34 @@ function RegisterPage({
           <select
             value={preparation}
             onChange={(e) =>
-              setPreparation(e.target.value)
+              setPreparation(
+                e.target.value
+              )
             }
           >
+
             <option value="">
-              परीक्षा चुनें
+              -- परीक्षा चुनें --
             </option>
 
-            {exams.map((exam) => (
-              <option
-                key={exam.id}
-                value={exam.name}
-              >
-                {exam.name}
-              </option>
-            ))}
+            {exams.map(
+              (exam) => (
+                <option
+                  key={exam.id}
+                  value={exam.name}
+                >
+                  {exam.name}
+                </option>
+              )
+            )}
 
             <option value="Other">
               Other
             </option>
+
           </select>
+
+          {/* BUTTON */}
 
           <button
             type="submit"
@@ -634,11 +805,15 @@ function RegisterPage({
           >
             {loading
               ? "⏳ Account बन रहा है..."
-              : "✅ Create Account"}
+              : "🚀 Account बनाएं"}
           </button>
+
         </form>
 
+        {/* LOGIN */}
+
         <div className="auth-switch">
+
           Account पहले से है?
 
           <button
@@ -647,7 +822,10 @@ function RegisterPage({
           >
             Login करें
           </button>
+
         </div>
+
+        {/* BACK */}
 
         <button
           type="button"
@@ -658,6 +836,7 @@ function RegisterPage({
         </button>
 
       </div>
+
     </div>
   );
 }
@@ -688,7 +867,8 @@ function LoginPage({
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    const id = userId.trim();
+    const id =
+      userId.trim();
 
     if (!id) {
       alert(
@@ -698,7 +878,9 @@ function LoginPage({
     }
 
     if (!password) {
-      alert("Password डालें।");
+      alert(
+        "Password डालें।"
+      );
       return;
     }
 
@@ -707,17 +889,37 @@ function LoginPage({
 
       let loginEmail = "";
 
-      if (id.includes("@")) {
+      // ------------------------------------------
+      // EMAIL LOGIN
+      // ------------------------------------------
+
+      if (
+        id.includes("@")
+      ) {
         loginEmail =
           id.toLowerCase();
-      } else {
-        const mobile =
-          id.replace(/\D/g, "");
+      }
 
-        if (!/^[0-9]{10}$/.test(mobile)) {
+      // ------------------------------------------
+      // MOBILE LOGIN
+      // ------------------------------------------
+
+      else {
+        const mobile =
+          id.replace(
+            /\D/g,
+            ""
+          );
+
+        if (
+          !/^[0-9]{10}$/.test(
+            mobile
+          )
+        ) {
           alert(
             "❌ सही Mobile Number या Email डालें।"
           );
+
           return;
         }
 
@@ -730,9 +932,14 @@ function LoginPage({
           alert(
             "❌ इस Mobile Number से कोई account नहीं मिला।"
           );
+
           return;
         }
       }
+
+      // ------------------------------------------
+      // FIREBASE LOGIN
+      // ------------------------------------------
 
       const result =
         await signInWithEmailAndPassword(
@@ -742,8 +949,11 @@ function LoginPage({
         );
 
       if (onSuccess) {
-        onSuccess(result.user);
+        onSuccess(
+          result.user
+        );
       }
+
     } catch (error) {
       console.error(
         "Login Error:",
@@ -757,33 +967,55 @@ function LoginPage({
         alert(
           "❌ User ID या Password गलत है।"
         );
-      } else if (
+      }
+
+      else if (
         error.code ===
         "auth/user-not-found"
       ) {
         alert(
           "❌ यह account नहीं मिला।"
         );
-      } else if (
+      }
+
+      else if (
         error.code ===
         "auth/wrong-password"
       ) {
         alert(
           "❌ Password गलत है।"
         );
-      } else if (
+      }
+
+      else if (
         error.code ===
         "auth/too-many-requests"
       ) {
         alert(
           "❌ बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।"
         );
-      } else {
+      }
+
+      else if (
+        error.message?.includes(
+          "PERMISSION_DENIED"
+        )
+      ) {
         alert(
-          "❌ Login Error:\n" +
-            error.message
+          "❌ Mobile Login के लिए Database Permission जरूरी है।\n\nया Email से Login करें।"
         );
       }
+
+      else {
+        alert(
+          "❌ Login Error:\n" +
+            (
+              error.message ||
+              "कुछ समस्या हुई।"
+            )
+        );
+      }
+
     } finally {
       setLoading(false);
     }
@@ -798,13 +1030,17 @@ function LoginPage({
           🔐
         </div>
 
-        <h1>Login</h1>
+        <h1>
+          Login
+        </h1>
 
         <p>
           अपने Exam Test account में login करें
         </p>
 
-        <form onSubmit={handleLogin}>
+        <form
+          onSubmit={handleLogin}
+        >
 
           <label>
             👤 User ID
@@ -815,7 +1051,9 @@ function LoginPage({
             placeholder="Mobile Number या Email"
             value={userId}
             onChange={(e) =>
-              setUserId(e.target.value)
+              setUserId(
+                e.target.value
+              )
             }
             autoComplete="username"
           />
@@ -851,13 +1089,17 @@ function LoginPage({
               placeholder="Password"
               value={password}
               onChange={(e) =>
-                setPassword(e.target.value)
+                setPassword(
+                  e.target.value
+                )
               }
               autoComplete="current-password"
               style={{
                 width: "100%",
-                paddingRight: "50px",
-                boxSizing: "border-box",
+                paddingRight:
+                  "50px",
+                boxSizing:
+                  "border-box",
               }}
             />
 
@@ -869,15 +1111,19 @@ function LoginPage({
                 )
               }
               style={{
-                position: "absolute",
+                position:
+                  "absolute",
                 right: "10px",
                 top: "50%",
                 transform:
                   "translateY(-50%)",
                 border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                fontSize: "20px",
+                background:
+                  "transparent",
+                cursor:
+                  "pointer",
+                fontSize:
+                  "20px",
               }}
             >
               {showPassword
@@ -908,7 +1154,9 @@ function LoginPage({
         </button>
 
         <div className="divider">
-          <span>या</span>
+          <span>
+            या
+          </span>
         </div>
 
         <button
@@ -920,6 +1168,7 @@ function LoginPage({
         </button>
 
         <div className="auth-switch">
+
           नया account बनाना है?
 
           <button
@@ -928,6 +1177,7 @@ function LoginPage({
           >
             Create Account
           </button>
+
         </div>
 
         <button
@@ -948,7 +1198,9 @@ function LoginPage({
 // FORGOT PASSWORD
 // ======================================================
 
-function ForgotPassword({ onBack }) {
+function ForgotPassword({
+  onBack,
+}) {
   const [email, setEmail] =
     useState("");
 
@@ -959,7 +1211,9 @@ function ForgotPassword({ onBack }) {
     e.preventDefault();
 
     if (!email.trim()) {
-      alert("Email ID डालें।");
+      alert(
+        "Email ID डालें।"
+      );
       return;
     }
 
@@ -968,7 +1222,9 @@ function ForgotPassword({ onBack }) {
 
       await sendPasswordResetEmail(
         auth,
-        email.trim().toLowerCase()
+        email
+          .trim()
+          .toLowerCase()
       );
 
       alert(
@@ -976,6 +1232,7 @@ function ForgotPassword({ onBack }) {
       );
 
       onBack();
+
     } catch (error) {
       console.error(
         "Forgot Password Error:",
@@ -989,12 +1246,15 @@ function ForgotPassword({ onBack }) {
         alert(
           "❌ इस Email से कोई account नहीं मिला।"
         );
-      } else {
+      }
+
+      else {
         alert(
           "❌ Error:\n" +
             error.message
         );
       }
+
     } finally {
       setLoading(false);
     }
@@ -1017,7 +1277,9 @@ function ForgotPassword({ onBack }) {
           अपना registered Email डालें।
         </p>
 
-        <form onSubmit={handleForgot}>
+        <form
+          onSubmit={handleForgot}
+        >
 
           <label>
             📧 Registered Email
@@ -1028,7 +1290,9 @@ function ForgotPassword({ onBack }) {
             placeholder="Email ID"
             value={email}
             onChange={(e) =>
-              setEmail(e.target.value)
+              setEmail(
+                e.target.value
+              )
             }
           />
 
@@ -1048,10 +1312,13 @@ function ForgotPassword({ onBack }) {
           style={{
             marginTop: "15px",
             padding: "12px",
-            background: "#fff7ed",
-            borderRadius: "10px",
+            background:
+              "#fff7ed",
+            borderRadius:
+              "10px",
             fontSize: "14px",
-            color: "#9a3412",
+            color:
+              "#9a3412",
           }}
         >
           Forgot Password के लिए Firebase
@@ -1092,7 +1359,10 @@ function AdminLogin({
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (!email.trim() || !password) {
+    if (
+      !email.trim() ||
+      !password
+    ) {
       alert(
         "Email और Password भरें।"
       );
@@ -1105,7 +1375,9 @@ function AdminLogin({
       const result =
         await signInWithEmailAndPassword(
           auth,
-          email.trim().toLowerCase(),
+          email
+            .trim()
+            .toLowerCase(),
           password
         );
 
@@ -1130,8 +1402,11 @@ function AdminLogin({
       );
 
       if (onSuccess) {
-        onSuccess(loggedUser);
+        onSuccess(
+          loggedUser
+        );
       }
+
     } catch (error) {
       console.error(
         "Admin Login Error:",
@@ -1142,6 +1417,7 @@ function AdminLogin({
         "❌ Admin Login Error:\n" +
           error.message
       );
+
     } finally {
       setLoading(false);
     }
@@ -1156,13 +1432,17 @@ function AdminLogin({
           👑
         </div>
 
-        <h1>Admin Login</h1>
+        <h1>
+          Admin Login
+        </h1>
 
         <p>
           Exam Test Admin Panel
         </p>
 
-        <form onSubmit={handleLogin}>
+        <form
+          onSubmit={handleLogin}
+        >
 
           <label>
             📧 Admin Email
@@ -1172,7 +1452,9 @@ function AdminLogin({
             type="email"
             value={email}
             onChange={(e) =>
-              setEmail(e.target.value)
+              setEmail(
+                e.target.value
+              )
             }
           />
 
@@ -1184,7 +1466,9 @@ function AdminLogin({
             type="password"
             value={password}
             onChange={(e) =>
-              setPassword(e.target.value)
+              setPassword(
+                e.target.value
+              )
             }
           />
 
@@ -1255,20 +1539,24 @@ function TestRunner({
   const calculateResult = () => {
     let correct = 0;
 
-    questions.forEach((q, index) => {
-      const correctIndex =
-        getCorrectIndex(q);
+    questions.forEach(
+      (q, index) => {
+        const correctIndex =
+          getCorrectIndex(q);
 
-      if (
-        correctIndex >= 0 &&
-        answers[index] === correctIndex
-      ) {
-        correct++;
+        if (
+          correctIndex >= 0 &&
+          answers[index] ===
+            correctIndex
+        ) {
+          correct++;
+        }
       }
-    });
+    );
 
     const wrong =
-      questions.length - correct;
+      questions.length -
+      correct;
 
     const percentage =
       questions.length
@@ -1288,18 +1576,27 @@ function TestRunner({
 
   if (!questions.length) {
     return (
-      <div style={{ padding: "20px" }}>
+      <div
+        style={{
+          padding: "20px",
+        }}
+      >
 
         <button
           type="button"
           onClick={onBack}
           style={{
             ...buttonBase,
-            padding: "12px 20px",
-            background: "#e2e8f0",
-            color: "#111827",
-            fontSize: "17px",
-            fontWeight: "700",
+            padding:
+              "12px 20px",
+            background:
+              "#e2e8f0",
+            color:
+              "#111827",
+            fontSize:
+              "17px",
+            fontWeight:
+              "700",
           }}
         >
           ← Test List
@@ -1308,10 +1605,14 @@ function TestRunner({
         <div
           style={{
             marginTop: "20px",
-            background: "#fff",
-            padding: "40px",
-            borderRadius: "18px",
-            textAlign: "center",
+            background:
+              "#fff",
+            padding:
+              "40px",
+            borderRadius:
+              "18px",
+            textAlign:
+              "center",
           }}
         >
           <h2>
@@ -1331,16 +1632,26 @@ function TestRunner({
     } = calculateResult();
 
     return (
-      <div style={{ padding: "20px" }}>
+      <div
+        style={{
+          padding: "20px",
+        }}
+      >
 
         <div
           style={{
-            maxWidth: "760px",
-            margin: "30px auto",
-            background: "#fff",
-            borderRadius: "18px",
-            padding: "35px",
-            textAlign: "center",
+            maxWidth:
+              "760px",
+            margin:
+              "30px auto",
+            background:
+              "#fff",
+            borderRadius:
+              "18px",
+            padding:
+              "35px",
+            textAlign:
+              "center",
             boxShadow:
               "0 10px 35px rgba(0,0,0,.10)",
           }}
@@ -1348,32 +1659,49 @@ function TestRunner({
 
           <div
             style={{
-              fontSize: "52px",
+              fontSize:
+                "52px",
             }}
           >
             🎉
           </div>
 
-          <h1 style={{ color: "#1d4ed8" }}>
+          <h1
+            style={{
+              color:
+                "#1d4ed8",
+            }}
+          >
             Test Complete
           </h1>
 
           <h2>
-            {test?.title || "Test"}
+            {test?.title ||
+              "Test"}
           </h2>
 
           <div
             style={{
-              fontSize: "42px",
-              fontWeight: "800",
-              color: "#1d4ed8",
-              margin: "20px 0",
+              fontSize:
+                "42px",
+              fontWeight:
+                "800",
+              color:
+                "#1d4ed8",
+              margin:
+                "20px 0",
             }}
           >
-            {correct} / {questions.length}
+            {correct} /{" "}
+            {questions.length}
           </div>
 
-          <p style={{ fontSize: "20px" }}>
+          <p
+            style={{
+              fontSize:
+                "20px",
+            }}
+          >
             प्रतिशत:{" "}
             <strong>
               {percentage}%
@@ -1382,46 +1710,67 @@ function TestRunner({
 
           <div
             style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "15px",
-              flexWrap: "wrap",
-              margin: "25px 0",
+              display:
+                "flex",
+              justifyContent:
+                "center",
+              gap:
+                "15px",
+              flexWrap:
+                "wrap",
+              margin:
+                "25px 0",
             }}
           >
 
             <div
               style={{
-                padding: "15px 25px",
-                borderRadius: "12px",
-                background: "#dcfce7",
-                color: "#166534",
-                fontWeight: "800",
+                padding:
+                  "15px 25px",
+                borderRadius:
+                  "12px",
+                background:
+                  "#dcfce7",
+                color:
+                  "#166534",
+                fontWeight:
+                  "800",
               }}
             >
-              ✓ सही: {correct}
+              ✓ सही:{" "}
+              {correct}
             </div>
 
             <div
               style={{
-                padding: "15px 25px",
-                borderRadius: "12px",
-                background: "#fee2e2",
-                color: "#991b1b",
-                fontWeight: "800",
+                padding:
+                  "15px 25px",
+                borderRadius:
+                  "12px",
+                background:
+                  "#fee2e2",
+                color:
+                  "#991b1b",
+                fontWeight:
+                  "800",
               }}
             >
-              ✗ गलत: {wrong}
+              ✗ गलत:{" "}
+              {wrong}
             </div>
 
           </div>
 
           <div
             style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "12px",
-              flexWrap: "wrap",
+              display:
+                "flex",
+              justifyContent:
+                "center",
+              gap:
+                "12px",
+              flexWrap:
+                "wrap",
             }}
           >
 
@@ -1431,15 +1780,22 @@ function TestRunner({
                 setCurrent(0);
                 setSubmitted(false);
                 setReviewMode(true);
-                setShowExplanation(false);
+                setShowExplanation(
+                  false
+                );
               }}
               style={{
                 ...buttonBase,
-                padding: "13px 20px",
-                background: "#1264d8",
-                color: "#fff",
-                fontSize: "17px",
-                fontWeight: "700",
+                padding:
+                  "13px 20px",
+                background:
+                  "#1264d8",
+                color:
+                  "#fff",
+                fontSize:
+                  "17px",
+                fontWeight:
+                  "700",
               }}
             >
               🔄 Questions Retest /
@@ -1451,11 +1807,16 @@ function TestRunner({
               onClick={onBack}
               style={{
                 ...buttonBase,
-                padding: "13px 20px",
-                background: "#e2e8f0",
-                color: "#111827",
-                fontSize: "17px",
-                fontWeight: "700",
+                padding:
+                  "13px 20px",
+                background:
+                  "#e2e8f0",
+                color:
+                  "#111827",
+                fontSize:
+                  "17px",
+                fontWeight:
+                  "700",
               }}
             >
               ← Test List
@@ -1479,14 +1840,21 @@ function TestRunner({
     selected !== undefined;
 
   const correctAnswer =
-    getCorrectIndex(question);
+    getCorrectIndex(
+      question
+    );
 
   const goPrevious = () => {
     setCurrent((value) =>
-      Math.max(0, value - 1)
+      Math.max(
+        0,
+        value - 1
+      )
     );
 
-    setShowExplanation(false);
+    setShowExplanation(
+      false
+    );
   };
 
   const goNext = () => {
@@ -1494,17 +1862,22 @@ function TestRunner({
       current <
       questions.length - 1
     ) {
-      setCurrent((value) =>
-        value + 1
+      setCurrent(
+        (value) =>
+          value + 1
       );
 
-      setShowExplanation(false);
+      setShowExplanation(
+        false
+      );
     } else {
       setSubmitted(true);
     }
   };
 
-  const selectOption = (index) => {
+  const selectOption = (
+    index
+  ) => {
     if (
       reviewMode &&
       hasSelected
@@ -1512,35 +1885,50 @@ function TestRunner({
       return;
     }
 
-    setAnswers((prev) => ({
-      ...prev,
-      [current]: index,
-    }));
+    setAnswers(
+      (prev) => ({
+        ...prev,
+        [current]:
+          index,
+      })
+    );
 
     if (reviewMode) {
-      setShowExplanation(true);
+      setShowExplanation(
+        true
+      );
     } else {
-      window.setTimeout(() => {
-        if (
-          current <
-          questions.length - 1
-        ) {
-          setCurrent((value) =>
-            value + 1
-          );
-        } else {
-          setSubmitted(true);
-        }
-      }, 180);
+      window.setTimeout(
+        () => {
+          if (
+            current <
+            questions.length -
+              1
+          ) {
+            setCurrent(
+              (value) =>
+                value + 1
+            );
+          } else {
+            setSubmitted(
+              true
+            );
+          }
+        },
+        180
+      );
     }
   };
 
   return (
     <div
       style={{
-        padding: "20px",
-        maxWidth: "1200px",
-        margin: "auto",
+        padding:
+          "20px",
+        maxWidth:
+          "1200px",
+        margin:
+          "auto",
       }}
     >
 
@@ -1549,12 +1937,18 @@ function TestRunner({
         onClick={onBack}
         style={{
           ...buttonBase,
-          padding: "12px 20px",
-          background: "#e2e8f0",
-          color: "#111827",
-          fontSize: "17px",
-          fontWeight: "700",
-          marginBottom: "20px",
+          padding:
+            "12px 20px",
+          background:
+            "#e2e8f0",
+          color:
+            "#111827",
+          fontSize:
+            "17px",
+          fontWeight:
+            "700",
+          marginBottom:
+            "20px",
         }}
       >
         ← Test List
@@ -1562,10 +1956,14 @@ function TestRunner({
 
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #dbe3ee",
-          borderRadius: "18px",
-          padding: "30px",
+          background:
+            "#fff",
+          border:
+            "1px solid #dbe3ee",
+          borderRadius:
+            "18px",
+          padding:
+            "30px",
         }}
       >
 
@@ -1573,47 +1971,63 @@ function TestRunner({
           style={{
             borderBottom:
               "1px solid #e2e8f0",
-            paddingBottom: "18px",
-            marginBottom: "28px",
+            paddingBottom:
+              "18px",
+            marginBottom:
+              "28px",
           }}
         >
 
           <div
             style={{
-              fontSize: "22px",
-              fontWeight: "800",
+              fontSize:
+                "22px",
+              fontWeight:
+                "800",
             }}
           >
-            {test?.exam || "UPPCS"}
+            {test?.exam ||
+              "UPPCS"}
           </div>
 
           <div
             style={{
-              fontSize: "20px",
-              fontWeight: "700",
-              marginTop: "5px",
+              fontSize:
+                "20px",
+              fontWeight:
+                "700",
+              marginTop:
+                "5px",
             }}
           >
-            {test?.title || "Test"} /{" "}
+            {test?.title ||
+              "Test"} /{" "}
             {questions.length}
           </div>
 
           <div
             style={{
-              fontSize: "18px",
-              fontWeight: "700",
-              marginTop: "7px",
-              color: "#334155",
+              fontSize:
+                "18px",
+              fontWeight:
+                "700",
+              marginTop:
+                "7px",
+              color:
+                "#334155",
             }}
           >
-            प्रश्न {current + 1} /{" "}
+            प्रश्न{" "}
+            {current + 1} /{" "}
             {questions.length}
 
             {reviewMode && (
               <span
                 style={{
-                  marginLeft: "10px",
-                  color: "#7c3aed",
+                  marginLeft:
+                    "10px",
+                  color:
+                    "#7c3aed",
                 }}
               >
                 • Review Mode
@@ -1623,13 +2037,19 @@ function TestRunner({
 
         </div>
 
-        <div style={{ marginBottom: "28px" }}>
+        <div
+          style={{
+            marginBottom:
+              "28px",
+          }}
+        >
 
           <h2
             style={{
               fontSize:
                 "clamp(20px,3vw,28px)",
-              lineHeight: "1.6",
+              lineHeight:
+                "1.6",
             }}
           >
             {current + 1}.{" "}
@@ -1640,96 +2060,125 @@ function TestRunner({
 
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px",
+            display:
+              "flex",
+            flexDirection:
+              "column",
+            gap:
+              "14px",
           }}
         >
 
-          {(question.options || [])
+          {(question.options ||
+            [])
             .slice(0, 4)
-            .map((option, index) => {
+            .map(
+              (
+                option,
+                index
+              ) => {
 
-              const isSelected =
-                selected === index;
+                const isSelected =
+                  selected ===
+                  index;
 
-              const isCorrect =
-                index ===
-                correctAnswer;
+                const isCorrect =
+                  index ===
+                  correctAnswer;
 
-              const isWrong =
-                reviewMode &&
-                isSelected &&
-                !isCorrect;
+                const isWrong =
+                  reviewMode &&
+                  isSelected &&
+                  !isCorrect;
 
-              let background =
-                "#1264d8";
+                let background =
+                  "#1264d8";
 
-              if (
-                reviewMode &&
-                hasSelected
-              ) {
-                if (isCorrect) {
+                if (
+                  reviewMode &&
+                  hasSelected
+                ) {
+                  if (
+                    isCorrect
+                  ) {
+                    background =
+                      "#16a34a";
+                  } else if (
+                    isWrong
+                  ) {
+                    background =
+                      "#dc2626";
+                  }
+                } else if (
+                  isSelected
+                ) {
                   background =
-                    "#16a34a";
-                } else if (isWrong) {
-                  background =
-                    "#dc2626";
+                    "#2563eb";
                 }
-              } else if (
-                isSelected
-              ) {
-                background =
-                  "#2563eb";
-              }
 
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  disabled={
-                    reviewMode &&
-                    hasSelected
-                  }
-                  onClick={() =>
-                    selectOption(index)
-                  }
-                  style={{
-                    ...buttonBase,
-                    width: "100%",
-                    minHeight: "64px",
-                    padding:
-                      "16px 20px",
-                    background,
-                    color: "#fff",
-                    textAlign: "left",
-                    fontSize: "20px",
-                    fontWeight: "700",
-                    lineHeight: "1.4",
-                    display: "flex",
-                    alignItems:
-                      "center",
-                  }}
-                >
-                  <span
+                return (
+                  <button
+                    key={
+                      index
+                    }
+                    type="button"
+                    disabled={
+                      reviewMode &&
+                      hasSelected
+                    }
+                    onClick={() =>
+                      selectOption(
+                        index
+                      )
+                    }
                     style={{
-                      width: "45px",
-                      flex:
-                        "0 0 45px",
+                      ...buttonBase,
+                      width:
+                        "100%",
+                      minHeight:
+                        "64px",
+                      padding:
+                        "16px 20px",
+                      background,
+                      color:
+                        "#fff",
+                      textAlign:
+                        "left",
+                      fontSize:
+                        "20px",
+                      fontWeight:
+                        "700",
+                      lineHeight:
+                        "1.4",
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
                     }}
                   >
-                    {String.fromCharCode(
-                      65 + index
-                    )}
-                    .
-                  </span>
+                    <span
+                      style={{
+                        width:
+                          "45px",
+                        flex:
+                          "0 0 45px",
+                      }}
+                    >
+                      {String.fromCharCode(
+                        65 +
+                          index
+                      )}
+                      .
+                    </span>
 
-                  <span>
-                    {option}
-                  </span>
-                </button>
-              );
-            })}
+                    <span>
+                      {option}
+                    </span>
+
+                  </button>
+                );
+              }
+            )}
 
         </div>
 
@@ -1738,37 +2187,49 @@ function TestRunner({
           hasSelected && (
             <div
               style={{
-                marginTop: "20px",
-                padding: "18px",
-                background: "#eff6ff",
+                marginTop:
+                  "20px",
+                padding:
+                  "18px",
+                background:
+                  "#eff6ff",
                 border:
                   "1px solid #bfdbfe",
-                borderRadius: "12px",
+                borderRadius:
+                  "12px",
               }}
             >
 
               <div
                 style={{
-                  fontSize: "19px",
-                  fontWeight: "800",
-                  marginBottom: "8px",
+                  fontSize:
+                    "19px",
+                  fontWeight:
+                    "800",
+                  marginBottom:
+                    "8px",
                 }}
               >
                 {selected ===
                 correctAnswer
                   ? "✓ सही उत्तर"
-                  : correctAnswer >= 0
+                  : correctAnswer >=
+                    0
                   ? `✗ गलत उत्तर — सही उत्तर: ${String.fromCharCode(
-                      65 + correctAnswer
+                      65 +
+                        correctAnswer
                     )}`
                   : "✗ सही उत्तर उपलब्ध नहीं है"}
               </div>
 
               <div
                 style={{
-                  fontSize: "19px",
-                  fontWeight: "800",
-                  marginBottom: "6px",
+                  fontSize:
+                    "19px",
+                  fontWeight:
+                    "800",
+                  marginBottom:
+                    "6px",
                 }}
               >
                 💡 व्याख्या
@@ -1776,9 +2237,12 @@ function TestRunner({
 
               <div
                 style={{
-                  fontSize: "17px",
-                  lineHeight: "1.6",
-                  whiteSpace: "pre-wrap",
+                  fontSize:
+                    "17px",
+                  lineHeight:
+                    "1.6",
+                  whiteSpace:
+                    "pre-wrap",
                 }}
               >
                 {question.explanation ||
@@ -1790,30 +2254,43 @@ function TestRunner({
 
         <div
           style={{
-            display: "flex",
+            display:
+              "flex",
             justifyContent:
               "space-between",
-            alignItems: "center",
-            gap: "12px",
-            marginTop: "30px",
-            flexWrap: "wrap",
+            alignItems:
+              "center",
+            gap:
+              "12px",
+            marginTop:
+              "30px",
+            flexWrap:
+              "wrap",
           }}
         >
 
           <button
             type="button"
-            disabled={current === 0}
-            onClick={goPrevious}
+            disabled={
+              current === 0
+            }
+            onClick={
+              goPrevious
+            }
             style={{
               ...buttonBase,
-              padding: "13px 22px",
+              padding:
+                "13px 22px",
               background:
                 current === 0
                   ? "#bfdbfe"
                   : "#1264d8",
-              color: "#fff",
-              fontSize: "17px",
-              fontWeight: "700",
+              color:
+                "#fff",
+              fontSize:
+                "17px",
+              fontWeight:
+                "700",
             }}
           >
             ← Previous
@@ -1822,30 +2299,41 @@ function TestRunner({
           {reviewMode ? (
             <button
               type="button"
-              disabled={!hasSelected}
-              onClick={goNext}
+              disabled={
+                !hasSelected
+              }
+              onClick={
+                goNext
+              }
               style={{
                 ...buttonBase,
-                padding: "13px 22px",
+                padding:
+                  "13px 22px",
                 background:
                   hasSelected
                     ? "#1264d8"
                     : "#94a3b8",
-                color: "#fff",
-                fontSize: "17px",
-                fontWeight: "700",
+                color:
+                  "#fff",
+                fontSize:
+                  "17px",
+                fontWeight:
+                  "700",
               }}
             >
               {current ===
-              questions.length - 1
+              questions.length -
+                1
                 ? "✓ Review Complete"
                 : "Next →"}
             </button>
           ) : (
             <div
               style={{
-                color: "#64748b",
-                fontWeight: "600",
+                color:
+                  "#64748b",
+                fontWeight:
+                  "600",
               }}
             >
               विकल्प चुनते ही अगला प्रश्न खुलेगा
@@ -1864,7 +2352,6 @@ function TestRunner({
 // ======================================================
 
 export default function App() {
-
   const [page, setPage] =
     useState("home");
 
@@ -1884,7 +2371,9 @@ export default function App() {
     useState({});
 
   const [siteResources, setSiteResources] =
-    useState(defaultResources);
+    useState(
+      defaultResources
+    );
 
   const [adminOpen, setAdminOpen] =
     useState(false);
@@ -1904,12 +2393,17 @@ export default function App() {
       onAuthStateChanged(
         auth,
         (currentUser) => {
-          setUser(currentUser);
-          setAuthLoading(false);
+          setUser(
+            currentUser
+          );
+          setAuthLoading(
+            false
+          );
         }
       );
 
-    return () => unsubscribe();
+    return () =>
+      unsubscribe();
   }, []);
 
   // ====================================================
@@ -1936,7 +2430,8 @@ export default function App() {
         }
       );
 
-    return () => unsubscribe();
+    return () =>
+      unsubscribe();
   }, []);
 
   // ====================================================
@@ -1958,19 +2453,29 @@ export default function App() {
             snapshot.val();
 
           if (
-            Array.isArray(value) &&
+            Array.isArray(
+              value
+            ) &&
             value.length
           ) {
-            setSiteResources(value);
-          } else if (
+            setSiteResources(
+              value
+            );
+          }
+
+          else if (
             value &&
             typeof value ===
               "object"
           ) {
             setSiteResources(
-              Object.values(value)
+              Object.values(
+                value
+              )
             );
-          } else {
+          }
+
+          else {
             setSiteResources(
               defaultResources
             );
@@ -1983,7 +2488,8 @@ export default function App() {
         }
       );
 
-    return () => unsubscribe();
+    return () =>
+      unsubscribe();
   }, []);
 
   // ====================================================
@@ -1995,7 +2501,8 @@ export default function App() {
       () =>
         siteResources.filter(
           (item) =>
-            item?.enabled !== false
+            item?.enabled !==
+            false
         ),
       [siteResources]
     );
@@ -2010,14 +2517,18 @@ export default function App() {
 
       Object.entries(
         cloudTests
-      ).forEach(([id, test]) => {
-        if (
-          test &&
-          test.status === "public"
-        ) {
-          result[id] = test;
+      ).forEach(
+        ([id, test]) => {
+          if (
+            test &&
+            test.status ===
+              "public"
+          ) {
+            result[id] =
+              test;
+          }
         }
-      });
+      );
 
       return result;
     }, [cloudTests]);
@@ -2026,29 +2537,31 @@ export default function App() {
   // GOOGLE LOGIN
   // ====================================================
 
-  const login = async () => {
-    try {
-      const result =
-        await signInWithPopup(
-          auth,
-          googleProvider
+  const login =
+    async () => {
+      try {
+        const result =
+          await signInWithPopup(
+            auth,
+            googleProvider
+          );
+
+        return result.user;
+
+      } catch (error) {
+        console.error(
+          "Google Login Error:",
+          error
         );
 
-      return result.user;
-    } catch (error) {
-      console.error(
-        "Google Login Error:",
-        error
-      );
+        alert(
+          "Google Login नहीं हुआ:\n" +
+            error.message
+        );
 
-      alert(
-        "Google Login नहीं हुआ:\n" +
-          error.message
-      );
-
-      return null;
-    }
-  };
+        return null;
+      }
+    };
 
   // ====================================================
   // AUTH SUCCESS
@@ -2056,99 +2569,142 @@ export default function App() {
 
   const handleAuthSuccess =
     (loggedUser) => {
-      setUser(loggedUser);
-      setAuthPage(null);
+      setUser(
+        loggedUser
+      );
+      setAuthPage(
+        null
+      );
     };
 
   // ====================================================
   // LOGOUT
   // ====================================================
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
+  const logout =
+    async () => {
+      try {
+        await signOut(
+          auth
+        );
 
-      setAdminOpen(false);
-      setAdminLoginOpen(false);
-      setAuthPage(null);
-      setPage("home");
-    } catch (error) {
-      console.error(error);
+        setAdminOpen(
+          false
+        );
 
-      alert(
-        "Logout error:\n" +
-          error.message
-      );
-    }
-  };
+        setAdminLoginOpen(
+          false
+        );
+
+        setAuthPage(
+          null
+        );
+
+        setPage(
+          "home"
+        );
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        alert(
+          "Logout error:\n" +
+            error.message
+        );
+      }
+    };
 
   // ====================================================
   // OPEN LOGIN
   // ====================================================
 
-  const openLogin = () => {
-    setAuthPage("login");
-  };
+  const openLogin =
+    () => {
+      setAuthPage(
+        "login"
+      );
+    };
 
   // ====================================================
   // OPEN REGISTER
   // ====================================================
 
-  const openRegister = () => {
-    setAuthPage("register");
-  };
+  const openRegister =
+    () => {
+      setAuthPage(
+        "register"
+      );
+    };
 
   // ====================================================
   // OPEN FORGOT
   // ====================================================
 
-  const openForgot = () => {
-    setAuthPage("forgot");
-  };
+  const openForgot =
+    () => {
+      setAuthPage(
+        "forgot"
+      );
+    };
 
   // ====================================================
   // GOOGLE LOGIN
   // ====================================================
 
-  const googleLogin = async () => {
-    const loggedInUser =
-      await login();
+  const googleLogin =
+    async () => {
+      const loggedInUser =
+        await login();
 
-    if (loggedInUser) {
-      setAuthPage(null);
-    }
-  };
+      if (
+        loggedInUser
+      ) {
+        setAuthPage(
+          null
+        );
+      }
+    };
 
   // ====================================================
   // REQUIRE LOGIN
   // ====================================================
 
-  const requireLogin = (action) => {
-    if (!user) {
-      setAuthPage("login");
-      return;
-    }
+  const requireLogin =
+    (action) => {
+      if (!user) {
+        setAuthPage(
+          "login"
+        );
+        return;
+      }
 
-    if (action) {
-      action();
-    }
-  };
+      if (action) {
+        action();
+      }
+    };
 
   // ====================================================
   // ADMIN OPEN
   // ====================================================
 
-  const openAdmin = () => {
-    if (
-      user?.email?.toLowerCase() ===
-      ADMIN_EMAIL.toLowerCase()
-    ) {
-      setAdminOpen(true);
-      return;
-    }
+  const openAdmin =
+    () => {
+      if (
+        user?.email?.toLowerCase() ===
+        ADMIN_EMAIL.toLowerCase()
+      ) {
+        setAdminOpen(
+          true
+        );
+        return;
+      }
 
-    setAdminLoginOpen(true);
-  };
+      setAdminLoginOpen(
+        true
+      );
+    };
 
   // ====================================================
   // ADMIN LOGIN SUCCESS
@@ -2156,68 +2712,111 @@ export default function App() {
 
   const handleAdminLoginSuccess =
     (loggedUser) => {
-      setUser(loggedUser);
-      setAdminLoginOpen(false);
-      setAdminOpen(true);
+      setUser(
+        loggedUser
+      );
+
+      setAdminLoginOpen(
+        false
+      );
+
+      setAdminOpen(
+        true
+      );
     };
 
   // ====================================================
   // HOME
   // ====================================================
 
-  const goHome = () => {
-    setPage("home");
-    setSelectedExam(null);
-    setSelectedTest(null);
-    setAdminOpen(false);
-    setAdminLoginOpen(false);
+  const goHome =
+    () => {
+      setPage(
+        "home"
+      );
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
+      setSelectedExam(
+        null
+      );
+
+      setSelectedTest(
+        null
+      );
+
+      setAdminOpen(
+        false
+      );
+
+      setAdminLoginOpen(
+        false
+      );
+
+      window.scrollTo({
+        top: 0,
+        behavior:
+          "smooth",
+      });
+    };
 
   // ====================================================
   // OPEN EXAM
   // ====================================================
 
-  const openExam = (exam) => {
-    setSelectedExam(exam);
-    setPage("tests");
-    setSelectedTest(null);
+  const openExam =
+    (exam) => {
+      setSelectedExam(
+        exam
+      );
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
+      setPage(
+        "tests"
+      );
+
+      setSelectedTest(
+        null
+      );
+
+      window.scrollTo({
+        top: 0,
+        behavior:
+          "smooth",
+      });
+    };
 
   // ====================================================
   // OPEN TEST
   // ====================================================
 
-  const openTest = async (test) => {
-    if (!test) {
-      alert(
-        "❌ Test उपलब्ध नहीं है।"
+  const openTest =
+    async (test) => {
+      if (!test) {
+        alert(
+          "❌ Test उपलब्ध नहीं है।"
+        );
+        return;
+      }
+
+      if (!user) {
+        setAuthPage(
+          "login"
+        );
+        return;
+      }
+
+      setSelectedTest(
+        test
       );
-      return;
-    }
 
-    if (!user) {
-      setAuthPage("login");
-      return;
-    }
+      setPage(
+        "test"
+      );
 
-    setSelectedTest(test);
-    setPage("test");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
+      window.scrollTo({
+        top: 0,
+        behavior:
+          "smooth",
+      });
+    };
 
   // ====================================================
   // AUTH LOADING
@@ -2227,14 +2826,22 @@ export default function App() {
     return (
       <div
         style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          background: "#eef5ff",
-          fontSize: "22px",
-          fontWeight: "700",
-          color: "#1857c9",
+          minHeight:
+            "100vh",
+          display:
+            "flex",
+          justifyContent:
+            "center",
+          alignItems:
+            "center",
+          background:
+            "#eef5ff",
+          fontSize:
+            "22px",
+          fontWeight:
+            "700",
+          color:
+            "#1857c9",
         }}
       >
         📚 Exam Test Loading...
@@ -2246,15 +2853,24 @@ export default function App() {
   // REGISTER
   // ====================================================
 
-  if (authPage === "register") {
+  if (
+    authPage ===
+    "register"
+  ) {
     return (
       <RegisterPage
-        onSuccess={handleAuthSuccess}
+        onSuccess={
+          handleAuthSuccess
+        }
         onLogin={() =>
-          setAuthPage("login")
+          setAuthPage(
+            "login"
+          )
         }
         onClose={() =>
-          setAuthPage(null)
+          setAuthPage(
+            null
+          )
         }
       />
     );
@@ -2264,19 +2880,32 @@ export default function App() {
   // LOGIN
   // ====================================================
 
-  if (authPage === "login") {
+  if (
+    authPage ===
+    "login"
+  ) {
     return (
       <LoginPage
-        onSuccess={handleAuthSuccess}
+        onSuccess={
+          handleAuthSuccess
+        }
         onRegister={() =>
-          setAuthPage("register")
+          setAuthPage(
+            "register"
+          )
         }
         onForgot={() =>
-          setAuthPage("forgot")
+          setAuthPage(
+            "forgot"
+          )
         }
-        onGoogle={googleLogin}
+        onGoogle={
+          googleLogin
+        }
         onClose={() =>
-          setAuthPage(null)
+          setAuthPage(
+            null
+          )
         }
       />
     );
@@ -2286,11 +2915,16 @@ export default function App() {
   // FORGOT PASSWORD
   // ====================================================
 
-  if (authPage === "forgot") {
+  if (
+    authPage ===
+    "forgot"
+  ) {
     return (
       <ForgotPassword
         onBack={() =>
-          setAuthPage("login")
+          setAuthPage(
+            "login"
+          )
         }
       />
     );
@@ -2300,14 +2934,18 @@ export default function App() {
   // ADMIN LOGIN
   // ====================================================
 
-  if (adminLoginOpen) {
+  if (
+    adminLoginOpen
+  ) {
     return (
       <AdminLogin
         onSuccess={
           handleAdminLoginSuccess
         }
         onClose={() =>
-          setAdminLoginOpen(false)
+          setAdminLoginOpen(
+            false
+          )
         }
       />
     );
@@ -2324,9 +2962,13 @@ export default function App() {
         <AdminPanel
           user={user}
           tests={cloudTests}
-          resources={siteResources}
+          resources={
+            siteResources
+          }
           onClose={() =>
-            setAdminOpen(false)
+            setAdminOpen(
+              false
+            )
           }
         />
 
@@ -2360,7 +3002,9 @@ export default function App() {
 
               <button
                 className="open-btn"
-                onClick={openLogin}
+                onClick={
+                  openLogin
+                }
               >
                 🔐 Login करें
               </button>
@@ -2368,7 +3012,9 @@ export default function App() {
               <button
                 className="back"
                 onClick={() =>
-                  setPage("tests")
+                  setPage(
+                    "tests"
+                  )
                 }
               >
                 ← वापस जाएँ
@@ -2388,9 +3034,13 @@ export default function App() {
         <main className="test-page-container">
 
           <TestRunner
-            test={selectedTest}
+            test={
+              selectedTest
+            }
             onBack={() =>
-              setPage("tests")
+              setPage(
+                "tests"
+              )
             }
           />
 
@@ -2416,7 +3066,9 @@ export default function App() {
 
             <div
               className="logo"
-              onClick={goHome}
+              onClick={
+                goHome
+              }
             >
 
               <div className="logo-icon">
@@ -2441,15 +3093,20 @@ export default function App() {
             <nav className="nav">
 
               <button
-                onClick={goHome}
+                onClick={
+                  goHome
+                }
               >
                 🏠 Home
               </button>
 
               <button
                 onClick={() =>
-                  requireLogin(() =>
-                    setPage("resources")
+                  requireLogin(
+                    () =>
+                      setPage(
+                        "resources"
+                      )
                   )
                 }
               >
@@ -2458,8 +3115,11 @@ export default function App() {
 
               <button
                 onClick={() =>
-                  requireLogin(() =>
-                    setPage("current")
+                  requireLogin(
+                    () =>
+                      setPage(
+                        "current"
+                      )
                   )
                 }
               >
@@ -2468,8 +3128,11 @@ export default function App() {
 
               <button
                 onClick={() =>
-                  requireLogin(() =>
-                    setPage("mcq")
+                  requireLogin(
+                    () =>
+                      setPage(
+                        "mcq"
+                      )
                   )
                 }
               >
@@ -2478,7 +3141,9 @@ export default function App() {
 
               <button
                 className="admin-btn"
-                onClick={openAdmin}
+                onClick={
+                  openAdmin
+                }
               >
                 👑 Admin Panel
               </button>
@@ -2486,10 +3151,13 @@ export default function App() {
               {user ? (
                 <button
                   className="login-btn"
-                  onClick={logout}
+                  onClick={
+                    logout
+                  }
                   title={
                     user.email ||
-                    user.displayName
+                    user.displayName ||
+                    ""
                   }
                 >
                   👤 Logout
@@ -2497,7 +3165,9 @@ export default function App() {
               ) : (
                 <button
                   className="login-btn"
-                  onClick={openLogin}
+                  onClick={
+                    openLogin
+                  }
                 >
                   🔐 Login
                 </button>
@@ -2515,7 +3185,8 @@ export default function App() {
 
           {/* HOME */}
 
-          {page === "home" && (
+          {page ===
+            "home" && (
             <>
 
               <section className="hero">
@@ -2568,48 +3239,60 @@ export default function App() {
 
               <div className="exam-grid">
 
-                {exams.map((exam) => (
+                {exams.map(
+                  (exam) => (
 
-                  <div
-                    className="exam-card"
-                    key={exam.id}
-                    style={{
-                      background:
-                        exam.color,
-                    }}
-                  >
+                    <div
+                      className="exam-card"
+                      key={
+                        exam.id
+                      }
+                      style={{
+                        background:
+                          exam.color,
+                      }}
+                    >
 
-                    <div className="exam-icon">
-                      {exam.icon}
+                      <div className="exam-icon">
+                        {
+                          exam.icon
+                        }
+                      </div>
+
+                      <h3>
+                        {
+                          exam.name
+                        }
+                      </h3>
+
+                      <p>
+                        {
+                          exam.description
+                        }
+                      </p>
+
+                      <span className="paid">
+                        Test Series
+                      </span>
+
+                      <button
+                        className="open-btn"
+                        onClick={() =>
+                          requireLogin(
+                            () =>
+                              openExam(
+                                exam
+                              )
+                          )
+                        }
+                      >
+                        Test Series →
+                      </button>
+
                     </div>
 
-                    <h3>
-                      {exam.name}
-                    </h3>
-
-                    <p>
-                      {exam.description}
-                    </p>
-
-                    <span className="paid">
-                      Test Series
-                    </span>
-
-                    <button
-                      className="open-btn"
-                      onClick={() =>
-                        requireLogin(
-                          () =>
-                            openExam(exam)
-                        )
-                      }
-                    >
-                      Test Series →
-                    </button>
-
-                  </div>
-
-                ))}
+                  )
+                )}
 
               </div>
 
@@ -2631,7 +3314,10 @@ export default function App() {
               <div className="resource-grid">
 
                 {visibleResources.map(
-                  (item, index) => (
+                  (
+                    item,
+                    index
+                  ) => (
 
                     <div
                       className="resource-card"
@@ -2642,37 +3328,47 @@ export default function App() {
                     >
 
                       <div className="icon">
-                        {item.icon}
+                        {
+                          item.icon
+                        }
                       </div>
 
                       <h3>
-                        {item.title}
+                        {
+                          item.title
+                        }
                       </h3>
 
                       <p>
-                        {item.text}
+                        {
+                          item.text
+                        }
                       </p>
 
                       <button
                         className="open-btn"
                         onClick={() =>
-                          requireLogin(() => {
+                          requireLogin(
+                            () => {
 
-                            if (
-                              item.page ===
-                              "tests"
-                            ) {
-                              openExam(
-                                exams[0]
-                              );
-                            } else {
-                              setPage(
-                                item.page ||
-                                  "resources"
-                              );
+                              if (
+                                item.page ===
+                                "tests"
+                              ) {
+                                openExam(
+                                  exams[0]
+                                );
+                              }
+
+                              else {
+                                setPage(
+                                  item.page ||
+                                    "resources"
+                                );
+                              }
+
                             }
-
-                          })
+                          )
                         }
                       >
                         Open →
@@ -2701,8 +3397,11 @@ export default function App() {
                 <button
                   className="primary"
                   onClick={() =>
-                    requireLogin(() =>
-                      setPage("current")
+                    requireLogin(
+                      () =>
+                        setPage(
+                          "current"
+                        )
                     )
                   }
                 >
@@ -2727,8 +3426,11 @@ export default function App() {
                 <button
                   className="primary"
                   onClick={() =>
-                    requireLogin(() =>
-                      setPage("mcq")
+                    requireLogin(
+                      () =>
+                        setPage(
+                          "mcq"
+                        )
                     )
                   }
                 >
@@ -2742,13 +3444,16 @@ export default function App() {
 
           {/* TEST LIST */}
 
-          {page === "tests" &&
+          {page ===
+            "tests" &&
             selectedExam && (
               <>
 
                 <button
                   className="back"
-                  onClick={goHome}
+                  onClick={
+                    goHome
+                  }
                 >
                   ← Home पर वापस जाएँ
                 </button>
@@ -2756,15 +3461,22 @@ export default function App() {
                 <div className="page-title">
 
                   <div className="big-icon">
-                    {selectedExam.icon}
+                    {
+                      selectedExam.icon
+                    }
                   </div>
 
                   <h1>
-                    {selectedExam.name} Test Series
+                    {
+                      selectedExam.name
+                    }{" "}
+                    Test Series
                   </h1>
 
                   <p>
-                    {selectedExam.description}
+                    {
+                      selectedExam.description
+                    }
                   </p>
 
                 </div>
@@ -2780,7 +3492,10 @@ export default function App() {
                         selectedExam.id
                     )
                     .sort(
-                      (a, b) =>
+                      (
+                        a,
+                        b
+                      ) =>
                         Number(
                           a[1]
                             .testNumber ||
@@ -2793,29 +3508,43 @@ export default function App() {
                         )
                     )
                     .map(
-                      ([id, test]) => (
+                      (
+                        [
+                          id,
+                          test,
+                        ]
+                      ) => (
 
                         <div
                           className="test-card"
-                          key={id}
+                          key={
+                            id
+                          }
                         >
 
                           <h3>
-                            {test.title}
+                            {
+                              test.title
+                            }
                           </h3>
 
                           <p>
-                            {test.questions
-                              ?.length ||
-                              0}{" "}
+                            {
+                              test
+                                .questions
+                                ?.length ||
+                              0
+                            }{" "}
                             MCQ Questions
                           </p>
 
                           <div className="price">
 
                             {Number(
-                              test.price || 0
-                            ) === 0
+                              test.price ||
+                                0
+                            ) ===
+                            0
                               ? "FREE"
                               : `₹${test.price}`}
 
@@ -2823,7 +3552,9 @@ export default function App() {
 
                           <button
                             onClick={() =>
-                              openTest(test)
+                              openTest(
+                                test
+                              )
                             }
                           >
                             Start Test
@@ -2842,7 +3573,8 @@ export default function App() {
                   ([, test]) =>
                     test.exam ===
                     selectedExam.id
-                ).length === 0 && (
+                ).length ===
+                  0 && (
 
                   <div className="empty-box">
 
@@ -2868,12 +3600,15 @@ export default function App() {
 
           {/* RESOURCES */}
 
-          {page === "resources" && (
+          {page ===
+            "resources" && (
             <>
 
               <button
                 className="back"
-                onClick={goHome}
+                onClick={
+                  goHome
+                }
               >
                 ← Home
               </button>
@@ -2898,7 +3633,10 @@ export default function App() {
               <div className="resource-grid">
 
                 {visibleResources.map(
-                  (item, index) => (
+                  (
+                    item,
+                    index
+                  ) => (
 
                     <div
                       className="resource-card"
@@ -2909,15 +3647,21 @@ export default function App() {
                     >
 
                       <div className="icon">
-                        {item.icon}
+                        {
+                          item.icon
+                        }
                       </div>
 
                       <h3>
-                        {item.title}
+                        {
+                          item.title
+                        }
                       </h3>
 
                       <p>
-                        {item.text}
+                        {
+                          item.text
+                        }
                       </p>
 
                     </div>
@@ -2932,12 +3676,18 @@ export default function App() {
 
           {/* CURRENT AFFAIRS */}
 
-          {page === "current" && (
+          {page ===
+            "current" && (
             <CurrentAffairs
-              onBack={goHome}
+              onBack={
+                goHome
+              }
               onMCQ={() =>
-                requireLogin(() =>
-                  setPage("mcq")
+                requireLogin(
+                  () =>
+                    setPage(
+                      "mcq"
+                    )
                 )
               }
             />
@@ -2945,12 +3695,15 @@ export default function App() {
 
           {/* MCQ */}
 
-          {page === "mcq" && (
+          {page ===
+            "mcq" && (
             <>
 
               <button
                 className="back"
-                onClick={goHome}
+                onClick={
+                  goHome
+                }
               >
                 ← Home
               </button>
@@ -2977,7 +3730,8 @@ export default function App() {
 
           <p
             style={{
-              marginTop: "15px",
+              marginTop:
+                "15px",
             }}
           >
             © 2026 Exam Test.
