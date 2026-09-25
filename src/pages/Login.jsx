@@ -10,7 +10,6 @@ function Login({ onLogin, onCreateAccount, onBack }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
     setMessage("");
 
     const id = userId.trim();
@@ -29,32 +28,29 @@ function Login({ onLogin, onCreateAccount, onBack }) {
     setLoading(true);
 
     try {
-      /*
-       * App.jsx से onLogin function आएगा।
-       * Mobile Number या Email दोनों को User ID की तरह भेजा जाएगा।
-       */
       if (onLogin) {
         await onLogin(id, pass);
       } else {
         setMessage("Login system connect नहीं है।");
       }
     } catch (error) {
-      console.error(error);
-
-      let errorMessage = "Login नहीं हो पाया।";
+      console.error("Login Error:", error);
 
       if (error?.code === "auth/invalid-credential") {
-        errorMessage = "User ID या Password गलत है।";
+        setMessage("Mobile/Email या Password गलत है।");
       } else if (error?.code === "auth/user-not-found") {
-        errorMessage = "यह User ID मौजूद नहीं है।";
+        setMessage("यह User ID मौजूद नहीं है।");
       } else if (error?.code === "auth/wrong-password") {
-        errorMessage = "Password गलत है।";
+        setMessage("Password गलत है।");
+      } else if (error?.code === "auth/invalid-email") {
+        setMessage("Email सही दर्ज करें।");
       } else if (error?.code === "auth/too-many-requests") {
-        errorMessage =
-          "बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।";
+        setMessage(
+          "बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।"
+        );
+      } else {
+        setMessage("Login नहीं हो पाया। कृपया फिर कोशिश करें।");
       }
-
-      setMessage(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -64,24 +60,23 @@ function Login({ onLogin, onCreateAccount, onBack }) {
     <div className="login-page">
       <div className="login-card">
 
-        {/* Header */}
-        <div className="login-header">
-          <div className="login-lock">🔐</div>
+        {/* Logo / Lock */}
+        <div className="login-logo">🔐</div>
 
-          <h1>Login</h1>
+        {/* Heading */}
+        <h1 className="login-title">Login</h1>
 
-          <p>
-            अपने Exam Test account में login करें
-          </p>
-        </div>
+        <p className="login-subtitle">
+          अपने Exam Test account में login करें
+        </p>
 
-        {/* Login Form */}
+        {/* Form */}
         <form onSubmit={handleLogin} className="login-form">
 
           {/* User ID */}
           <div className="form-group">
             <label htmlFor="userId">
-              📧 User ID
+              👤 User ID
             </label>
 
             <input
@@ -91,6 +86,7 @@ function Login({ onLogin, onCreateAccount, onBack }) {
               onChange={(e) => setUserId(e.target.value)}
               placeholder="Mobile Number या Email"
               autoComplete="username"
+              inputMode="email"
             />
 
             <small>
@@ -104,53 +100,53 @@ function Login({ onLogin, onCreateAccount, onBack }) {
               🔑 Password
             </label>
 
-            <div className="password-wrapper">
+            <div className="password-box">
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder="अपना Password दर्ज करें"
                 autoComplete="current-password"
               />
 
               <button
                 type="button"
-                className="show-password"
+                className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label="Show password"
               >
                 {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
 
-          {/* Error / Message */}
+          {/* Message */}
           {message && (
             <div className="login-message">
               {message}
             </div>
           )}
 
-          {/* Login Button */}
+          {/* Login */}
           <button
             type="submit"
             className="login-main-btn"
             disabled={loading}
           >
-            {loading ? "Login हो रहा है..." : "🔐 Login"}
+            {loading ? "⏳ Login हो रहा है..." : "🔐 Login"}
           </button>
-
         </form>
 
         {/* Forgot Password */}
         <button
           type="button"
           className="forgot-btn"
-          onClick={() => {
+          onClick={() =>
             setMessage(
-              "Password reset के लिए अपने registered Email का उपयोग करें।"
-            );
-          }}
+              "Password reset के लिए registered Email का उपयोग करें।"
+            )
+          }
         >
           🔑 Forgot Password?
         </button>
