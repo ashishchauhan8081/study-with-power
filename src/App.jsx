@@ -33,10 +33,6 @@ import {
 
 import firebaseConfig from "./firebase-config.json";
 
-// ======================================================
-// COMPONENTS
-// ======================================================
-
 import AdminPanel from "./components/AdminPanel";
 import AIMCQGenerator from "./components/AIMCQGenerator";
 import CurrentAffairs from "./pages/CurrentAffairs";
@@ -65,8 +61,7 @@ const db = getDatabase(firebaseApp);
 // ADMIN
 // ======================================================
 
-const ADMIN_EMAIL =
-  "cciashish@gmail.com";
+const ADMIN_EMAIL = "cciashish@gmail.com";
 
 // ======================================================
 // EXAMS
@@ -413,7 +408,7 @@ async function findEmailByMobile(mobile) {
 }
 
 // ======================================================
-// USER REGISTRATION
+// REGISTER PAGE
 // ======================================================
 
 function RegisterPage({
@@ -486,7 +481,7 @@ function RegisterPage({
         {
           uid: newUser.uid,
           name: name.trim(),
-          mobile: mobile,
+          mobile,
           email:
             email.trim().toLowerCase(),
           preparation,
@@ -495,9 +490,7 @@ function RegisterPage({
         }
       );
 
-      alert(
-        "✅ Registration सफल हुआ।"
-      );
+      alert("✅ Registration सफल हुआ।");
 
       if (onSuccess) {
         onSuccess(newUser);
@@ -548,20 +541,15 @@ function RegisterPage({
           📝
         </div>
 
-        <h1>
-          Create Account
-        </h1>
+        <h1>Create Account</h1>
 
         <p>
           Exam Test पर अपना account बनाएं
         </p>
 
-        <form
-          onSubmit={handleRegister}
-        >
-          <label>
-            👤 पूरा नाम
-          </label>
+        <form onSubmit={handleRegister}>
+
+          <label>👤 पूरा नाम</label>
 
           <input
             type="text"
@@ -572,9 +560,7 @@ function RegisterPage({
             }
           />
 
-          <label>
-            📱 Mobile Number
-          </label>
+          <label>📱 Mobile Number</label>
 
           <input
             type="tel"
@@ -591,9 +577,7 @@ function RegisterPage({
             }
           />
 
-          <label>
-            📧 Email ID
-          </label>
+          <label>📧 Email ID</label>
 
           <input
             type="email"
@@ -604,18 +588,14 @@ function RegisterPage({
             }
           />
 
-          <label>
-            🔐 Create Password
-          </label>
+          <label>🔐 Create Password</label>
 
           <input
             type="password"
             placeholder="कम से कम 6 characters"
             value={password}
             onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
+              setPassword(e.target.value)
             }
           />
 
@@ -626,9 +606,7 @@ function RegisterPage({
           <select
             value={preparation}
             onChange={(e) =>
-              setPreparation(
-                e.target.value
-              )
+              setPreparation(e.target.value)
             }
           >
             <option value="">
@@ -707,161 +685,126 @@ function LoginPage({
   const [loading, setLoading] =
     useState(false);
 
-  const handleLogin =
-    async (e) => {
-      e.preventDefault();
+  const handleLogin = async (e) => {
+    e.preventDefault();
 
-      const id =
-        userId.trim();
+    const id = userId.trim();
 
-      if (!id) {
-        alert(
-          "Mobile Number या Email डालें।"
-        );
-        return;
-      }
+    if (!id) {
+      alert(
+        "Mobile Number या Email डालें।"
+      );
+      return;
+    }
 
-      if (!password) {
-        alert(
-          "Password डालें।"
-        );
-        return;
-      }
+    if (!password) {
+      alert("Password डालें।");
+      return;
+    }
 
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
 
-        let loginEmail = "";
+      let loginEmail = "";
 
-        // ==================================================
-        // EMAIL LOGIN
-        // ==================================================
+      if (id.includes("@")) {
+        loginEmail =
+          id.toLowerCase();
+      } else {
+        const mobile =
+          id.replace(/\D/g, "");
 
-        if (
-          id.includes("@")
-        ) {
-          loginEmail =
-            id.toLowerCase();
-        }
-
-        // ==================================================
-        // MOBILE LOGIN
-        // ==================================================
-
-        else if (
-          /^[0-9]{10}$/.test(
-            id.replace(/\D/g, "")
-          )
-        ) {
-          loginEmail =
-            await findEmailByMobile(
-              id
-            );
-
-          if (!loginEmail) {
-            alert(
-              "❌ इस Mobile Number से कोई account नहीं मिला।"
-            );
-            return;
-          }
-        }
-
-        // ==================================================
-        // INVALID USER ID
-        // ==================================================
-
-        else {
+        if (!/^[0-9]{10}$/.test(mobile)) {
           alert(
             "❌ सही Mobile Number या Email डालें।"
           );
           return;
         }
 
-        // ==================================================
-        // FIREBASE LOGIN
-        // ==================================================
-
-        const result =
-          await signInWithEmailAndPassword(
-            auth,
-            loginEmail,
-            password
+        loginEmail =
+          await findEmailByMobile(
+            mobile
           );
 
-        if (onSuccess) {
-          onSuccess(
-            result.user
+        if (!loginEmail) {
+          alert(
+            "❌ इस Mobile Number से कोई account नहीं मिला।"
           );
+          return;
         }
-      } catch (error) {
-        console.error(
-          "Login Error:",
-          error
+      }
+
+      const result =
+        await signInWithEmailAndPassword(
+          auth,
+          loginEmail,
+          password
         );
 
-        if (
-          error.code ===
-          "auth/invalid-credential"
-        ) {
-          alert(
-            "❌ User ID या Password गलत है।"
-          );
-        } else if (
-          error.code ===
-          "auth/user-not-found"
-        ) {
-          alert(
-            "❌ यह account नहीं मिला।"
-          );
-        } else if (
-          error.code ===
-          "auth/wrong-password"
-        ) {
-          alert(
-            "❌ Password गलत है।"
-          );
-        } else if (
-          error.code ===
-          "auth/too-many-requests"
-        ) {
-          alert(
-            "❌ बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।"
-          );
-        } else {
-          alert(
-            "❌ Login Error:\n" +
-              error.message
-          );
-        }
-      } finally {
-        setLoading(false);
+      if (onSuccess) {
+        onSuccess(result.user);
       }
-    };
+    } catch (error) {
+      console.error(
+        "Login Error:",
+        error
+      );
+
+      if (
+        error.code ===
+        "auth/invalid-credential"
+      ) {
+        alert(
+          "❌ User ID या Password गलत है।"
+        );
+      } else if (
+        error.code ===
+        "auth/user-not-found"
+      ) {
+        alert(
+          "❌ यह account नहीं मिला।"
+        );
+      } else if (
+        error.code ===
+        "auth/wrong-password"
+      ) {
+        alert(
+          "❌ Password गलत है।"
+        );
+      } else if (
+        error.code ===
+        "auth/too-many-requests"
+      ) {
+        alert(
+          "❌ बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।"
+        );
+      } else {
+        alert(
+          "❌ Login Error:\n" +
+            error.message
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="auth-overlay">
 
       <div className="auth-card">
 
-        {/* LOGIN ICON */}
-
         <div className="auth-icon">
           🔐
         </div>
 
-        <h1>
-          Login
-        </h1>
+        <h1>Login</h1>
 
         <p>
           अपने Exam Test account में login करें
         </p>
 
-        <form
-          onSubmit={handleLogin}
-        >
-
-          {/* USER ID */}
+        <form onSubmit={handleLogin}>
 
           <label>
             👤 User ID
@@ -872,9 +815,7 @@ function LoginPage({
             placeholder="Mobile Number या Email"
             value={userId}
             onChange={(e) =>
-              setUserId(
-                e.target.value
-              )
+              setUserId(e.target.value)
             }
             autoComplete="username"
           />
@@ -889,8 +830,6 @@ function LoginPage({
           >
             Mobile Number या Email से Login करें
           </small>
-
-          {/* PASSWORD */}
 
           <label>
             🔐 Password
@@ -912,17 +851,13 @@ function LoginPage({
               placeholder="Password"
               value={password}
               onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
+                setPassword(e.target.value)
               }
               autoComplete="current-password"
               style={{
                 width: "100%",
-                paddingRight:
-                  "50px",
-                boxSizing:
-                  "border-box",
+                paddingRight: "50px",
+                boxSizing: "border-box",
               }}
             />
 
@@ -934,19 +869,15 @@ function LoginPage({
                 )
               }
               style={{
-                position:
-                  "absolute",
+                position: "absolute",
                 right: "10px",
                 top: "50%",
                 transform:
                   "translateY(-50%)",
                 border: "none",
-                background:
-                  "transparent",
-                cursor:
-                  "pointer",
-                fontSize:
-                  "20px",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: "20px",
               }}
             >
               {showPassword
@@ -955,8 +886,6 @@ function LoginPage({
             </button>
 
           </div>
-
-          {/* LOGIN BUTTON */}
 
           <button
             type="submit"
@@ -970,8 +899,6 @@ function LoginPage({
 
         </form>
 
-        {/* FORGOT */}
-
         <button
           type="button"
           className="forgot-btn"
@@ -980,12 +907,8 @@ function LoginPage({
           🔑 Forgot Password?
         </button>
 
-        {/* GOOGLE */}
-
         <div className="divider">
-          <span>
-            या
-          </span>
+          <span>या</span>
         </div>
 
         <button
@@ -995,8 +918,6 @@ function LoginPage({
         >
           🇬 Google से Login
         </button>
-
-        {/* CREATE ACCOUNT */}
 
         <div className="auth-switch">
           नया account बनाना है?
@@ -1008,8 +929,6 @@ function LoginPage({
             Create Account
           </button>
         </div>
-
-        {/* BACK */}
 
         <button
           type="button"
@@ -1029,62 +948,57 @@ function LoginPage({
 // FORGOT PASSWORD
 // ======================================================
 
-function ForgotPassword({
-  onBack,
-}) {
+function ForgotPassword({ onBack }) {
   const [email, setEmail] =
     useState("");
 
   const [loading, setLoading] =
     useState(false);
 
-  const handleForgot =
-    async (e) => {
-      e.preventDefault();
+  const handleForgot = async (e) => {
+    e.preventDefault();
 
-      if (!email.trim()) {
+    if (!email.trim()) {
+      alert("Email ID डालें।");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await sendPasswordResetEmail(
+        auth,
+        email.trim().toLowerCase()
+      );
+
+      alert(
+        "✅ Password reset link आपके Email पर भेज दिया गया है।"
+      );
+
+      onBack();
+    } catch (error) {
+      console.error(
+        "Forgot Password Error:",
+        error
+      );
+
+      if (
+        error.code ===
+        "auth/user-not-found"
+      ) {
         alert(
-          "Email ID डालें।"
+          "❌ इस Email से कोई account नहीं मिला।"
         );
-        return;
-      }
-
-      try {
-        setLoading(true);
-
-        await sendPasswordResetEmail(
-          auth,
-          email.trim().toLowerCase()
-        );
-
+      } else {
         alert(
-          "✅ Password reset link आपके Email पर भेज दिया गया है।"
+          "❌ Error:\n" +
+            error.message
         );
-
-        onBack();
-      } catch (error) {
-        console.error(
-          "Forgot Password Error:",
-          error
-        );
-
-        if (
-          error.code ===
-          "auth/user-not-found"
-        ) {
-          alert(
-            "❌ इस Email से कोई account नहीं मिला।"
-          );
-        } else {
-          alert(
-            "❌ Error:\n" +
-              error.message
-          );
-        }
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="auth-overlay">
@@ -1103,9 +1017,7 @@ function ForgotPassword({
           अपना registered Email डालें।
         </p>
 
-        <form
-          onSubmit={handleForgot}
-        >
+        <form onSubmit={handleForgot}>
 
           <label>
             📧 Registered Email
@@ -1116,9 +1028,7 @@ function ForgotPassword({
             placeholder="Email ID"
             value={email}
             onChange={(e) =>
-              setEmail(
-                e.target.value
-              )
+              setEmail(e.target.value)
             }
           />
 
@@ -1144,8 +1054,8 @@ function ForgotPassword({
             color: "#9a3412",
           }}
         >
-          Forgot Password के लिए
-          Firebase Email Reset इस्तेमाल हो रहा है।
+          Forgot Password के लिए Firebase
+          Email Reset इस्तेमाल हो रहा है।
         </div>
 
         <button
@@ -1179,69 +1089,63 @@ function AdminLogin({
   const [loading, setLoading] =
     useState(false);
 
-  const handleLogin =
-    async (e) => {
-      e.preventDefault();
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email.trim() || !password) {
+      alert(
+        "Email और Password भरें।"
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const result =
+        await signInWithEmailAndPassword(
+          auth,
+          email.trim().toLowerCase(),
+          password
+        );
+
+      const loggedUser =
+        result.user;
 
       if (
-        !email.trim() ||
-        !password
+        loggedUser.email?.toLowerCase() !==
+        ADMIN_EMAIL.toLowerCase()
       ) {
+        await signOut(auth);
+
         alert(
-          "Email और Password भरें।"
+          "❌ यह Admin Account नहीं है।"
         );
+
         return;
       }
 
-      try {
-        setLoading(true);
+      alert(
+        "✅ Admin Login सफल हुआ।"
+      );
 
-        const result =
-          await signInWithEmailAndPassword(
-            auth,
-            email.trim().toLowerCase(),
-            password
-          );
-
-        const loggedUser =
-          result.user;
-
-        if (
-          loggedUser.email?.toLowerCase() !==
-          ADMIN_EMAIL.toLowerCase()
-        ) {
-          await signOut(auth);
-
-          alert(
-            "❌ यह Admin Account नहीं है।"
-          );
-
-          return;
-        }
-
-        alert(
-          "✅ Admin Login सफल हुआ।"
-        );
-
-        if (onSuccess) {
-          onSuccess(
-            loggedUser
-          );
-        }
-      } catch (error) {
-        console.error(
-          "Admin Login Error:",
-          error
-        );
-
-        alert(
-          "❌ Admin Login Error:\n" +
-            error.message
-        );
-      } finally {
-        setLoading(false);
+      if (onSuccess) {
+        onSuccess(loggedUser);
       }
-    };
+    } catch (error) {
+      console.error(
+        "Admin Login Error:",
+        error
+      );
+
+      alert(
+        "❌ Admin Login Error:\n" +
+          error.message
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="auth-overlay">
@@ -1252,17 +1156,13 @@ function AdminLogin({
           👑
         </div>
 
-        <h1>
-          Admin Login
-        </h1>
+        <h1>Admin Login</h1>
 
         <p>
           Exam Test Admin Panel
         </p>
 
-        <form
-          onSubmit={handleLogin}
-        >
+        <form onSubmit={handleLogin}>
 
           <label>
             📧 Admin Email
@@ -1272,9 +1172,7 @@ function AdminLogin({
             type="email"
             value={email}
             onChange={(e) =>
-              setEmail(
-                e.target.value
-              )
+              setEmail(e.target.value)
             }
           />
 
@@ -1286,9 +1184,7 @@ function AdminLogin({
             type="password"
             value={password}
             onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
+              setPassword(e.target.value)
             }
           />
 
@@ -1356,52 +1252,44 @@ function TestRunner({
     boxSizing: "border-box",
   };
 
-  const calculateResult =
-    () => {
-      let correct = 0;
+  const calculateResult = () => {
+    let correct = 0;
 
-      questions.forEach(
-        (q, index) => {
-          const correctIndex =
-            getCorrectIndex(q);
+    questions.forEach((q, index) => {
+      const correctIndex =
+        getCorrectIndex(q);
 
-          if (
-            correctIndex >= 0 &&
-            answers[index] ===
-              correctIndex
-          ) {
-            correct++;
-          }
-        }
-      );
+      if (
+        correctIndex >= 0 &&
+        answers[index] === correctIndex
+      ) {
+        correct++;
+      }
+    });
 
-      const wrong =
-        questions.length -
-        correct;
+    const wrong =
+      questions.length - correct;
 
-      const percentage =
-        questions.length
-          ? Math.round(
-              (correct /
-                questions.length) *
-                100
-            )
-          : 0;
+    const percentage =
+      questions.length
+        ? Math.round(
+            (correct /
+              questions.length) *
+              100
+          )
+        : 0;
 
-      return {
-        correct,
-        wrong,
-        percentage,
-      };
+    return {
+      correct,
+      wrong,
+      percentage,
     };
+  };
 
   if (!questions.length) {
     return (
-      <div
-        style={{
-          padding: "20px",
-        }}
-      >
+      <div style={{ padding: "20px" }}>
+
         <button
           type="button"
           onClick={onBack}
@@ -1430,6 +1318,7 @@ function TestRunner({
             इस Test में Questions नहीं हैं।
           </h2>
         </div>
+
       </div>
     );
   }
@@ -1442,11 +1331,8 @@ function TestRunner({
     } = calculateResult();
 
     return (
-      <div
-        style={{
-          padding: "20px",
-        }}
-      >
+      <div style={{ padding: "20px" }}>
+
         <div
           style={{
             maxWidth: "760px",
@@ -1459,6 +1345,7 @@ function TestRunner({
               "0 10px 35px rgba(0,0,0,.10)",
           }}
         >
+
           <div
             style={{
               fontSize: "52px",
@@ -1467,17 +1354,12 @@ function TestRunner({
             🎉
           </div>
 
-          <h1
-            style={{
-              color: "#1d4ed8",
-            }}
-          >
+          <h1 style={{ color: "#1d4ed8" }}>
             Test Complete
           </h1>
 
           <h2>
-            {test?.title ||
-              "Test"}
+            {test?.title || "Test"}
           </h2>
 
           <div
@@ -1488,15 +1370,10 @@ function TestRunner({
               margin: "20px 0",
             }}
           >
-            {correct} /{" "}
-            {questions.length}
+            {correct} / {questions.length}
           </div>
 
-          <p
-            style={{
-              fontSize: "20px",
-            }}
-          >
+          <p style={{ fontSize: "20px" }}>
             प्रतिशत:{" "}
             <strong>
               {percentage}%
@@ -1512,6 +1389,7 @@ function TestRunner({
               margin: "25px 0",
             }}
           >
+
             <div
               style={{
                 padding: "15px 25px",
@@ -1535,6 +1413,7 @@ function TestRunner({
             >
               ✗ गलत: {wrong}
             </div>
+
           </div>
 
           <div
@@ -1545,6 +1424,7 @@ function TestRunner({
               flexWrap: "wrap",
             }}
           >
+
             <button
               type="button"
               onClick={() => {
@@ -1580,8 +1460,11 @@ function TestRunner({
             >
               ← Test List
             </button>
+
           </div>
+
         </div>
+
       </div>
     );
   }
@@ -1598,14 +1481,13 @@ function TestRunner({
   const correctAnswer =
     getCorrectIndex(question);
 
-  const goPrevious =
-    () => {
-      setCurrent((value) =>
-        Math.max(0, value - 1)
-      );
+  const goPrevious = () => {
+    setCurrent((value) =>
+      Math.max(0, value - 1)
+    );
 
-      setShowExplanation(false);
-    };
+    setShowExplanation(false);
+  };
 
   const goNext = () => {
     if (
@@ -1622,38 +1504,36 @@ function TestRunner({
     }
   };
 
-  const selectOption =
-    (index) => {
-      if (
-        reviewMode &&
-        hasSelected
-      ) {
-        return;
-      }
+  const selectOption = (index) => {
+    if (
+      reviewMode &&
+      hasSelected
+    ) {
+      return;
+    }
 
-      setAnswers((prev) => ({
-        ...prev,
-        [current]: index,
-      }));
+    setAnswers((prev) => ({
+      ...prev,
+      [current]: index,
+    }));
 
-      if (reviewMode) {
-        setShowExplanation(true);
-      } else {
-        window.setTimeout(() => {
-          if (
-            current <
-            questions.length - 1
-          ) {
-            setCurrent(
-              (value) =>
-                value + 1
-            );
-          } else {
-            setSubmitted(true);
-          }
-        }, 180);
-      }
-    };
+    if (reviewMode) {
+      setShowExplanation(true);
+    } else {
+      window.setTimeout(() => {
+        if (
+          current <
+          questions.length - 1
+        ) {
+          setCurrent((value) =>
+            value + 1
+          );
+        } else {
+          setSubmitted(true);
+        }
+      }, 180);
+    }
+  };
 
   return (
     <div
@@ -1663,6 +1543,7 @@ function TestRunner({
         margin: "auto",
       }}
     >
+
       <button
         type="button"
         onClick={onBack}
@@ -1687,6 +1568,7 @@ function TestRunner({
           padding: "30px",
         }}
       >
+
         <div
           style={{
             borderBottom:
@@ -1695,6 +1577,7 @@ function TestRunner({
             marginBottom: "28px",
           }}
         >
+
           <div
             style={{
               fontSize: "22px",
@@ -1737,13 +1620,11 @@ function TestRunner({
               </span>
             )}
           </div>
+
         </div>
 
-        <div
-          style={{
-            marginBottom: "28px",
-          }}
-        >
+        <div style={{ marginBottom: "28px" }}>
+
           <h2
             style={{
               fontSize:
@@ -1754,6 +1635,7 @@ function TestRunner({
             {current + 1}.{" "}
             {question.question}
           </h2>
+
         </div>
 
         <div
@@ -1763,9 +1645,11 @@ function TestRunner({
             gap: "14px",
           }}
         >
+
           {(question.options || [])
             .slice(0, 4)
             .map((option, index) => {
+
               const isSelected =
                 selected === index;
 
@@ -1846,6 +1730,7 @@ function TestRunner({
                 </button>
               );
             })}
+
         </div>
 
         {reviewMode &&
@@ -1861,6 +1746,7 @@ function TestRunner({
                 borderRadius: "12px",
               }}
             >
+
               <div
                 style={{
                   fontSize: "19px",
@@ -1873,8 +1759,7 @@ function TestRunner({
                   ? "✓ सही उत्तर"
                   : correctAnswer >= 0
                   ? `✗ गलत उत्तर — सही उत्तर: ${String.fromCharCode(
-                      65 +
-                        correctAnswer
+                      65 + correctAnswer
                     )}`
                   : "✗ सही उत्तर उपलब्ध नहीं है"}
               </div>
@@ -1899,6 +1784,7 @@ function TestRunner({
                 {question.explanation ||
                   "इस प्रश्न की व्याख्या Admin Panel में उपलब्ध नहीं है।"}
               </div>
+
             </div>
           )}
 
@@ -1913,6 +1799,7 @@ function TestRunner({
             flexWrap: "wrap",
           }}
         >
+
           <button
             type="button"
             disabled={current === 0}
@@ -1964,7 +1851,9 @@ function TestRunner({
               विकल्प चुनते ही अगला प्रश्न खुलेगा
             </div>
           )}
+
         </div>
+
       </div>
     </div>
   );
@@ -1975,6 +1864,7 @@ function TestRunner({
 // ======================================================
 
 export default function App() {
+
   const [page, setPage] =
     useState("home");
 
@@ -2019,8 +1909,7 @@ export default function App() {
         }
       );
 
-    return () =>
-      unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // ====================================================
@@ -2047,8 +1936,7 @@ export default function App() {
         }
       );
 
-    return () =>
-      unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // ====================================================
@@ -2095,8 +1983,7 @@ export default function App() {
         }
       );
 
-    return () =>
-      unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // ====================================================
@@ -2123,16 +2010,14 @@ export default function App() {
 
       Object.entries(
         cloudTests
-      ).forEach(
-        ([id, test]) => {
-          if (
-            test &&
-            test.status === "public"
-          ) {
-            result[id] = test;
-          }
+      ).forEach(([id, test]) => {
+        if (
+          test &&
+          test.status === "public"
+        ) {
+          result[id] = test;
         }
-      );
+      });
 
       return result;
     }, [cloudTests]);
@@ -2141,30 +2026,29 @@ export default function App() {
   // GOOGLE LOGIN
   // ====================================================
 
-  const login =
-    async () => {
-      try {
-        const result =
-          await signInWithPopup(
-            auth,
-            googleProvider
-          );
-
-        return result.user;
-      } catch (error) {
-        console.error(
-          "Google Login Error:",
-          error
+  const login = async () => {
+    try {
+      const result =
+        await signInWithPopup(
+          auth,
+          googleProvider
         );
 
-        alert(
-          "Google Login नहीं हुआ:\n" +
-            error.message
-        );
+      return result.user;
+    } catch (error) {
+      console.error(
+        "Google Login Error:",
+        error
+      );
 
-        return null;
-      }
-    };
+      alert(
+        "Google Login नहीं हुआ:\n" +
+          error.message
+      );
+
+      return null;
+    }
+  };
 
   // ====================================================
   // AUTH SUCCESS
@@ -2180,98 +2064,91 @@ export default function App() {
   // LOGOUT
   // ====================================================
 
-  const logout =
-    async () => {
-      try {
-        await signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
 
-        setAdminOpen(false);
-        setAdminLoginOpen(false);
-        setAuthPage(null);
-        setPage("home");
-      } catch (error) {
-        console.error(error);
+      setAdminOpen(false);
+      setAdminLoginOpen(false);
+      setAuthPage(null);
+      setPage("home");
+    } catch (error) {
+      console.error(error);
 
-        alert(
-          "Logout error:\n" +
-            error.message
-        );
-      }
-    };
+      alert(
+        "Logout error:\n" +
+          error.message
+      );
+    }
+  };
 
   // ====================================================
   // OPEN LOGIN
   // ====================================================
 
-  const openLogin =
-    () => {
-      setAuthPage("login");
-    };
+  const openLogin = () => {
+    setAuthPage("login");
+  };
 
   // ====================================================
   // OPEN REGISTER
   // ====================================================
 
-  const openRegister =
-    () => {
-      setAuthPage("register");
-    };
+  const openRegister = () => {
+    setAuthPage("register");
+  };
 
   // ====================================================
   // OPEN FORGOT
   // ====================================================
 
-  const openForgot =
-    () => {
-      setAuthPage("forgot");
-    };
+  const openForgot = () => {
+    setAuthPage("forgot");
+  };
 
   // ====================================================
   // GOOGLE LOGIN
   // ====================================================
 
-  const googleLogin =
-    async () => {
-      const loggedInUser =
-        await login();
+  const googleLogin = async () => {
+    const loggedInUser =
+      await login();
 
-      if (loggedInUser) {
-        setAuthPage(null);
-      }
-    };
+    if (loggedInUser) {
+      setAuthPage(null);
+    }
+  };
 
   // ====================================================
   // REQUIRE LOGIN
   // ====================================================
 
-  const requireLogin =
-    (action) => {
-      if (!user) {
-        setAuthPage("login");
-        return;
-      }
+  const requireLogin = (action) => {
+    if (!user) {
+      setAuthPage("login");
+      return;
+    }
 
-      if (action) {
-        action();
-      }
-    };
+    if (action) {
+      action();
+    }
+  };
 
   // ====================================================
   // ADMIN OPEN
   // ====================================================
 
-  const openAdmin =
-    () => {
-      if (
-        user?.email?.toLowerCase() ===
-        ADMIN_EMAIL.toLowerCase()
-      ) {
-        setAdminOpen(true);
-        return;
-      }
+  const openAdmin = () => {
+    if (
+      user?.email?.toLowerCase() ===
+      ADMIN_EMAIL.toLowerCase()
+    ) {
+      setAdminOpen(true);
+      return;
+    }
 
-      setAdminLoginOpen(true);
-    };
+    setAdminLoginOpen(true);
+  };
 
   // ====================================================
   // ADMIN LOGIN SUCCESS
@@ -2288,62 +2165,59 @@ export default function App() {
   // HOME
   // ====================================================
 
-  const goHome =
-    () => {
-      setPage("home");
-      setSelectedExam(null);
-      setSelectedTest(null);
-      setAdminOpen(false);
-      setAdminLoginOpen(false);
+  const goHome = () => {
+    setPage("home");
+    setSelectedExam(null);
+    setSelectedTest(null);
+    setAdminOpen(false);
+    setAdminLoginOpen(false);
 
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    };
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // ====================================================
   // OPEN EXAM
   // ====================================================
 
-  const openExam =
-    (exam) => {
-      setSelectedExam(exam);
-      setPage("tests");
-      setSelectedTest(null);
+  const openExam = (exam) => {
+    setSelectedExam(exam);
+    setPage("tests");
+    setSelectedTest(null);
 
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    };
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // ====================================================
   // OPEN TEST
   // ====================================================
 
-  const openTest =
-    async (test) => {
-      if (!test) {
-        alert(
-          "❌ Test उपलब्ध नहीं है।"
-        );
-        return;
-      }
+  const openTest = async (test) => {
+    if (!test) {
+      alert(
+        "❌ Test उपलब्ध नहीं है।"
+      );
+      return;
+    }
 
-      if (!user) {
-        setAuthPage("login");
-        return;
-      }
+    if (!user) {
+      setAuthPage("login");
+      return;
+    }
 
-      setSelectedTest(test);
-      setPage("test");
+    setSelectedTest(test);
+    setPage("test");
 
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    };
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // ====================================================
   // AUTH LOADING
@@ -2369,15 +2243,13 @@ export default function App() {
   }
 
   // ====================================================
-  // AUTH PAGES
+  // REGISTER
   // ====================================================
 
   if (authPage === "register") {
     return (
       <RegisterPage
-        onSuccess={
-          handleAuthSuccess
-        }
+        onSuccess={handleAuthSuccess}
         onLogin={() =>
           setAuthPage("login")
         }
@@ -2388,12 +2260,14 @@ export default function App() {
     );
   }
 
+  // ====================================================
+  // LOGIN
+  // ====================================================
+
   if (authPage === "login") {
     return (
       <LoginPage
-        onSuccess={
-          handleAuthSuccess
-        }
+        onSuccess={handleAuthSuccess}
         onRegister={() =>
           setAuthPage("register")
         }
@@ -2407,6 +2281,10 @@ export default function App() {
       />
     );
   }
+
+  // ====================================================
+  // FORGOT PASSWORD
+  // ====================================================
 
   if (authPage === "forgot") {
     return (
@@ -2442,6 +2320,7 @@ export default function App() {
   if (adminOpen) {
     return (
       <div className="app">
+
         <AdminPanel
           user={user}
           tests={cloudTests}
@@ -2450,6 +2329,7 @@ export default function App() {
             setAdminOpen(false)
           }
         />
+
       </div>
     );
   }
@@ -2465,7 +2345,9 @@ export default function App() {
     if (!user) {
       return (
         <div className="app">
+
           <div className="container">
+
             <div className="empty-box">
 
               <h2>
@@ -2493,13 +2375,16 @@ export default function App() {
               </button>
 
             </div>
+
           </div>
+
         </div>
       );
     }
 
     return (
       <div className="app">
+
         <main className="test-page-container">
 
           <TestRunner
@@ -2510,6 +2395,7 @@ export default function App() {
           />
 
         </main>
+
       </div>
     );
   }
@@ -2563,9 +2449,7 @@ export default function App() {
               <button
                 onClick={() =>
                   requireLogin(() =>
-                    setPage(
-                      "resources"
-                    )
+                    setPage("resources")
                   )
                 }
               >
@@ -2575,9 +2459,7 @@ export default function App() {
               <button
                 onClick={() =>
                   requireLogin(() =>
-                    setPage(
-                      "current"
-                    )
+                    setPage("current")
                   )
                 }
               >
@@ -2686,52 +2568,48 @@ export default function App() {
 
               <div className="exam-grid">
 
-                {exams.map(
-                  (exam) => (
+                {exams.map((exam) => (
 
-                    <div
-                      className="exam-card"
-                      key={exam.id}
-                      style={{
-                        background:
-                          exam.color,
-                      }}
-                    >
+                  <div
+                    className="exam-card"
+                    key={exam.id}
+                    style={{
+                      background:
+                        exam.color,
+                    }}
+                  >
 
-                      <div className="exam-icon">
-                        {exam.icon}
-                      </div>
-
-                      <h3>
-                        {exam.name}
-                      </h3>
-
-                      <p>
-                        {exam.description}
-                      </p>
-
-                      <span className="paid">
-                        Test Series
-                      </span>
-
-                      <button
-                        className="open-btn"
-                        onClick={() =>
-                          requireLogin(
-                            () =>
-                              openExam(
-                                exam
-                              )
-                          )
-                        }
-                      >
-                        Test Series →
-                      </button>
-
+                    <div className="exam-icon">
+                      {exam.icon}
                     </div>
 
-                  )
-                )}
+                    <h3>
+                      {exam.name}
+                    </h3>
+
+                    <p>
+                      {exam.description}
+                    </p>
+
+                    <span className="paid">
+                      Test Series
+                    </span>
+
+                    <button
+                      className="open-btn"
+                      onClick={() =>
+                        requireLogin(
+                          () =>
+                            openExam(exam)
+                        )
+                      }
+                    >
+                      Test Series →
+                    </button>
+
+                  </div>
+
+                ))}
 
               </div>
 
@@ -2753,10 +2631,7 @@ export default function App() {
               <div className="resource-grid">
 
                 {visibleResources.map(
-                  (
-                    item,
-                    index
-                  ) => (
+                  (item, index) => (
 
                     <div
                       className="resource-card"
@@ -2780,33 +2655,25 @@ export default function App() {
 
                       <button
                         className="open-btn"
-                        onClick={() => {
+                        onClick={() =>
+                          requireLogin(() => {
 
-                          requireLogin(
-                            () => {
-
-                              if (
-                                item.page ===
-                                "tests"
-                              ) {
-
-                                openExam(
-                                  exams[0]
-                                );
-
-                              } else {
-
-                                setPage(
-                                  item.page ||
-                                    "resources"
-                                );
-
-                              }
-
+                            if (
+                              item.page ===
+                              "tests"
+                            ) {
+                              openExam(
+                                exams[0]
+                              );
+                            } else {
+                              setPage(
+                                item.page ||
+                                  "resources"
+                              );
                             }
-                          );
 
-                        }}
+                          })
+                        }
                       >
                         Open →
                       </button>
@@ -2835,9 +2702,7 @@ export default function App() {
                   className="primary"
                   onClick={() =>
                     requireLogin(() =>
-                      setPage(
-                        "current"
-                      )
+                      setPage("current")
                     )
                   }
                 >
@@ -2846,7 +2711,7 @@ export default function App() {
 
               </div>
 
-              {/* AI */}
+              {/* AI MCQ */}
 
               <div className="blue-box">
 
@@ -2895,8 +2760,7 @@ export default function App() {
                   </div>
 
                   <h1>
-                    {selectedExam.name}{" "}
-                    Test Series
+                    {selectedExam.name} Test Series
                   </h1>
 
                   <p>
@@ -2929,9 +2793,7 @@ export default function App() {
                         )
                     )
                     .map(
-                      (
-                        [id, test]
-                      ) => (
+                      ([id, test]) => (
 
                         <div
                           className="test-card"
@@ -2950,19 +2812,18 @@ export default function App() {
                           </p>
 
                           <div className="price">
+
                             {Number(
-                              test.price ||
-                                0
+                              test.price || 0
                             ) === 0
                               ? "FREE"
                               : `₹${test.price}`}
+
                           </div>
 
                           <button
                             onClick={() =>
-                              openTest(
-                                test
-                              )
+                              openTest(test)
                             }
                           >
                             Start Test
@@ -3037,10 +2898,7 @@ export default function App() {
               <div className="resource-grid">
 
                 {visibleResources.map(
-                  (
-                    item,
-                    index
-                  ) => (
+                  (item, index) => (
 
                     <div
                       className="resource-card"
