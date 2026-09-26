@@ -51,9 +51,7 @@ const firebaseApp = getApps().length
     });
 
 const auth = getAuth(firebaseApp);
-
 const googleProvider = new GoogleAuthProvider();
-
 const db = getDatabase(firebaseApp);
 
 // ======================================================
@@ -209,7 +207,7 @@ const defaultResources = [
 ];
 
 // ======================================================
-// QUESTION NORMALIZER
+// NORMALIZE QUESTIONS
 // ======================================================
 
 function normalizeQuestions(questions) {
@@ -243,7 +241,7 @@ function normalizeQuestions(questions) {
 }
 
 // ======================================================
-// CORRECT ANSWER INDEX
+// GET CORRECT ANSWER
 // ======================================================
 
 function getCorrectIndex(question) {
@@ -364,7 +362,6 @@ async function findEmailByMobile(mobile) {
     const usersRef = ref(db, "users");
 
     let finished = false;
-
     let unsubscribe = () => {};
 
     const finish = (callback, value) => {
@@ -468,9 +465,7 @@ function RegisterPage({
     e.preventDefault();
 
     if (!name.trim()) {
-      alert(
-        "❌ कृपया अपना पूरा नाम डालें।"
-      );
+      alert("❌ कृपया अपना पूरा नाम डालें।");
       return;
     }
 
@@ -482,9 +477,7 @@ function RegisterPage({
     }
 
     if (!email.trim()) {
-      alert(
-        "❌ कृपया Email ID डालें।"
-      );
+      alert("❌ कृपया Email ID डालें।");
       return;
     }
 
@@ -496,9 +489,7 @@ function RegisterPage({
     }
 
     if (!preparation) {
-      alert(
-        "❌ कृपया अपना Exam चुनें।"
-      );
+      alert("❌ कृपया अपना Exam चुनें।");
       return;
     }
 
@@ -508,10 +499,6 @@ function RegisterPage({
       const cleanEmail =
         email.trim().toLowerCase();
 
-      // ------------------------------------------
-      // MOBILE DUPLICATE CHECK
-      // ------------------------------------------
-
       let existingEmail = "";
 
       try {
@@ -519,10 +506,10 @@ function RegisterPage({
           await findEmailByMobile(
             mobile
           );
-      } catch (mobileError) {
+      } catch (error) {
         console.warn(
           "Mobile lookup failed:",
-          mobileError
+          error
         );
       }
 
@@ -530,13 +517,8 @@ function RegisterPage({
         alert(
           "❌ यह Mobile Number पहले से registered है।\n\nकृपया Login करें।"
         );
-
         return;
       }
-
-      // ------------------------------------------
-      // CREATE FIREBASE USER
-      // ------------------------------------------
 
       const result =
         await createUserWithEmailAndPassword(
@@ -548,10 +530,6 @@ function RegisterPage({
       const newUser =
         result.user;
 
-      // ------------------------------------------
-      // DISPLAY NAME
-      // ------------------------------------------
-
       await updateProfile(
         newUser,
         {
@@ -560,10 +538,6 @@ function RegisterPage({
         }
       );
 
-      // ------------------------------------------
-      // SAVE USER PROFILE
-      // ------------------------------------------
-
       await set(
         ref(
           db,
@@ -571,16 +545,10 @@ function RegisterPage({
         ),
         {
           uid: newUser.uid,
-
           name: name.trim(),
-
           mobile: mobile,
-
           email: cleanEmail,
-
-          preparation:
-            preparation,
-
+          preparation,
           createdAt:
             new Date().toISOString(),
         }
@@ -604,7 +572,7 @@ function RegisterPage({
         "auth/email-already-in-use"
       ) {
         alert(
-          "❌ यह Email पहले से registered है।\n\nयदि यह आपका account है तो Login करें।"
+          "❌ यह Email पहले से registered है।"
         );
       } else if (
         error.code ===
@@ -628,8 +596,6 @@ function RegisterPage({
           "❌ Internet connection की समस्या है।"
         );
       } else if (
-        error.code ===
-          "PERMISSION_DENIED" ||
         error.message?.includes(
           "PERMISSION_DENIED"
         )
@@ -680,9 +646,7 @@ function RegisterPage({
             placeholder="अपना पूरा नाम"
             value={name}
             onChange={(e) =>
-              setName(
-                e.target.value
-              )
+              setName(e.target.value)
             }
             autoComplete="name"
           />
@@ -717,9 +681,7 @@ function RegisterPage({
             placeholder="example@gmail.com"
             value={email}
             onChange={(e) =>
-              setEmail(
-                e.target.value
-              )
+              setEmail(e.target.value)
             }
             autoComplete="email"
           />
@@ -734,9 +696,7 @@ function RegisterPage({
             minLength={6}
             value={password}
             onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
+              setPassword(e.target.value)
             }
             autoComplete="new-password"
           />
@@ -748,25 +708,21 @@ function RegisterPage({
           <select
             value={preparation}
             onChange={(e) =>
-              setPreparation(
-                e.target.value
-              )
+              setPreparation(e.target.value)
             }
           >
             <option value="">
               -- परीक्षा चुनें --
             </option>
 
-            {exams.map(
-              (exam) => (
-                <option
-                  key={exam.id}
-                  value={exam.name}
-                >
-                  {exam.name}
-                </option>
-              )
-            )}
+            {exams.map((exam) => (
+              <option
+                key={exam.id}
+                value={exam.name}
+              >
+                {exam.name}
+              </option>
+            ))}
 
             <option value="Other">
               Other
@@ -835,8 +791,7 @@ function LoginPage({
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    const id =
-      userId.trim();
+    const id = userId.trim();
 
     if (!id) {
       alert(
@@ -846,9 +801,7 @@ function LoginPage({
     }
 
     if (!password) {
-      alert(
-        "Password डालें।"
-      );
+      alert("Password डालें।");
       return;
     }
 
@@ -857,27 +810,12 @@ function LoginPage({
 
       let loginEmail = "";
 
-      // ------------------------------------------
-      // EMAIL LOGIN
-      // ------------------------------------------
-
-      if (
-        id.includes("@")
-      ) {
+      if (id.includes("@")) {
         loginEmail =
           id.toLowerCase();
-      }
-
-      // ------------------------------------------
-      // MOBILE LOGIN
-      // ------------------------------------------
-
-      else {
+      } else {
         const mobile =
-          id.replace(
-            /\D/g,
-            ""
-          );
+          id.replace(/\D/g, "");
 
         if (
           !/^[0-9]{10}$/.test(
@@ -887,7 +825,6 @@ function LoginPage({
           alert(
             "❌ सही Mobile Number या Email डालें।"
           );
-
           return;
         }
 
@@ -900,14 +837,9 @@ function LoginPage({
           alert(
             "❌ इस Mobile Number से कोई account नहीं मिला।"
           );
-
           return;
         }
       }
-
-      // ------------------------------------------
-      // FIREBASE LOGIN
-      // ------------------------------------------
 
       const result =
         await signInWithEmailAndPassword(
@@ -917,9 +849,7 @@ function LoginPage({
         );
 
       if (onSuccess) {
-        onSuccess(
-          result.user
-        );
+        onSuccess(result.user);
       }
     } catch (error) {
       console.error(
@@ -954,14 +884,6 @@ function LoginPage({
       ) {
         alert(
           "❌ बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।"
-        );
-      } else if (
-        error.message?.includes(
-          "PERMISSION_DENIED"
-        )
-      ) {
-        alert(
-          "❌ Mobile Login के लिए Database Permission जरूरी है।\n\nया Email से Login करें।"
         );
       } else {
         alert(
@@ -1007,9 +929,7 @@ function LoginPage({
             placeholder="Mobile Number या Email"
             value={userId}
             onChange={(e) =>
-              setUserId(
-                e.target.value
-              )
+              setUserId(e.target.value)
             }
             autoComplete="username"
           />
@@ -1031,10 +951,8 @@ function LoginPage({
 
           <div
             style={{
-              position:
-                "relative",
-              width:
-                "100%",
+              position: "relative",
+              width: "100%",
             }}
           >
 
@@ -1047,18 +965,13 @@ function LoginPage({
               placeholder="Password"
               value={password}
               onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
+                setPassword(e.target.value)
               }
               autoComplete="current-password"
               style={{
-                width:
-                  "100%",
-                paddingRight:
-                  "50px",
-                boxSizing:
-                  "border-box",
+                width: "100%",
+                paddingRight: "50px",
+                boxSizing: "border-box",
               }}
             />
 
@@ -1070,22 +983,15 @@ function LoginPage({
                 )
               }
               style={{
-                position:
-                  "absolute",
-                right:
-                  "10px",
-                top:
-                  "50%",
+                position: "absolute",
+                right: "10px",
+                top: "50%",
                 transform:
                   "translateY(-50%)",
-                border:
-                  "none",
-                background:
-                  "transparent",
-                cursor:
-                  "pointer",
-                fontSize:
-                  "20px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: "20px",
               }}
             >
               {showPassword
@@ -1116,9 +1022,7 @@ function LoginPage({
         </button>
 
         <div className="divider">
-          <span>
-            या
-          </span>
+          <span>या</span>
         </div>
 
         <button
@@ -1157,9 +1061,7 @@ function LoginPage({
 // FORGOT PASSWORD
 // ======================================================
 
-function ForgotPassword({
-  onBack,
-}) {
+function ForgotPassword({ onBack }) {
   const [email, setEmail] =
     useState("");
 
@@ -1169,9 +1071,23 @@ function ForgotPassword({
   const handleForgot = async (e) => {
     e.preventDefault();
 
-    if (!email.trim()) {
+    const cleanEmail =
+      email.trim().toLowerCase();
+
+    if (!cleanEmail) {
       alert(
-        "Email ID डालें।"
+        "❌ Registered Email ID डालें।"
+      );
+      return;
+    }
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        cleanEmail
+      )
+    ) {
+      alert(
+        "❌ कृपया सही Email ID डालें।"
       );
       return;
     }
@@ -1181,16 +1097,15 @@ function ForgotPassword({
 
       await sendPasswordResetEmail(
         auth,
-        email
-          .trim()
-          .toLowerCase()
+        cleanEmail
       );
 
       alert(
-        "✅ Password reset link आपके Email पर भेज दिया गया है।"
+        "✅ Password Reset Link आपके Email पर भेज दिया गया है।\n\nअपने Inbox और Spam/Junk Folder को check करें।"
       );
 
       onBack();
+
     } catch (error) {
       console.error(
         "Forgot Password Error:",
@@ -1204,10 +1119,34 @@ function ForgotPassword({
         alert(
           "❌ इस Email से कोई account नहीं मिला।"
         );
+      } else if (
+        error.code ===
+        "auth/invalid-email"
+      ) {
+        alert(
+          "❌ Email ID सही नहीं है।"
+        );
+      } else if (
+        error.code ===
+        "auth/too-many-requests"
+      ) {
+        alert(
+          "❌ बहुत ज्यादा requests हो गई हैं। कुछ समय बाद फिर कोशिश करें।"
+        );
+      } else if (
+        error.code ===
+        "auth/network-request-failed"
+      ) {
+        alert(
+          "❌ Internet connection check करें।"
+        );
       } else {
         alert(
-          "❌ Error:\n" +
-            error.message
+          "❌ Password Reset Error:\n\n" +
+            (
+              error.message ||
+              "कुछ समस्या हुई।"
+            )
         );
       }
     } finally {
@@ -1229,7 +1168,7 @@ function ForgotPassword({
         </h1>
 
         <p>
-          अपना registered Email डालें।
+          अपना registered Email डालें
         </p>
 
         <form
@@ -1242,13 +1181,13 @@ function ForgotPassword({
 
           <input
             type="email"
-            placeholder="Email ID"
+            placeholder="example@gmail.com"
             value={email}
             onChange={(e) =>
-              setEmail(
-                e.target.value
-              )
+              setEmail(e.target.value)
             }
+            autoComplete="email"
+            disabled={loading}
           />
 
           <button
@@ -1257,7 +1196,7 @@ function ForgotPassword({
             className="auth-primary-btn"
           >
             {loading
-              ? "⏳ भेजा जा रहा है..."
+              ? "⏳ Reset Link भेजा जा रहा है..."
               : "📩 Reset Password Link भेजें"}
           </button>
 
@@ -1265,28 +1204,29 @@ function ForgotPassword({
 
         <div
           style={{
-            marginTop:
-              "15px",
-            padding:
-              "12px",
-            background:
-              "#fff7ed",
-            borderRadius:
-              "10px",
-            fontSize:
-              "14px",
-            color:
-              "#9a3412",
+            marginTop: "15px",
+            padding: "14px",
+            background: "#fff7ed",
+            border:
+              "1px solid #fed7aa",
+            borderRadius: "12px",
+            fontSize: "14px",
+            lineHeight: "1.6",
+            color: "#9a3412",
           }}
         >
-          Forgot Password के लिए Firebase
+          🔐 Password Reset के लिए Firebase
           Email Reset इस्तेमाल हो रहा है।
+          <br />
+          Email में मिले link पर क्लिक करके
+          नया Password बना सकते हैं।
         </div>
 
         <button
           type="button"
           className="auth-close-btn"
           onClick={onBack}
+          disabled={loading}
         >
           ← Login पर वापस जाएँ
         </button>
@@ -1332,9 +1272,7 @@ function AdminLogin({
       const result =
         await signInWithEmailAndPassword(
           auth,
-          email
-            .trim()
-            .toLowerCase(),
+          email.trim().toLowerCase(),
           password
         );
 
@@ -1359,10 +1297,9 @@ function AdminLogin({
       );
 
       if (onSuccess) {
-        onSuccess(
-          loggedUser
-        );
+        onSuccess(loggedUser);
       }
+
     } catch (error) {
       console.error(
         "Admin Login Error:",
@@ -1373,6 +1310,7 @@ function AdminLogin({
         "❌ Admin Login Error:\n" +
           error.message
       );
+
     } finally {
       setLoading(false);
     }
@@ -1407,9 +1345,7 @@ function AdminLogin({
             type="email"
             value={email}
             onChange={(e) =>
-              setEmail(
-                e.target.value
-              )
+              setEmail(e.target.value)
             }
           />
 
@@ -1421,9 +1357,7 @@ function AdminLogin({
             type="password"
             value={password}
             onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
+              setPassword(e.target.value)
             }
           />
 
@@ -1483,16 +1417,11 @@ function TestRunner({
   ] = useState(false);
 
   const buttonBase = {
-    border:
-      "none",
-    borderRadius:
-      "10px",
-    cursor:
-      "pointer",
-    fontFamily:
-      "inherit",
-    boxSizing:
-      "border-box",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    boxSizing: "border-box",
   };
 
   const calculateResult = () => {
@@ -1514,13 +1443,10 @@ function TestRunner({
     );
 
     const attempted =
-      Object.keys(
-        answers
-      ).length;
+      Object.keys(answers).length;
 
     const wrong =
-      attempted -
-      correct;
+      attempted - correct;
 
     const unanswered =
       Math.max(
@@ -1548,28 +1474,18 @@ function TestRunner({
 
   if (!questions.length) {
     return (
-      <div
-        style={{
-          padding:
-            "20px",
-        }}
-      >
+      <div style={{ padding: "20px" }}>
 
         <button
           type="button"
           onClick={onBack}
           style={{
             ...buttonBase,
-            padding:
-              "12px 20px",
-            background:
-              "#e2e8f0",
-            color:
-              "#111827",
-            fontSize:
-              "17px",
-            fontWeight:
-              "700",
+            padding: "12px 20px",
+            background: "#e2e8f0",
+            color: "#111827",
+            fontSize: "17px",
+            fontWeight: "700",
           }}
         >
           ← Test List
@@ -1577,16 +1493,11 @@ function TestRunner({
 
         <div
           style={{
-            marginTop:
-              "20px",
-            background:
-              "#fff",
-            padding:
-              "40px",
-            borderRadius:
-              "18px",
-            textAlign:
-              "center",
+            marginTop: "20px",
+            background: "#fff",
+            padding: "40px",
+            borderRadius: "18px",
+            textAlign: "center",
           }}
         >
           <h2>
@@ -1607,27 +1518,16 @@ function TestRunner({
     } = calculateResult();
 
     return (
-      <div
-        style={{
-          padding:
-            "20px",
-        }}
-      >
+      <div style={{ padding: "20px" }}>
 
         <div
           style={{
-            maxWidth:
-              "760px",
-            margin:
-              "30px auto",
-            background:
-              "#fff",
-            borderRadius:
-              "18px",
-            padding:
-              "35px",
-            textAlign:
-              "center",
+            maxWidth: "760px",
+            margin: "30px auto",
+            background: "#fff",
+            borderRadius: "18px",
+            padding: "35px",
+            textAlign: "center",
             boxShadow:
               "0 10px 35px rgba(0,0,0,.10)",
           }}
@@ -1635,8 +1535,7 @@ function TestRunner({
 
           <div
             style={{
-              fontSize:
-                "52px",
+              fontSize: "52px",
             }}
           >
             🎉
@@ -1644,38 +1543,30 @@ function TestRunner({
 
           <h1
             style={{
-              color:
-                "#1d4ed8",
+              color: "#1d4ed8",
             }}
           >
             Test Complete
           </h1>
 
           <h2>
-            {test?.title ||
-              "Test"}
+            {test?.title || "Test"}
           </h2>
 
           <div
             style={{
-              fontSize:
-                "42px",
-              fontWeight:
-                "800",
-              color:
-                "#1d4ed8",
-              margin:
-                "20px 0",
+              fontSize: "42px",
+              fontWeight: "800",
+              color: "#1d4ed8",
+              margin: "20px 0",
             }}
           >
-            {correct} /{" "}
-            {questions.length}
+            {correct} / {questions.length}
           </div>
 
           <p
             style={{
-              fontSize:
-                "20px",
+              fontSize: "20px",
             }}
           >
             प्रतिशत:{" "}
@@ -1686,85 +1577,58 @@ function TestRunner({
 
           <div
             style={{
-              display:
-                "flex",
-              justifyContent:
-                "center",
-              gap:
-                "15px",
-              flexWrap:
-                "wrap",
-              margin:
-                "25px 0",
+              display: "flex",
+              justifyContent: "center",
+              gap: "15px",
+              flexWrap: "wrap",
+              margin: "25px 0",
             }}
           >
 
             <div
               style={{
-                padding:
-                  "15px 25px",
-                borderRadius:
-                  "12px",
-                background:
-                  "#dcfce7",
-                color:
-                  "#166534",
-                fontWeight:
-                  "800",
+                padding: "15px 25px",
+                borderRadius: "12px",
+                background: "#dcfce7",
+                color: "#166534",
+                fontWeight: "800",
               }}
             >
-              ✓ सही:{" "}
-              {correct}
+              ✓ सही: {correct}
             </div>
 
             <div
               style={{
-                padding:
-                  "15px 25px",
-                borderRadius:
-                  "12px",
-                background:
-                  "#fee2e2",
-                color:
-                  "#991b1b",
-                fontWeight:
-                  "800",
+                padding: "15px 25px",
+                borderRadius: "12px",
+                background: "#fee2e2",
+                color: "#991b1b",
+                fontWeight: "800",
               }}
             >
-              ✗ गलत:{" "}
-              {wrong}
+              ✗ गलत: {wrong}
             </div>
 
             <div
               style={{
-                padding:
-                  "15px 25px",
-                borderRadius:
-                  "12px",
-                background:
-                  "#f1f5f9",
-                color:
-                  "#334155",
-                fontWeight:
-                  "800",
+                padding: "15px 25px",
+                borderRadius: "12px",
+                background: "#f1f5f9",
+                color: "#334155",
+                fontWeight: "800",
               }}
             >
-              ○ छोड़े:{" "}
-              {unanswered}
+              ○ छोड़े: {unanswered}
             </div>
 
           </div>
 
           <div
             style={{
-              display:
-                "flex",
-              justifyContent:
-                "center",
-              gap:
-                "12px",
-              flexWrap:
-                "wrap",
+              display: "flex",
+              justifyContent: "center",
+              gap: "12px",
+              flexWrap: "wrap",
             }}
           >
 
@@ -1774,22 +1638,15 @@ function TestRunner({
                 setCurrent(0);
                 setSubmitted(false);
                 setReviewMode(true);
-                setShowExplanation(
-                  false
-                );
+                setShowExplanation(false);
               }}
               style={{
                 ...buttonBase,
-                padding:
-                  "13px 20px",
-                background:
-                  "#1264d8",
-                color:
-                  "#fff",
-                fontSize:
-                  "17px",
-                fontWeight:
-                  "700",
+                padding: "13px 20px",
+                background: "#1264d8",
+                color: "#fff",
+                fontSize: "17px",
+                fontWeight: "700",
               }}
             >
               🔄 Questions Retest /
@@ -1801,16 +1658,11 @@ function TestRunner({
               onClick={onBack}
               style={{
                 ...buttonBase,
-                padding:
-                  "13px 20px",
-                background:
-                  "#e2e8f0",
-                color:
-                  "#111827",
-                fontSize:
-                  "17px",
-                fontWeight:
-                  "700",
+                padding: "13px 20px",
+                background: "#e2e8f0",
+                color: "#111827",
+                fontSize: "17px",
+                fontWeight: "700",
               }}
             >
               ← Test List
@@ -1819,7 +1671,6 @@ function TestRunner({
           </div>
 
         </div>
-
       </div>
     );
   }
@@ -1834,21 +1685,14 @@ function TestRunner({
     selected !== undefined;
 
   const correctAnswer =
-    getCorrectIndex(
-      question
-    );
+    getCorrectIndex(question);
 
   const goPrevious = () => {
     setCurrent((value) =>
-      Math.max(
-        0,
-        value - 1
-      )
+      Math.max(0, value - 1)
     );
 
-    setShowExplanation(
-      false
-    );
+    setShowExplanation(false);
   };
 
   const goNext = () => {
@@ -1857,21 +1701,16 @@ function TestRunner({
       questions.length - 1
     ) {
       setCurrent(
-        (value) =>
-          value + 1
+        (value) => value + 1
       );
 
-      setShowExplanation(
-        false
-      );
+      setShowExplanation(false);
     } else {
       setSubmitted(true);
     }
   };
 
-  const selectOption = (
-    index
-  ) => {
+  const selectOption = (index) => {
     if (
       reviewMode &&
       hasSelected
@@ -1879,50 +1718,35 @@ function TestRunner({
       return;
     }
 
-    setAnswers(
-      (prev) => ({
-        ...prev,
-        [current]:
-          index,
-      })
-    );
+    setAnswers((prev) => ({
+      ...prev,
+      [current]: index,
+    }));
 
     if (reviewMode) {
-      setShowExplanation(
-        true
-      );
+      setShowExplanation(true);
     } else {
-      window.setTimeout(
-        () => {
-          if (
-            current <
-            questions.length -
-              1
-          ) {
-            setCurrent(
-              (value) =>
-                value + 1
-            );
-          } else {
-            setSubmitted(
-              true
-            );
-          }
-        },
-        180
-      );
+      window.setTimeout(() => {
+        if (
+          current <
+          questions.length - 1
+        ) {
+          setCurrent(
+            (value) => value + 1
+          );
+        } else {
+          setSubmitted(true);
+        }
+      }, 180);
     }
   };
 
   return (
     <div
       style={{
-        padding:
-          "20px",
-        maxWidth:
-          "1200px",
-        margin:
-          "auto",
+        padding: "20px",
+        maxWidth: "1200px",
+        margin: "auto",
       }}
     >
 
@@ -1931,18 +1755,12 @@ function TestRunner({
         onClick={onBack}
         style={{
           ...buttonBase,
-          padding:
-            "12px 20px",
-          background:
-            "#e2e8f0",
-          color:
-            "#111827",
-          fontSize:
-            "17px",
-          fontWeight:
-            "700",
-          marginBottom:
-            "20px",
+          padding: "12px 20px",
+          background: "#e2e8f0",
+          color: "#111827",
+          fontSize: "17px",
+          fontWeight: "700",
+          marginBottom: "20px",
         }}
       >
         ← Test List
@@ -1950,14 +1768,11 @@ function TestRunner({
 
       <div
         style={{
-          background:
-            "#fff",
+          background: "#fff",
           border:
             "1px solid #dbe3ee",
-          borderRadius:
-            "18px",
-          padding:
-            "30px",
+          borderRadius: "18px",
+          padding: "30px",
         }}
       >
 
@@ -1965,63 +1780,47 @@ function TestRunner({
           style={{
             borderBottom:
               "1px solid #e2e8f0",
-            paddingBottom:
-              "18px",
-            marginBottom:
-              "28px",
+            paddingBottom: "18px",
+            marginBottom: "28px",
           }}
         >
 
           <div
             style={{
-              fontSize:
-                "22px",
-              fontWeight:
-                "800",
+              fontSize: "22px",
+              fontWeight: "800",
             }}
           >
-            {test?.exam ||
-              "UPPCS"}
+            {test?.exam || "UPPCS"}
           </div>
 
           <div
             style={{
-              fontSize:
-                "20px",
-              fontWeight:
-                "700",
-              marginTop:
-                "5px",
+              fontSize: "20px",
+              fontWeight: "700",
+              marginTop: "5px",
             }}
           >
-            {test?.title ||
-              "Test"} /{" "}
+            {test?.title || "Test"} /{" "}
             {questions.length}
           </div>
 
           <div
             style={{
-              fontSize:
-                "18px",
-              fontWeight:
-                "700",
-              marginTop:
-                "7px",
-              color:
-                "#334155",
+              fontSize: "18px",
+              fontWeight: "700",
+              marginTop: "7px",
+              color: "#334155",
             }}
           >
-            प्रश्न{" "}
-            {current + 1} /{" "}
+            प्रश्न {current + 1} /{" "}
             {questions.length}
 
             {reviewMode && (
               <span
                 style={{
-                  marginLeft:
-                    "10px",
-                  color:
-                    "#7c3aed",
+                  marginLeft: "10px",
+                  color: "#7c3aed",
                 }}
               >
                 • Review Mode
@@ -2033,8 +1832,7 @@ function TestRunner({
 
         <div
           style={{
-            marginBottom:
-              "28px",
+            marginBottom: "28px",
           }}
         >
 
@@ -2042,8 +1840,7 @@ function TestRunner({
             style={{
               fontSize:
                 "clamp(20px,3vw,28px)",
-              lineHeight:
-                "1.6",
+              lineHeight: "1.6",
             }}
           >
             {current + 1}.{" "}
@@ -2054,126 +1851,94 @@ function TestRunner({
 
         <div
           style={{
-            display:
-              "flex",
-            flexDirection:
-              "column",
-            gap:
-              "14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px",
           }}
         >
 
-          {(question.options ||
-            [])
+          {(question.options || [])
             .slice(0, 4)
-            .map(
-              (
-                option,
-                index
-              ) => {
+            .map((option, index) => {
 
-                const isSelected =
-                  selected ===
-                  index;
+              const isSelected =
+                selected === index;
 
-                const isCorrect =
-                  index ===
-                  correctAnswer;
+              const isCorrect =
+                index ===
+                correctAnswer;
 
-                const isWrong =
-                  reviewMode &&
-                  isSelected &&
-                  !isCorrect;
+              const isWrong =
+                reviewMode &&
+                isSelected &&
+                !isCorrect;
 
-                let background =
-                  "#1264d8";
+              let background =
+                "#1264d8";
 
-                if (
-                  reviewMode &&
-                  hasSelected
-                ) {
-                  if (
-                    isCorrect
-                  ) {
-                    background =
-                      "#16a34a";
-                  } else if (
-                    isWrong
-                  ) {
-                    background =
-                      "#dc2626";
-                  }
-                } else if (
-                  isSelected
-                ) {
+              if (
+                reviewMode &&
+                hasSelected
+              ) {
+                if (isCorrect) {
                   background =
-                    "#2563eb";
+                    "#16a34a";
+                } else if (isWrong) {
+                  background =
+                    "#dc2626";
                 }
+              } else if (isSelected) {
+                background =
+                  "#2563eb";
+              }
 
-                return (
-                  <button
-                    key={
-                      index
-                    }
-                    type="button"
-                    disabled={
-                      reviewMode &&
-                      hasSelected
-                    }
-                    onClick={() =>
-                      selectOption(
-                        index
-                      )
-                    }
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  disabled={
+                    reviewMode &&
+                    hasSelected
+                  }
+                  onClick={() =>
+                    selectOption(index)
+                  }
+                  style={{
+                    ...buttonBase,
+                    width: "100%",
+                    minHeight: "64px",
+                    padding:
+                      "16px 20px",
+                    background,
+                    color: "#fff",
+                    textAlign: "left",
+                    fontSize: "20px",
+                    fontWeight: "700",
+                    lineHeight: "1.4",
+                    display: "flex",
+                    alignItems:
+                      "center",
+                  }}
+                >
+                  <span
                     style={{
-                      ...buttonBase,
-                      width:
-                        "100%",
-                      minHeight:
-                        "64px",
-                      padding:
-                        "16px 20px",
-                      background,
-                      color:
-                        "#fff",
-                      textAlign:
-                        "left",
-                      fontSize:
-                        "20px",
-                      fontWeight:
-                        "700",
-                      lineHeight:
-                        "1.4",
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
+                      width: "45px",
+                      flex:
+                        "0 0 45px",
                     }}
                   >
+                    {String.fromCharCode(
+                      65 + index
+                    )}
+                    .
+                  </span>
 
-                    <span
-                      style={{
-                        width:
-                          "45px",
-                        flex:
-                          "0 0 45px",
-                      }}
-                    >
-                      {String.fromCharCode(
-                        65 +
-                          index
-                      )}
-                      .
-                    </span>
-
-                    <span>
-                      {option}
-                    </span>
-
-                  </button>
-                );
-              }
-            )}
+                  <span>
+                    {option}
+                  </span>
+                </button>
+              );
+            })}
 
         </div>
 
@@ -2182,49 +1947,37 @@ function TestRunner({
           hasSelected && (
             <div
               style={{
-                marginTop:
-                  "20px",
-                padding:
-                  "18px",
-                background:
-                  "#eff6ff",
+                marginTop: "20px",
+                padding: "18px",
+                background: "#eff6ff",
                 border:
                   "1px solid #bfdbfe",
-                borderRadius:
-                  "12px",
+                borderRadius: "12px",
               }}
             >
 
               <div
                 style={{
-                  fontSize:
-                    "19px",
-                  fontWeight:
-                    "800",
-                  marginBottom:
-                    "8px",
+                  fontSize: "19px",
+                  fontWeight: "800",
+                  marginBottom: "8px",
                 }}
               >
                 {selected ===
                 correctAnswer
                   ? "✓ सही उत्तर"
-                  : correctAnswer >=
-                    0
+                  : correctAnswer >= 0
                   ? `✗ गलत उत्तर — सही उत्तर: ${String.fromCharCode(
-                      65 +
-                        correctAnswer
+                      65 + correctAnswer
                     )}`
                   : "✗ सही उत्तर उपलब्ध नहीं है"}
               </div>
 
               <div
                 style={{
-                  fontSize:
-                    "19px",
-                  fontWeight:
-                    "800",
-                  marginBottom:
-                    "6px",
+                  fontSize: "19px",
+                  fontWeight: "800",
+                  marginBottom: "6px",
                 }}
               >
                 💡 व्याख्या
@@ -2232,12 +1985,9 @@ function TestRunner({
 
               <div
                 style={{
-                  fontSize:
-                    "17px",
-                  lineHeight:
-                    "1.6",
-                  whiteSpace:
-                    "pre-wrap",
+                  fontSize: "17px",
+                  lineHeight: "1.6",
+                  whiteSpace: "pre-wrap",
                 }}
               >
                 {question.explanation ||
@@ -2249,43 +1999,30 @@ function TestRunner({
 
         <div
           style={{
-            display:
-              "flex",
+            display: "flex",
             justifyContent:
               "space-between",
-            alignItems:
-              "center",
-            gap:
-              "12px",
-            marginTop:
-              "30px",
-            flexWrap:
-              "wrap",
+            alignItems: "center",
+            gap: "12px",
+            marginTop: "30px",
+            flexWrap: "wrap",
           }}
         >
 
           <button
             type="button"
-            disabled={
-              current === 0
-            }
-            onClick={
-              goPrevious
-            }
+            disabled={current === 0}
+            onClick={goPrevious}
             style={{
               ...buttonBase,
-              padding:
-                "13px 22px",
+              padding: "13px 22px",
               background:
                 current === 0
                   ? "#bfdbfe"
                   : "#1264d8",
-              color:
-                "#fff",
-              fontSize:
-                "17px",
-              fontWeight:
-                "700",
+              color: "#fff",
+              fontSize: "17px",
+              fontWeight: "700",
             }}
           >
             ← Previous
@@ -2294,41 +2031,30 @@ function TestRunner({
           {reviewMode ? (
             <button
               type="button"
-              disabled={
-                !hasSelected
-              }
-              onClick={
-                goNext
-              }
+              disabled={!hasSelected}
+              onClick={goNext}
               style={{
                 ...buttonBase,
-                padding:
-                  "13px 22px",
+                padding: "13px 22px",
                 background:
                   hasSelected
                     ? "#1264d8"
                     : "#94a3b8",
-                color:
-                  "#fff",
-                fontSize:
-                  "17px",
-                fontWeight:
-                  "700",
+                color: "#fff",
+                fontSize: "17px",
+                fontWeight: "700",
               }}
             >
               {current ===
-              questions.length -
-                1
+              questions.length - 1
                 ? "✓ Review Complete"
                 : "Next →"}
             </button>
           ) : (
             <div
               style={{
-                color:
-                  "#64748b",
-                fontWeight:
-                  "600",
+                color: "#64748b",
+                fontWeight: "600",
               }}
             >
               विकल्प चुनते ही अगला प्रश्न खुलेगा
@@ -2366,9 +2092,7 @@ export default function App() {
     useState({});
 
   const [siteResources, setSiteResources] =
-    useState(
-      defaultResources
-    );
+    useState(defaultResources);
 
   const [adminOpen, setAdminOpen] =
     useState(false);
@@ -2380,7 +2104,7 @@ export default function App() {
     useState(null);
 
   // ====================================================
-  // AUTH LISTENER
+  // AUTH
   // ====================================================
 
   useEffect(() => {
@@ -2388,18 +2112,12 @@ export default function App() {
       onAuthStateChanged(
         auth,
         (currentUser) => {
-          setUser(
-            currentUser
-          );
-
-          setAuthLoading(
-            false
-          );
+          setUser(currentUser);
+          setAuthLoading(false);
         }
       );
 
-    return () =>
-      unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // ====================================================
@@ -2426,8 +2144,7 @@ export default function App() {
         }
       );
 
-    return () =>
-      unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // ====================================================
@@ -2449,23 +2166,16 @@ export default function App() {
             snapshot.val();
 
           if (
-            Array.isArray(
-              value
-            ) &&
+            Array.isArray(value) &&
             value.length
           ) {
-            setSiteResources(
-              value
-            );
+            setSiteResources(value);
           } else if (
             value &&
-            typeof value ===
-              "object"
+            typeof value === "object"
           ) {
             setSiteResources(
-              Object.values(
-                value
-              )
+              Object.values(value)
             );
           } else {
             setSiteResources(
@@ -2480,12 +2190,11 @@ export default function App() {
         }
       );
 
-    return () =>
-      unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // ====================================================
-  // VISIBLE RESOURCES
+  // RESOURCES
   // ====================================================
 
   const visibleResources =
@@ -2493,8 +2202,7 @@ export default function App() {
       () =>
         siteResources.filter(
           (item) =>
-            item?.enabled !==
-            false
+            item?.enabled !== false
         ),
       [siteResources]
     );
@@ -2513,11 +2221,9 @@ export default function App() {
         ([id, test]) => {
           if (
             test &&
-            test.status ===
-              "public"
+            test.status === "public"
           ) {
-            result[id] =
-              test;
+            result[id] = test;
           }
         }
       );
@@ -2529,30 +2235,33 @@ export default function App() {
   // GOOGLE LOGIN
   // ====================================================
 
-  const login =
-    async () => {
-      try {
-        const result =
-          await signInWithPopup(
-            auth,
-            googleProvider
-          );
-
-        return result.user;
-      } catch (error) {
-        console.error(
-          "Google Login Error:",
-          error
+  const googleLogin = async () => {
+    try {
+      const result =
+        await signInWithPopup(
+          auth,
+          googleProvider
         );
 
-        alert(
-          "Google Login नहीं हुआ:\n" +
-            error.message
-        );
+      setUser(result.user);
+      setAuthPage(null);
 
-        return null;
-      }
-    };
+      return result.user;
+
+    } catch (error) {
+      console.error(
+        "Google Login Error:",
+        error
+      );
+
+      alert(
+        "Google Login नहीं हुआ:\n" +
+          error.message
+      );
+
+      return null;
+    }
+  };
 
   // ====================================================
   // AUTH SUCCESS
@@ -2560,287 +2269,158 @@ export default function App() {
 
   const handleAuthSuccess =
     (loggedUser) => {
-      setUser(
-        loggedUser
-      );
-
-      setAuthPage(
-        null
-      );
+      setUser(loggedUser);
+      setAuthPage(null);
     };
 
   // ====================================================
   // LOGOUT
   // ====================================================
 
-  const logout =
-    async () => {
-      try {
-        await signOut(
-          auth
-        );
+  const logout = async () => {
+    try {
+      await signOut(auth);
 
-        setAdminOpen(
-          false
-        );
+      setAdminOpen(false);
+      setAdminLoginOpen(false);
+      setAuthPage(null);
+      setPage("home");
+      setSelectedExam(null);
+      setSelectedTest(null);
 
-        setAdminLoginOpen(
-          false
-        );
-
-        setAuthPage(
-          null
-        );
-
-        setPage(
-          "home"
-        );
-
-        setSelectedExam(
-          null
-        );
-
-        setSelectedTest(
-          null
-        );
-      } catch (error) {
-        console.error(
-          error
-        );
-
-        alert(
-          "Logout error:\n" +
-            error.message
-        );
-      }
-    };
-
-  // ====================================================
-  // OPEN LOGIN
-  // ====================================================
-
-  const openLogin =
-    () => {
-      setAuthPage(
-        "login"
+    } catch (error) {
+      alert(
+        "Logout error:\n" +
+          error.message
       );
-    };
+    }
+  };
 
   // ====================================================
-  // OPEN REGISTER
+  // LOGIN / REGISTER
   // ====================================================
 
-  const openRegister =
-    () => {
-      setAuthPage(
-        "register"
-      );
-    };
+  const openLogin = () =>
+    setAuthPage("login");
 
-  // ====================================================
-  // OPEN FORGOT
-  // ====================================================
+  const openRegister = () =>
+    setAuthPage("register");
 
-  const openForgot =
-    () => {
-      setAuthPage(
-        "forgot"
-      );
-    };
-
-  // ====================================================
-  // GOOGLE LOGIN
-  // ====================================================
-
-  const googleLogin =
-    async () => {
-      const loggedInUser =
-        await login();
-
-      if (
-        loggedInUser
-      ) {
-        setAuthPage(
-          null
-        );
-      }
-    };
+  const openForgot = () =>
+    setAuthPage("forgot");
 
   // ====================================================
   // REQUIRE LOGIN
   // ====================================================
 
-  const requireLogin =
-    (action) => {
-      if (!user) {
-        setAuthPage(
-          "login"
-        );
-        return;
-      }
+  const requireLogin = (action) => {
+    if (!user) {
+      setAuthPage("login");
+      return;
+    }
 
-      if (action) {
-        action();
-      }
-    };
+    if (action) {
+      action();
+    }
+  };
 
   // ====================================================
-  // ADMIN OPEN
+  // ADMIN
   // ====================================================
 
-  const openAdmin =
-    () => {
-      if (
-        user?.email?.toLowerCase() ===
-        ADMIN_EMAIL.toLowerCase()
-      ) {
-        setAdminOpen(
-          true
-        );
-        return;
-      }
+  const openAdmin = () => {
+    if (
+      user?.email?.toLowerCase() ===
+      ADMIN_EMAIL.toLowerCase()
+    ) {
+      setAdminOpen(true);
+      return;
+    }
 
-      setAdminLoginOpen(
-        true
-      );
-    };
-
-  // ====================================================
-  // ADMIN LOGIN SUCCESS
-  // ====================================================
+    setAdminLoginOpen(true);
+  };
 
   const handleAdminLoginSuccess =
     (loggedUser) => {
-      setUser(
-        loggedUser
-      );
-
-      setAdminLoginOpen(
-        false
-      );
-
-      setAdminOpen(
-        true
-      );
+      setUser(loggedUser);
+      setAdminLoginOpen(false);
+      setAdminOpen(true);
     };
 
   // ====================================================
   // HOME
   // ====================================================
 
-  const goHome =
-    () => {
-      setPage(
-        "home"
-      );
+  const goHome = () => {
+    setPage("home");
+    setSelectedExam(null);
+    setSelectedTest(null);
+    setAdminOpen(false);
+    setAdminLoginOpen(false);
 
-      setSelectedExam(
-        null
-      );
-
-      setSelectedTest(
-        null
-      );
-
-      setAdminOpen(
-        false
-      );
-
-      setAdminLoginOpen(
-        false
-      );
-
-      window.scrollTo({
-        top: 0,
-        behavior:
-          "smooth",
-      });
-    };
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // ====================================================
   // OPEN EXAM
   // ====================================================
 
-  const openExam =
-    (exam) => {
-      setSelectedExam(
-        exam
-      );
+  const openExam = (exam) => {
+    setSelectedExam(exam);
+    setPage("tests");
+    setSelectedTest(null);
 
-      setPage(
-        "tests"
-      );
-
-      setSelectedTest(
-        null
-      );
-
-      window.scrollTo({
-        top: 0,
-        behavior:
-          "smooth",
-      });
-    };
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // ====================================================
   // OPEN TEST
   // ====================================================
 
-  const openTest =
-    async (test) => {
-      if (!test) {
-        alert(
-          "❌ Test उपलब्ध नहीं है।"
-        );
-        return;
-      }
-
-      if (!user) {
-        setAuthPage(
-          "login"
-        );
-        return;
-      }
-
-      setSelectedTest(
-        test
+  const openTest = (test) => {
+    if (!test) {
+      alert(
+        "❌ Test उपलब्ध नहीं है।"
       );
+      return;
+    }
 
-      setPage(
-        "test"
-      );
+    if (!user) {
+      setAuthPage("login");
+      return;
+    }
 
-      window.scrollTo({
-        top: 0,
-        behavior:
-          "smooth",
-      });
-    };
+    setSelectedTest(test);
+    setPage("test");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // ====================================================
-  // AUTH LOADING
+  // LOADING
   // ====================================================
 
   if (authLoading) {
     return (
       <div
         style={{
-          minHeight:
-            "100vh",
-          display:
-            "flex",
-          justifyContent:
-            "center",
-          alignItems:
-            "center",
-          background:
-            "#eef5ff",
-          fontSize:
-            "22px",
-          fontWeight:
-            "700",
-          color:
-            "#1857c9",
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#eef5ff",
+          fontSize: "22px",
+          fontWeight: "700",
+          color: "#1857c9",
         }}
       >
         📚 Exam Test Loading...
@@ -2852,24 +2432,15 @@ export default function App() {
   // REGISTER
   // ====================================================
 
-  if (
-    authPage ===
-    "register"
-  ) {
+  if (authPage === "register") {
     return (
       <RegisterPage
-        onSuccess={
-          handleAuthSuccess
-        }
+        onSuccess={handleAuthSuccess}
         onLogin={() =>
-          setAuthPage(
-            "login"
-          )
+          setAuthPage("login")
         }
         onClose={() =>
-          setAuthPage(
-            null
-          )
+          setAuthPage(null)
         }
       />
     );
@@ -2879,51 +2450,33 @@ export default function App() {
   // LOGIN
   // ====================================================
 
-  if (
-    authPage ===
-    "login"
-  ) {
+  if (authPage === "login") {
     return (
       <LoginPage
-        onSuccess={
-          handleAuthSuccess
-        }
+        onSuccess={handleAuthSuccess}
         onRegister={() =>
-          setAuthPage(
-            "register"
-          )
+          setAuthPage("register")
         }
         onForgot={() =>
-          setAuthPage(
-            "forgot"
-          )
+          setAuthPage("forgot")
         }
-        onGoogle={
-          googleLogin
-        }
+        onGoogle={googleLogin}
         onClose={() =>
-          setAuthPage(
-            null
-          )
+          setAuthPage(null)
         }
       />
     );
   }
 
   // ====================================================
-  // FORGOT PASSWORD
+  // FORGOT
   // ====================================================
 
-  if (
-    authPage ===
-    "forgot"
-  ) {
+  if (authPage === "forgot") {
     return (
       <ForgotPassword
         onBack={() =>
-          setAuthPage(
-            "login"
-          )
+          setAuthPage("login")
         }
       />
     );
@@ -2933,18 +2486,14 @@ export default function App() {
   // ADMIN LOGIN
   // ====================================================
 
-  if (
-    adminLoginOpen
-  ) {
+  if (adminLoginOpen) {
     return (
       <AdminLogin
         onSuccess={
           handleAdminLoginSuccess
         }
         onClose={() =>
-          setAdminLoginOpen(
-            false
-          )
+          setAdminLoginOpen(false)
         }
       />
     );
@@ -2961,13 +2510,9 @@ export default function App() {
         <AdminPanel
           user={user}
           tests={cloudTests}
-          resources={
-            siteResources
-          }
+          resources={siteResources}
           onClose={() =>
-            setAdminOpen(
-              false
-            )
+            setAdminOpen(false)
           }
         />
 
@@ -3001,9 +2546,7 @@ export default function App() {
 
               <button
                 className="open-btn"
-                onClick={
-                  openLogin
-                }
+                onClick={openLogin}
               >
                 🔐 Login करें
               </button>
@@ -3011,9 +2554,7 @@ export default function App() {
               <button
                 className="back"
                 onClick={() =>
-                  setPage(
-                    "tests"
-                  )
+                  setPage("tests")
                 }
               >
                 ← वापस जाएँ
@@ -3033,13 +2574,9 @@ export default function App() {
         <main className="test-page-container">
 
           <TestRunner
-            test={
-              selectedTest
-            }
+            test={selectedTest}
             onBack={() =>
-              setPage(
-                "tests"
-              )
+              setPage("tests")
             }
           />
 
@@ -3054,689 +2591,587 @@ export default function App() {
   // ====================================================
 
   return (
-    <>
-      <div className="app">
+    <div className="app">
 
-        {/* HEADER */}
+      {/* HEADER */}
 
-        <header className="header">
+      <header className="header">
 
-          <div className="header-inner">
+        <div className="header-inner">
 
-            <div
-              className="logo"
-              onClick={
-                goHome
-              }
-            >
+          <div
+            className="logo"
+            onClick={goHome}
+          >
 
-              <div className="logo-icon">
-                📚
-              </div>
+            <div className="logo-icon">
+              📚
+            </div>
 
-              <div className="logo-text">
+            <div className="logo-text">
 
-                <h2>
-                  Exam Test
-                </h2>
+              <h2>
+                Exam Test
+              </h2>
 
-                <span>
-                  Learn Today |
-                  Lead Tomorrow
-                </span>
-
-              </div>
+              <span>
+                Learn Today |
+                Lead Tomorrow
+              </span>
 
             </div>
 
-            <nav className="nav">
-
-              <button
-                onClick={
-                  goHome
-                }
-              >
-                🏠 Home
-              </button>
-
-              <button
-                onClick={() =>
-                  requireLogin(
-                    () =>
-                      setPage(
-                        "resources"
-                      )
-                  )
-                }
-              >
-                📚 Books
-              </button>
-
-              <button
-                onClick={() =>
-                  requireLogin(
-                    () =>
-                      setPage(
-                        "current"
-                      )
-                  )
-                }
-              >
-                📰 Current Affairs
-              </button>
-
-              <button
-                onClick={() =>
-                  requireLogin(
-                    () =>
-                      setPage(
-                        "mcq"
-                      )
-                  )
-                }
-              >
-                📝 MCQ
-              </button>
-
-              <button
-                className="admin-btn"
-                onClick={
-                  openAdmin
-                }
-              >
-                👑 Admin Panel
-              </button>
-
-              {user ? (
-                <button
-                  className="login-btn"
-                  onClick={
-                    logout
-                  }
-                  title={
-                    user.email ||
-                    user.displayName ||
-                    ""
-                  }
-                >
-                  👤 Logout
-                </button>
-              ) : (
-                <button
-                  className="login-btn"
-                  onClick={
-                    openLogin
-                  }
-                >
-                  🔐 Login
-                </button>
-              )}
-
-            </nav>
-
           </div>
 
-        </header>
+          <nav className="nav">
 
-        {/* MAIN */}
+            <button
+              onClick={goHome}
+            >
+              🏠 Home
+            </button>
 
-        <main className="container">
+            <button
+              onClick={() =>
+                requireLogin(() =>
+                  setPage("resources")
+                )
+              }
+            >
+              📚 Books
+            </button>
 
-          {/* HOME */}
+            <button
+              onClick={() =>
+                requireLogin(() =>
+                  setPage("current")
+                )
+              }
+            >
+              📰 Current Affairs
+            </button>
 
-          {page ===
-            "home" && (
-            <>
+            <button
+              onClick={() =>
+                requireLogin(() =>
+                  setPage("mcq")
+                )
+              }
+            >
+              📝 MCQ
+            </button>
 
-              <section className="hero">
+            <button
+              className="admin-btn"
+              onClick={openAdmin}
+            >
+              👑 Admin Panel
+            </button>
 
-                <h1 className="exam-test-hero-title">
+            {user ? (
+              <button
+                className="login-btn"
+                onClick={logout}
+                title={
+                  user.email ||
+                  user.displayName ||
+                  ""
+                }
+              >
+                👤 Logout
+              </button>
+            ) : (
+              <button
+                className="login-btn"
+                onClick={openLogin}
+              >
+                🔐 Login
+              </button>
+            )}
 
-                  <span>
-                    Exam{" "}
+          </nav>
+
+        </div>
+
+      </header>
+
+      {/* MAIN */}
+
+      <main className="container">
+
+        {/* HOME */}
+
+        {page === "home" && (
+          <>
+
+            <section className="hero">
+
+              <h1 className="exam-test-hero-title">
+
+                <span>
+                  Exam{" "}
+                </span>
+
+                <span>
+                  Test
+                </span>
+
+              </h1>
+
+              <p>
+                प्रतियोगी परीक्षाओं की
+                तैयारी के लिए एक ही प्लेटफॉर्म
+              </p>
+
+              <div className="search">
+
+                <input
+                  placeholder="आप क्या पढ़ना चाहते हैं?"
+                />
+
+                <button>
+                  🔎 खोजें
+                </button>
+
+              </div>
+
+            </section>
+
+            {/* EXAMS */}
+
+            <div className="section-title">
+
+              <h2>
+                🎯 All Exam Test Series
+              </h2>
+
+              <p>
+                सभी प्रमुख प्रतियोगी
+                परीक्षाओं के लिए Test Series
+              </p>
+
+            </div>
+
+            <div className="exam-grid">
+
+              {exams.map((exam) => (
+
+                <div
+                  className="exam-card"
+                  key={exam.id}
+                  style={{
+                    background:
+                      exam.color,
+                  }}
+                >
+
+                  <div className="exam-icon">
+                    {exam.icon}
+                  </div>
+
+                  <h3>
+                    {exam.name}
+                  </h3>
+
+                  <p>
+                    {exam.description}
+                  </p>
+
+                  <span className="paid">
+                    Test Series
                   </span>
 
-                  <span>
-                    Test
-                  </span>
-
-                </h1>
-
-                <p>
-                  प्रतियोगी परीक्षाओं की
-                  तैयारी के लिए एक ही प्लेटफॉर्म
-                </p>
-
-                <div className="search">
-
-                  <input
-                    placeholder="आप क्या पढ़ना चाहते हैं?"
-                  />
-
-                  <button>
-                    🔎 खोजें
+                  <button
+                    className="open-btn"
+                    onClick={() =>
+                      requireLogin(() =>
+                        openExam(exam)
+                      )
+                    }
+                  >
+                    Test Series →
                   </button>
 
                 </div>
 
-              </section>
+              ))}
 
-              {/* EXAMS */}
+            </div>
 
-              <div className="section-title">
+            {/* RESOURCES */}
 
-                <h2>
-                  🎯 All Exam Test Series
-                </h2>
+            <div className="section-title">
 
-                <p>
-                  सभी प्रमुख प्रतियोगी
-                  परीक्षाओं के लिए Test Series
-                </p>
+              <h2>
+                📚 Study Resources
+              </h2>
 
-              </div>
+              <p>
+                परीक्षा की तैयारी के लिए
+                सभी आवश्यक सामग्री
+              </p>
 
-              <div className="exam-grid">
+            </div>
 
-                {exams.map(
-                  (exam) => (
+            <div className="resource-grid">
 
-                    <div
-                      className="exam-card"
-                      key={
-                        exam.id
-                      }
-                      style={{
-                        background:
-                          exam.color,
-                      }}
-                    >
+              {visibleResources.map(
+                (item, index) => (
 
-                      <div className="exam-icon">
-                        {
-                          exam.icon
-                        }
-                      </div>
-
-                      <h3>
-                        {
-                          exam.name
-                        }
-                      </h3>
-
-                      <p>
-                        {
-                          exam.description
-                        }
-                      </p>
-
-                      <span className="paid">
-                        Test Series
-                      </span>
-
-                      <button
-                        className="open-btn"
-                        onClick={() =>
-                          requireLogin(
-                            () =>
-                              openExam(
-                                exam
-                              )
-                          )
-                        }
-                      >
-                        Test Series →
-                      </button>
-
-                    </div>
-
-                  )
-                )}
-
-              </div>
-
-              {/* RESOURCES */}
-
-              <div className="section-title">
-
-                <h2>
-                  📚 Study Resources
-                </h2>
-
-                <p>
-                  परीक्षा की तैयारी के लिए
-                  सभी आवश्यक सामग्री
-                </p>
-
-              </div>
-
-              <div className="resource-grid">
-
-                {visibleResources.map(
-                  (
-                    item,
-                    index
-                  ) => (
-
-                    <div
-                      className="resource-card"
-                      key={
-                        item.id ||
-                        index
-                      }
-                    >
-
-                      <div className="icon">
-                        {
-                          item.icon
-                        }
-                      </div>
-
-                      <h3>
-                        {
-                          item.title
-                        }
-                      </h3>
-
-                      <p>
-                        {
-                          item.text
-                        }
-                      </p>
-
-                      <button
-                        className="open-btn"
-                        onClick={() =>
-                          requireLogin(
-                            () => {
-
-                              if (
-                                item.page ===
-                                "tests"
-                              ) {
-                                openExam(
-                                  exams[0]
-                                );
-                              } else {
-                                setPage(
-                                  item.page ||
-                                    "resources"
-                                );
-                              }
-
-                            }
-                          )
-                        }
-                      >
-                        Open →
-                      </button>
-
-                    </div>
-                  )
-                )}
-
-              </div>
-
-              {/* CURRENT AFFAIRS */}
-
-              <div className="blue-box">
-
-                <h2>
-                  📰 Daily Current Affairs Quiz
-                </h2>
-
-                <p>
-                  आज के महत्वपूर्ण Current
-                  Affairs पर आधारित MCQ
-                </p>
-
-                <button
-                  className="primary"
-                  onClick={() =>
-                    requireLogin(
-                      () =>
-                        setPage(
-                          "current"
-                        )
-                    )
-                  }
-                >
-                  आज का Quiz शुरू करें
-                </button>
-
-              </div>
-
-              {/* AI MCQ */}
-
-              <div className="blue-box">
-
-                <h2>
-                  🤖 AI MCQ Generator
-                </h2>
-
-                <p>
-                  परीक्षा और विषय चुनकर
-                  नए MCQ तैयार करें।
-                </p>
-
-                <button
-                  className="primary"
-                  onClick={() =>
-                    requireLogin(
-                      () =>
-                        setPage(
-                          "mcq"
-                        )
-                    )
-                  }
-                >
-                  MCQ Generator खोलें
-                </button>
-
-              </div>
-
-            </>
-          )}
-
-          {/* TEST LIST */}
-
-          {page ===
-            "tests" &&
-            selectedExam && (
-              <>
-
-                <button
-                  className="back"
-                  onClick={
-                    goHome
-                  }
-                >
-                  ← Home पर वापस जाएँ
-                </button>
-
-                <div className="page-title">
-
-                  <div className="big-icon">
-                    {
-                      selectedExam.icon
+                  <div
+                    className="resource-card"
+                    key={
+                      item.id ||
+                      index
                     }
-                  </div>
+                  >
 
-                  <h1>
-                    {
-                      selectedExam.name
-                    }{" "}
-                    Test Series
-                  </h1>
-
-                  <p>
-                    {
-                      selectedExam.description
-                    }
-                  </p>
-
-                </div>
-
-                <div className="test-grid">
-
-                  {Object.entries(
-                    publicTests
-                  )
-                    .filter(
-                      ([, test]) =>
-                        test.exam ===
-                        selectedExam.id
-                    )
-                    .sort(
-                      (
-                        a,
-                        b
-                      ) =>
-                        Number(
-                          a[1]
-                            .testNumber ||
-                            0
-                        ) -
-                        Number(
-                          b[1]
-                            .testNumber ||
-                            0
-                        )
-                    )
-                    .map(
-                      (
-                        [
-                          id,
-                          test,
-                        ]
-                      ) => (
-
-                        <div
-                          className="test-card"
-                          key={
-                            id
-                          }
-                        >
-
-                          <h3>
-                            {
-                              test.title
-                            }
-                          </h3>
-
-                          <p>
-                            {
-                              test
-                                .questions
-                                ?.length ||
-                              0
-                            }{" "}
-                            MCQ Questions
-                          </p>
-
-                          <div className="price">
-
-                            {Number(
-                              test.price ||
-                                0
-                            ) ===
-                            0
-                              ? "FREE"
-                              : `₹${test.price}`}
-
-                          </div>
-
-                          <button
-                            onClick={() =>
-                              openTest(
-                                test
-                              )
-                            }
-                          >
-                            Start Test
-                          </button>
-
-                        </div>
-
-                      )
-                    )}
-
-                </div>
-
-                {Object.entries(
-                  publicTests
-                ).filter(
-                  ([, test]) =>
-                    test.exam ===
-                    selectedExam.id
-                ).length ===
-                  0 && (
-
-                  <div className="empty-box">
-
-                    <div>
-                      📚
+                    <div className="icon">
+                      {item.icon}
                     </div>
 
-                    <h2>
-                      अभी कोई Public Test नहीं है
-                    </h2>
+                    <h3>
+                      {item.title}
+                    </h3>
 
                     <p>
-                      इस परीक्षा के Test
-                      जल्द ही उपलब्ध होंगे।
+                      {item.text}
                     </p>
+
+                    <button
+                      className="open-btn"
+                      onClick={() =>
+                        requireLogin(() => {
+
+                          if (
+                            item.page ===
+                            "tests"
+                          ) {
+                            openExam(
+                              exams[0]
+                            );
+                          } else {
+                            setPage(
+                              item.page ||
+                                "resources"
+                            );
+                          }
+
+                        })
+                      }
+                    >
+                      Open →
+                    </button>
 
                   </div>
 
-                )}
+                )
+              )}
 
-              </>
-            )}
+            </div>
 
-          {/* RESOURCES */}
+            {/* CURRENT AFFAIRS */}
 
-          {page ===
-            "resources" && (
+            <div className="blue-box">
+
+              <h2>
+                📰 Daily Current Affairs Quiz
+              </h2>
+
+              <p>
+                आज के महत्वपूर्ण Current
+                Affairs पर आधारित MCQ
+              </p>
+
+              <button
+                className="primary"
+                onClick={() =>
+                  requireLogin(() =>
+                    setPage("current")
+                  )
+                }
+              >
+                आज का Quiz शुरू करें
+              </button>
+
+            </div>
+
+            {/* AI MCQ */}
+
+            <div className="blue-box">
+
+              <h2>
+                🤖 AI MCQ Generator
+              </h2>
+
+              <p>
+                परीक्षा और विषय चुनकर
+                नए MCQ तैयार करें।
+              </p>
+
+              <button
+                className="primary"
+                onClick={() =>
+                  requireLogin(() =>
+                    setPage("mcq")
+                  )
+                }
+              >
+                MCQ Generator खोलें
+              </button>
+
+            </div>
+
+          </>
+        )}
+
+        {/* TEST LIST */}
+
+        {page === "tests" &&
+          selectedExam && (
             <>
 
               <button
                 className="back"
-                onClick={
-                  goHome
-                }
+                onClick={goHome}
               >
-                ← Home
+                ← Home पर वापस जाएँ
               </button>
 
               <div className="page-title">
 
                 <div className="big-icon">
-                  📚
+                  {selectedExam.icon}
                 </div>
 
                 <h1>
-                  Study Resources
+                  {selectedExam.name}{" "}
+                  Test Series
                 </h1>
 
                 <p>
-                  NCERT, Books और
-                  परीक्षा उपयोगी अध्ययन सामग्री
+                  {selectedExam.description}
                 </p>
 
               </div>
 
-              <div className="resource-grid">
+              <div className="test-grid">
 
-                {visibleResources.map(
-                  (
-                    item,
-                    index
-                  ) => (
+                {Object.entries(
+                  publicTests
+                )
+                  .filter(
+                    ([, test]) =>
+                      test.exam ===
+                      selectedExam.id
+                  )
+                  .sort(
+                    (a, b) =>
+                      Number(
+                        a[1].testNumber ||
+                          0
+                      ) -
+                      Number(
+                        b[1].testNumber ||
+                          0
+                      )
+                  )
+                  .map(
+                    ([id, test]) => (
 
-                    <div
-                      className="resource-card"
-                      key={
-                        item.id ||
-                        index
-                      }
-                    >
+                      <div
+                        className="test-card"
+                        key={id}
+                      >
 
-                      <div className="icon">
-                        {
-                          item.icon
-                        }
+                        <h3>
+                          {test.title}
+                        </h3>
+
+                        <p>
+                          {
+                            test
+                              .questions
+                              ?.length || 0
+                          }{" "}
+                          MCQ Questions
+                        </p>
+
+                        <div className="price">
+
+                          {Number(
+                            test.price || 0
+                          ) === 0
+                            ? "FREE"
+                            : `₹${test.price}`}
+
+                        </div>
+
+                        <button
+                          onClick={() =>
+                            openTest(test)
+                          }
+                        >
+                          Start Test
+                        </button>
+
                       </div>
 
-                      <h3>
-                        {
-                          item.title
-                        }
-                      </h3>
-
-                      <p>
-                        {
-                          item.text
-                        }
-                      </p>
-
-                    </div>
-
-                  )
-                )}
+                    )
+                  )}
 
               </div>
 
+              {Object.entries(
+                publicTests
+              ).filter(
+                ([, test]) =>
+                  test.exam ===
+                  selectedExam.id
+              ).length === 0 && (
+
+                <div className="empty-box">
+
+                  <div>
+                    📚
+                  </div>
+
+                  <h2>
+                    अभी कोई Public Test नहीं है
+                  </h2>
+
+                  <p>
+                    इस परीक्षा के Test
+                    जल्द ही उपलब्ध होंगे।
+                  </p>
+
+                </div>
+
+              )}
+
             </>
           )}
 
-          {/* CURRENT AFFAIRS */}
+        {/* RESOURCES */}
 
-          {page ===
-            "current" && (
-            <CurrentAffairs
-              onBack={
-                goHome
-              }
-              onMCQ={() =>
-                requireLogin(
-                  () =>
-                    setPage(
-                      "mcq"
-                    )
+        {page === "resources" && (
+          <>
+
+            <button
+              className="back"
+              onClick={goHome}
+            >
+              ← Home
+            </button>
+
+            <div className="page-title">
+
+              <div className="big-icon">
+                📚
+              </div>
+
+              <h1>
+                Study Resources
+              </h1>
+
+              <p>
+                NCERT, Books और
+                परीक्षा उपयोगी अध्ययन सामग्री
+              </p>
+
+            </div>
+
+            <div className="resource-grid">
+
+              {visibleResources.map(
+                (item, index) => (
+
+                  <div
+                    className="resource-card"
+                    key={
+                      item.id ||
+                      index
+                    }
+                  >
+
+                    <div className="icon">
+                      {item.icon}
+                    </div>
+
+                    <h3>
+                      {item.title}
+                    </h3>
+
+                    <p>
+                      {item.text}
+                    </p>
+
+                  </div>
+
                 )
-              }
-            />
-          )}
+              )}
 
-          {/* MCQ */}
+            </div>
 
-          {page ===
-            "mcq" && (
-            <>
+          </>
+        )}
 
-              <button
-                className="back"
-                onClick={
-                  goHome
-                }
-              >
-                ← Home
-              </button>
+        {/* CURRENT AFFAIRS */}
 
-              <AIMCQGenerator />
+        {page === "current" && (
+          <CurrentAffairs
+            onBack={goHome}
+            onMCQ={() =>
+              requireLogin(() =>
+                setPage("mcq")
+              )
+            }
+          />
+        )}
 
-            </>
-          )}
+        {/* MCQ */}
 
-        </main>
+        {page === "mcq" && (
+          <>
 
-        {/* FOOTER */}
+            <button
+              className="back"
+              onClick={goHome}
+            >
+              ← Home
+            </button>
 
-        <footer className="footer">
+            <AIMCQGenerator />
 
-          <h2>
-            📚 Exam Test
-          </h2>
+          </>
+        )}
 
-          <p>
-            Learn Today |
-            Lead Tomorrow
-          </p>
+      </main>
 
-          <p
-            style={{
-              marginTop:
-                "15px",
-            }}
-          >
-            © 2026 Exam Test.
-            All Rights Reserved.
-          </p>
+      {/* FOOTER */}
 
-        </footer>
+      <footer className="footer">
 
-      </div>
-    </>
+        <h2>
+          📚 Exam Test
+        </h2>
+
+        <p>
+          Learn Today |
+          Lead Tomorrow
+        </p>
+
+        <p
+          style={{
+            marginTop: "15px",
+          }}
+        >
+          © 2026 Exam Test.
+          All Rights Reserved.
+        </p>
+
+      </footer>
+
+    </div>
   );
 }
