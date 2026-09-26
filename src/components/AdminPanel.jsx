@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import "./AdminPanel.css";
 
-import { getApps, getApp, initializeApp } from "firebase/app";
+import {
+  getApps,
+  getApp,
+  initializeApp,
+} from "firebase/app";
 
 import {
   getDatabase,
@@ -75,6 +79,77 @@ function createQuestion(id = 1) {
 }
 
 /* =========================================================
+   NORMALIZE ANSWER
+========================================================= */
+
+function normalizeAnswer(q) {
+  /*
+    answerIndex हमेशा 0-3 माना जाएगा।
+  */
+
+  if (
+    q?.answerIndex !== undefined &&
+    q?.answerIndex !== null
+  ) {
+    const value = Number(q.answerIndex);
+
+    if (
+      Number.isInteger(value) &&
+      value >= 0 &&
+      value <= 3
+    ) {
+      return value;
+    }
+  }
+
+  let answer =
+    q?.answer ??
+    q?.correctAnswer ??
+    q?.correct ??
+    0;
+
+  if (typeof answer === "string") {
+    const value = answer.trim().toUpperCase();
+
+    if (value === "A") return 0;
+    if (value === "B") return 1;
+    if (value === "C") return 2;
+    if (value === "D") return 3;
+
+    if (/^\d+$/.test(value)) {
+      answer = Number(value);
+    } else {
+      return 0;
+    }
+  }
+
+  answer = Number(answer);
+
+  /*
+    अगर JSON में 1-4 दिया गया है:
+    1=A, 2=B, 3=C, 4=D
+  */
+
+  if (
+    Number.isInteger(answer) &&
+    answer >= 1 &&
+    answer <= 4
+  ) {
+    return answer - 1;
+  }
+
+  if (
+    Number.isInteger(answer) &&
+    answer >= 0 &&
+    answer <= 3
+  ) {
+    return answer;
+  }
+
+  return 0;
+}
+
+/* =========================================================
    JSON NORMALIZER
 ========================================================= */
 
@@ -90,62 +165,6 @@ function normalizeImportedQuestions(data) {
   }
 
   return source.map((q, index) => {
-    let answerValue =
-      q?.answer ??
-      q?.correctAnswer ??
-      q?.correct ??
-      q?.answerIndex ??
-      0;
-
-    /*
-      A/B/C/D
-    */
-
-    if (typeof answerValue === "string") {
-      const answer = answerValue.trim().toUpperCase();
-
-      if (answer === "A") {
-        answerValue = 0;
-      } else if (answer === "B") {
-        answerValue = 1;
-      } else if (answer === "C") {
-        answerValue = 2;
-      } else if (answer === "D") {
-        answerValue = 3;
-      } else if (/^\d+$/.test(answer)) {
-        answerValue = Number(answer);
-      } else {
-        answerValue = 0;
-      }
-    }
-
-    answerValue = Number(answerValue);
-
-    /*
-      JSON में 1-4 answer होने पर
-      A=1 B=2 C=3 D=4 मानेंगे।
-    */
-
-    if (
-      Number.isInteger(answerValue) &&
-      answerValue >= 1 &&
-      answerValue <= 4
-    ) {
-      answerValue = answerValue - 1;
-    }
-
-    if (
-      !Number.isInteger(answerValue) ||
-      answerValue < 0 ||
-      answerValue > 3
-    ) {
-      answerValue = 0;
-    }
-
-    /*
-      Options
-    */
-
     const options = Array.isArray(q?.options)
       ? q.options
       : [
@@ -171,7 +190,7 @@ function normalizeImportedQuestions(data) {
         options[3] ?? "",
       ],
 
-      answer: answerValue,
+      answer: normalizeAnswer(q),
 
       explanation:
         q?.explanation ??
@@ -374,7 +393,6 @@ export default function AdminPanel({
     return (
       <div className="admin-page">
         <div className="admin-denied">
-
           <div className="denied-icon">
             🔐
           </div>
@@ -394,7 +412,6 @@ export default function AdminPanel({
           >
             ← वापस जाएँ
           </button>
-
         </div>
       </div>
     );
@@ -408,6 +425,11 @@ export default function AdminPanel({
     exams.find(
       (exam) => exam.id === id
     )?.name || id;
+
+  const getExamIcon = (id) =>
+    exams.find(
+      (exam) => exam.id === id
+    )?.icon || "📚";
 
   const getTestId = () =>
     `${selectedExam}_test_${Number(
@@ -506,7 +528,7 @@ export default function AdminPanel({
                   ],
 
             answer:
-              Number(q?.answer) || 0,
+              normalizeAnswer(q),
 
             explanation:
               q?.explanation || "",
@@ -537,25 +559,30 @@ export default function AdminPanel({
   ======================================================= */
 
   const addQuestion = () => {
-    setQuestions((prev) => {
-      const nextIndex =
-        prev.length;
+    if (questions.length >= 150) {
+      alert(
+        "❌ Maximum 150 Questions allowed हैं।"
+      );
+      return;
+    }
 
-      return [
-        ...prev,
-        createQuestion(
-          nextIndex + 1
-        ),
-      ];
-    });
+    const newIndex =
+      questions.length;
+
+    setQuestions((prev) => [
+      ...prev,
+      createQuestion(
+        newIndex + 1
+      ),
+    ]);
 
     setCurrentQuestion(
-      questions.length
+      newIndex
     );
 
     setMessage(
       `✅ Question ${
-        questions.length + 1
+        newIndex + 1
       } added.`
     );
   };
@@ -586,20 +613,25 @@ export default function AdminPanel({
           index !== currentQuestion
       );
 
-    setQuestions(
+    const normalized =
       newQuestions.map(
         (q, index) => ({
           ...q,
           id: index + 1,
         })
-      )
-    );
+      );
+
+    setQuestions(normalized);
 
     setCurrentQuestion(
       Math.min(
         currentQuestion,
-        newQuestions.length - 1
+        normalized.length - 1
       )
+    );
+
+    setMessage(
+      "🗑️ Question deleted."
     );
   };
 
@@ -659,6 +691,24 @@ export default function AdminPanel({
             options,
           };
         }
+      )
+    );
+  };
+
+  /* =======================================================
+     CHANGE ANSWER
+  ======================================================= */
+
+  const updateAnswer = (value) => {
+    setQuestions((prev) =>
+      prev.map(
+        (question, index) =>
+          index === currentQuestion
+            ? {
+                ...question,
+                answer: Number(value),
+              }
+            : question
       )
     );
   };
@@ -834,6 +884,7 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
 
       const data = {
         exam: selectedExam,
+
         testNumber:
           Number(testNumber) || 1,
 
@@ -862,8 +913,19 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                   "",
               ],
 
+              /*
+                answer 0=A
+                answer 1=B
+                answer 2=C
+                answer 3=D
+              */
+
               answer:
-                Number(q.answer) || 0,
+                Number.isInteger(
+                  Number(q.answer)
+                )
+                  ? Number(q.answer)
+                  : 0,
 
               explanation:
                 q.explanation ||
@@ -917,10 +979,14 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
       );
 
       URL.revokeObjectURL(url);
+
+      setMessage(
+        "✅ Questions JSON Export हो गया।"
+      );
     };
 
   /* =======================================================
-     VALIDATE
+     VALIDATE TEST
   ======================================================= */
 
   const validateTest = () => {
@@ -955,71 +1021,95 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
       Number(testDuration) < 1
     ) {
       alert(
-        "Duration सही डालें।"
+        "Valid Test Duration डालें।"
       );
       return false;
     }
 
-    if (!questions.length) {
+    if (
+      Number(testPrice) < 0
+    ) {
       alert(
-        "कम से कम 1 Question होना चाहिए।"
+        "Price 0 या उससे अधिक होना चाहिए।"
       );
       return false;
     }
 
-    const invalidIndex =
+    if (
+      !questions.length
+    ) {
+      alert(
+        "कम से कम 1 Question होना जरूरी है।"
+      );
+      return false;
+    }
+
+    if (
+      questions.length >
+      150
+    ) {
+      alert(
+        "Maximum 150 Questions allowed हैं।"
+      );
+      return false;
+    }
+
+    const invalidQuestion =
       questions.findIndex(
-        (q) => {
-          if (
-            !q.question ||
-            !q.question.trim()
-          ) {
-            return true;
-          }
-
-          if (
-            !Array.isArray(
-              q.options
-            ) ||
-            q.options.length !==
-              4
-          ) {
-            return true;
-          }
-
-          if (
-            q.options.some(
-              (option) =>
-                !String(
-                  option || ""
-                ).trim()
-            )
-          ) {
-            return true;
-          }
-
-          if (
-            Number(q.answer) < 0 ||
-            Number(q.answer) > 3
-          ) {
-            return true;
-          }
-
-          return false;
-        }
+        (q) =>
+          !String(
+            q.question || ""
+          ).trim() ||
+          !Array.isArray(
+            q.options
+          ) ||
+          q.options.length !==
+            4 ||
+          q.options.some(
+            (option) =>
+              !String(
+                option || ""
+              ).trim()
+          )
       );
 
     if (
-      invalidIndex !== -1
+      invalidQuestion !== -1
     ) {
+      setCurrentQuestion(
+        invalidQuestion
+      );
+
       alert(
         `Question ${
-          invalidIndex + 1
+          invalidQuestion + 1
         } में Question और सभी 4 Options भरना जरूरी है।`
       );
 
+      return false;
+    }
+
+    const invalidAnswer =
+      questions.findIndex(
+        (q) =>
+          !Number.isInteger(
+            Number(q.answer)
+          ) ||
+          Number(q.answer) < 0 ||
+          Number(q.answer) > 3
+      );
+
+    if (
+      invalidAnswer !== -1
+    ) {
       setCurrentQuestion(
-        invalidIndex
+        invalidAnswer
+      );
+
+      alert(
+        `Question ${
+          invalidAnswer + 1
+        } का सही Answer select करें।`
       );
 
       return false;
@@ -1037,14 +1127,41 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
       return;
     }
 
-    try {
-      setSaving(true);
-      setMessage("");
+    const testId =
+      getTestId();
 
-      const testId =
-        getTestId();
+    const finalTitle =
+      testTitle.trim();
 
-      const cleanQuestions =
+    const testData = {
+      id: testId,
+
+      exam: selectedExam,
+
+      examName:
+        getExamName(
+          selectedExam
+        ),
+
+      examIcon:
+        getExamIcon(
+          selectedExam
+        ),
+
+      testNumber:
+        Number(testNumber),
+
+      title: finalTitle,
+
+      status: testStatus,
+
+      duration:
+        Number(testDuration),
+
+      price:
+        Number(testPrice),
+
+      questions:
         questions.map(
           (q, index) => ({
             id: index + 1,
@@ -1056,108 +1173,83 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
 
             options: [
               String(
-                q.options?.[0] ||
-                  ""
+                q.options?.[0] || ""
               ).trim(),
 
               String(
-                q.options?.[1] ||
-                  ""
+                q.options?.[1] || ""
               ).trim(),
 
               String(
-                q.options?.[2] ||
-                  ""
+                q.options?.[2] || ""
               ).trim(),
 
               String(
-                q.options?.[3] ||
-                  ""
+                q.options?.[3] || ""
               ).trim(),
             ],
 
             answer:
-              Number(q.answer) || 0,
+              Number(q.answer),
 
             explanation:
-              q.explanation ||
-              "",
+              q.explanation || "",
 
             explanationImage:
               q.explanationImage ||
               "",
           })
-        );
+        ),
 
-      const payload = {
-        id: testId,
+      questionCount:
+        questions.length,
 
-        exam: selectedExam,
+      createdAt:
+        cloudTests?.[testId]
+          ?.createdAt ||
+        Date.now(),
 
-        examName:
-          getExamName(
-            selectedExam
-          ),
+      updatedAt:
+        Date.now(),
 
-        testNumber:
-          Number(testNumber),
+      createdBy:
+        currentUser?.email ||
+        ADMIN_EMAIL,
+    };
 
-        title:
-          testTitle.trim(),
-
-        status:
-          testStatus,
-
-        duration:
-          Number(testDuration),
-
-        price:
-          Number(testPrice) || 0,
-
-        questions:
-          cleanQuestions,
-
-        totalQuestions:
-          cleanQuestions.length,
-
-        questionCount:
-          cleanQuestions.length,
-
-        createdBy:
-          currentUser?.email ||
-          ADMIN_EMAIL,
-
-        updatedAt:
-          new Date().toISOString(),
-      };
+    try {
+      setSaving(true);
+      setMessage("");
 
       await set(
         ref(
           db,
           `tests/${testId}`
         ),
-        payload
+        testData
       );
 
       setMessage(
-        "✅ Test Firebase में successfully save हो गया।"
+        `✅ ${finalTitle} successfully Firebase में save हो गया।`
       );
 
-      /*
-        Firebase listener automatically
-        cloudTests update कर देगा।
-      */
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     } catch (error) {
       console.error(
-        "Save Test Error:",
+        "Save test error:",
         error
       );
 
+      alert(
+        `❌ Test Save नहीं हुआ:
+${error?.message || "Unknown Firebase error"}`
+      );
+
       setMessage(
-        `❌ Save Error: ${
-          error?.message ||
-          "Unknown Firebase error"
-        }`
+        "❌ Test Save करने में समस्या हुई।"
       );
     } finally {
       setSaving(false);
@@ -1170,11 +1262,17 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
 
   const deleteTest = async (
     id,
-    title
+    test
   ) => {
+    const title =
+      test?.title ||
+      id;
+
     const ok =
       window.confirm(
-        `क्या आप "${title || id}" को delete करना चाहते हैं?`
+        `क्या आप "${title}" delete करना चाहते हैं?
+
+यह action वापस नहीं किया जा सकता।`
       );
 
     if (!ok) return;
@@ -1188,45 +1286,24 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
       );
 
       setMessage(
-        "✅ Test delete हो गया।"
+        `🗑️ ${title} delete हो गया।`
       );
-
-      /*
-        New Test form
-      */
-      resetTestForm();
     } catch (error) {
       console.error(
-        "Delete Error:",
+        "Delete test error:",
         error
       );
 
-      setMessage(
-        `❌ Delete Error: ${
-          error?.message ||
-          "Unknown error"
-        }`
+      alert(
+        `❌ Delete Error:
+${error?.message || "Unknown error"}`
       );
     }
   };
 
   /* =======================================================
-     RESOURCE FUNCTIONS
+     RESOURCE UPDATE
   ======================================================= */
-
-  const addResource = () => {
-    setSiteResources(
-      (prev) => [
-        ...prev,
-        {
-          title: "",
-          description: "",
-          url: "",
-          image: "",
-        },
-      ]
-    );
-  };
 
   const updateResource = (
     index,
@@ -1236,24 +1313,51 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
     setSiteResources(
       (prev) =>
         prev.map(
-          (
-            resource,
-            i
-          ) =>
+          (item, i) =>
             i === index
               ? {
-                  ...resource,
-                  [field]:
-                    value,
+                  ...item,
+                  [field]: value,
                 }
-              : resource
+              : item
         )
     );
   };
 
+  /* =======================================================
+     ADD RESOURCE
+  ======================================================= */
+
+  const addResource = () => {
+    setSiteResources(
+      (prev) => [
+        ...prev,
+        {
+          id:
+            Date.now(),
+          title: "",
+          description: "",
+          url: "",
+          image: "",
+        },
+      ]
+    );
+  };
+
+  /* =======================================================
+     DELETE RESOURCE
+  ======================================================= */
+
   const deleteResource = (
     index
   ) => {
+    const ok =
+      window.confirm(
+        "इस Resource को delete करें?"
+      );
+
+    if (!ok) return;
+
     setSiteResources(
       (prev) =>
         prev.filter(
@@ -1263,53 +1367,55 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
     );
   };
 
-  const saveResources =
-    async () => {
-      try {
-        setSaving(true);
+  /* =======================================================
+     SAVE RESOURCES
+  ======================================================= */
 
-        await set(
-          ref(
-            db,
-            "siteContent/resources"
-          ),
-          siteResources
-        );
+  const saveResources = async () => {
+    try {
+      setSaving(true);
+      setMessage("");
 
-        setMessage(
-          "✅ Resources save हो गए।"
-        );
-      } catch (error) {
-        console.error(
-          "Resources Error:",
-          error
-        );
+      await set(
+        ref(
+          db,
+          "siteContent/resources"
+        ),
+        siteResources
+      );
 
-        setMessage(
-          `❌ Resources save error: ${
-            error?.message ||
-            "Unknown error"
-          }`
-        );
-      } finally {
-        setSaving(false);
-      }
-    };
+      setMessage(
+        "✅ Resources successfully save हो गए।"
+      );
+    } catch (error) {
+      console.error(
+        "Resource save error:",
+        error
+      );
+
+      alert(
+        `❌ Resources Save Error:
+${error?.message || "Unknown error"}`
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /* =======================================================
-     TEST ENTRIES
+     TEST LIST
   ======================================================= */
 
   const testEntries =
     Object.entries(
       cloudTests || {}
     ).sort(
-      ([, a], [, b]) =>
+      (a, b) =>
         Number(
-          a?.testNumber || 0
+          b[1]?.updatedAt || 0
         ) -
         Number(
-          b?.testNumber || 0
+          a[1]?.updatedAt || 0
         )
     );
 
@@ -1317,7 +1423,7 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
      CURRENT QUESTION
   ======================================================= */
 
-  const currentQuestionData =
+  const activeQuestion =
     questions[
       currentQuestion
     ] ||
@@ -1332,47 +1438,45 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
   return (
     <div className="admin-page">
 
-      {/* =================================================
+      {/* ===================================================
           HEADER
-      ================================================= */}
+      =================================================== */}
 
       <header className="admin-header">
 
         <div className="admin-header-title">
-
           <h1>
-            🎓 Study With Power
+            ⚙️ Admin Panel
           </h1>
 
           <p>
-            Exam & Test Admin Panel
+            Test Series • Questions • Resources
           </p>
-
         </div>
 
         <div className="admin-header-right">
 
-          <span className="admin-email">
+          <div className="admin-email">
             👤{" "}
-            {currentUser?.email}
-          </span>
+            {currentUser?.email ||
+              ADMIN_EMAIL}
+          </div>
 
           {onClose && (
             <button
               className="admin-btn secondary"
               onClick={onClose}
             >
-              ← Close
+              ← Back
             </button>
           )}
 
         </div>
-
       </header>
 
-      {/* =================================================
+      {/* ===================================================
           MESSAGE
-      ================================================= */}
+      =================================================== */}
 
       {message && (
         <div className="admin-message">
@@ -1380,16 +1484,15 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
         </div>
       )}
 
-      {/* =================================================
+      {/* ===================================================
           TABS
-      ================================================= */}
+      =================================================== */}
 
       <div className="admin-tabs">
 
         <button
           className={
-            activeSection ===
-            "tests"
+            activeSection === "tests"
               ? "active"
               : ""
           }
@@ -1399,13 +1502,27 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
             )
           }
         >
-          📝 Test Manager
+          📝 Test & Questions
         </button>
 
         <button
           className={
-            activeSection ===
-            "resources"
+            activeSection === "list"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setActiveSection(
+              "list"
+            )
+          }
+        >
+          📚 Test List
+        </button>
+
+        <button
+          className={
+            activeSection === "resources"
               ? "active"
               : ""
           }
@@ -1415,648 +1532,692 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
             )
           }
         >
-          📚 Resources
+          📂 Resources
         </button>
 
       </div>
 
-      {/* =================================================
-          TEST MANAGER
-      ================================================= */}
+      <main className="admin-content">
 
-      {activeSection ===
-        "tests" && (
-        <div className="admin-content">
+        {/* =================================================
+            TEST EDITOR
+        ================================================= */}
 
-          {/* ===============================================
-              TEST INFORMATION
-          =============================================== */}
+        {activeSection === "tests" && (
+          <>
 
+            <div className="admin-card">
+
+              <div className="card-title">
+
+                <div>
+                  <h2>
+                    📝 Create / Edit Test
+                  </h2>
+
+                  <p>
+                    Exam select करें और Questions
+                    add/import करके Test save करें।
+                  </p>
+                </div>
+
+                <div className="question-top-actions">
+
+                  <button
+                    className="admin-btn secondary"
+                    onClick={
+                      resetTestForm
+                    }
+                  >
+                    🔄 New Test
+                  </button>
+
+                  <button
+                    className="admin-btn secondary"
+                    onClick={
+                      exportQuestionsJSON
+                    }
+                    disabled={
+                      !questions.length
+                    }
+                  >
+                    📤 Export JSON
+                  </button>
+
+                  <label
+                    className="admin-btn secondary"
+                    style={{
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                    }}
+                  >
+                    {importingQuestions
+                      ? "⏳ Importing..."
+                      : "📥 Import JSON"}
+
+                    <input
+                      key={
+                        importInputKey
+                      }
+                      type="file"
+                      accept=".json,application/json"
+                      onChange={
+                        handleImportQuestionsJSON
+                      }
+                      disabled={
+                        importingQuestions
+                      }
+                      style={{
+                        display:
+                          "none",
+                      }}
+                    />
+                  </label>
+
+                </div>
+
+              </div>
+
+              {/* =========================================
+                  TEST SETTINGS
+              ========================================= */}
+
+              <div className="form-grid">
+
+                <div className="form-group">
+
+                  <label>
+                    Exam *
+                  </label>
+
+                  <select
+                    value={
+                      selectedExam
+                    }
+                    onChange={(e) =>
+                      setSelectedExam(
+                        e.target.value
+                      )
+                    }
+                  >
+                    {exams.map(
+                      (exam) => (
+                        <option
+                          key={
+                            exam.id
+                          }
+                          value={
+                            exam.id
+                          }
+                        >
+                          {exam.icon}{" "}
+                          {exam.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                </div>
+
+                <div className="form-group">
+
+                  <label>
+                    Test Number *
+                  </label>
+
+                  <input
+                    type="number"
+                    min="1"
+                    value={
+                      testNumber
+                    }
+                    onChange={(e) =>
+                      setTestNumber(
+                        Number(
+                          e.target.value
+                        )
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group form-group-full">
+
+                  <label>
+                    Test Title *
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="जैसे UPPCS Test Series 01"
+                    value={
+                      testTitle
+                    }
+                    onChange={(e) =>
+                      setTestTitle(
+                        e.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group">
+
+                  <label>
+                    Status *
+                  </label>
+
+                  <select
+                    value={
+                      testStatus
+                    }
+                    onChange={(e) =>
+                      setTestStatus(
+                        e.target.value
+                      )
+                    }
+                  >
+                    <option value="draft">
+                      Draft
+                    </option>
+
+                    <option value="unlisted">
+                      Unlisted
+                    </option>
+
+                    <option value="public">
+                      Public
+                    </option>
+
+                    <option value="published">
+                      Published
+                    </option>
+                  </select>
+
+                </div>
+
+                <div className="form-group">
+
+                  <label>
+                    Duration (Minutes) *
+                  </label>
+
+                  <input
+                    type="number"
+                    min="1"
+                    value={
+                      testDuration
+                    }
+                    onChange={(e) =>
+                      setTestDuration(
+                        Number(
+                          e.target.value
+                        )
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group">
+
+                  <label>
+                    Price (₹)
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={
+                      testPrice
+                    }
+                    onChange={(e) =>
+                      setTestPrice(
+                        Number(
+                          e.target.value
+                        )
+                      )
+                    }
+                  />
+
+                  <small>
+                    Free Test के लिए ₹0 रखें।
+                  </small>
+
+                </div>
+
+                <div className="form-group">
+
+                  <label>
+                    Test ID
+                  </label>
+
+                  <input
+                    type="text"
+                    value={
+                      getTestId()
+                    }
+                    readOnly
+                  />
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* =========================================
+                QUESTIONS CARD
+            ========================================= */}
+
+            <div className="admin-card">
+
+              <div className="card-title">
+
+                <div>
+                  <h2>
+                    ❓ Questions
+                  </h2>
+
+                  <p>
+                    Total Questions:{" "}
+                    <strong>
+                      {questions.length}
+                    </strong>{" "}
+                    / 150
+                  </p>
+                </div>
+
+                <div className="question-top-actions">
+
+                  <button
+                    className="admin-btn primary"
+                    onClick={
+                      addQuestion
+                    }
+                    disabled={
+                      questions.length >=
+                      150
+                    }
+                  >
+                    ➕ Add Question
+                  </button>
+
+                  <button
+                    className="admin-btn danger"
+                    onClick={
+                      deleteQuestion
+                    }
+                    disabled={
+                      questions.length <=
+                      1
+                    }
+                  >
+                    🗑️ Delete Question
+                  </button>
+
+                </div>
+
+              </div>
+
+              {/* =======================================
+                  QUESTION NUMBER TABS
+              ======================================= */}
+
+              <div className="question-tabs">
+
+                {questions.map(
+                  (q, index) => (
+                    <button
+                      key={
+                        q.id ??
+                        index
+                      }
+                      className={
+                        currentQuestion ===
+                        index
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() =>
+                        setCurrentQuestion(
+                          index
+                        )
+                      }
+                      title={`Question ${
+                        index + 1
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  )
+                )}
+
+              </div>
+
+              {/* =======================================
+                  QUESTION EDITOR
+              ======================================= */}
+
+              <div className="question-editor">
+
+                <div className="question-number">
+                  Question{" "}
+                  {currentQuestion +
+                    1}{" "}
+                  /{" "}
+                  {questions.length}
+                </div>
+
+                <div className="form-group">
+
+                  <label>
+                    Question *
+                  </label>
+
+                  <textarea
+                    value={
+                      activeQuestion.question ||
+                      ""
+                    }
+                    onChange={(e) =>
+                      updateQuestion(
+                        "question",
+                        e.target.value
+                      )
+                    }
+                    placeholder="यहाँ Question लिखें..."
+                    rows="4"
+                  />
+
+                </div>
+
+                <h3 className="options-heading">
+                  Options
+                </h3>
+
+                <div className="options-grid">
+
+                  {[
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                  ].map(
+                    (
+                      letter,
+                      optionIndex
+                    ) => (
+                      <div
+                        className="option-row"
+                        key={
+                          letter
+                        }
+                      >
+
+                        <div className="option-label">
+                          {letter}
+                        </div>
+
+                        <input
+                          type="text"
+                          value={
+                            activeQuestion
+                              .options?.[
+                              optionIndex
+                            ] || ""
+                          }
+                          onChange={(
+                            e
+                          ) =>
+                            updateOption(
+                              optionIndex,
+                              e.target.value
+                            )
+                          }
+                          placeholder={`Option ${letter}`}
+                        />
+
+                        <label className="correct-option">
+
+                          <input
+                            type="radio"
+                            name={`answer-${currentQuestion}`}
+                            checked={
+                              Number(
+                                activeQuestion.answer
+                              ) ===
+                              optionIndex
+                            }
+                            onChange={() =>
+                              updateAnswer(
+                                optionIndex
+                              )
+                            }
+                          />
+
+                          सही उत्तर
+                        </label>
+
+                      </div>
+                    )
+                  )}
+
+                </div>
+
+                {/* =====================================
+                    EXPLANATION
+                ===================================== */}
+
+                <div
+                  className="form-grid"
+                  style={{
+                    marginTop:
+                      "25px",
+                  }}
+                >
+
+                  <div className="form-group form-group-full">
+
+                    <label>
+                      Explanation / Solution
+                    </label>
+
+                    <textarea
+                      value={
+                        activeQuestion.explanation ||
+                        ""
+                      }
+                      onChange={(e) =>
+                        updateQuestion(
+                          "explanation",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Question का explanation लिखें..."
+                      rows="5"
+                    />
+
+                  </div>
+
+                  <div className="form-group form-group-full">
+
+                    <label>
+                      Explanation Image URL
+                    </label>
+
+                    <input
+                      type="text"
+                      value={
+                        activeQuestion.explanationImage ||
+                        ""
+                      }
+                      onChange={(e) =>
+                        updateQuestion(
+                          "explanationImage",
+                          e.target.value
+                        )
+                      }
+                      placeholder="https://..."
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* =====================================
+                    NAVIGATION
+                ===================================== */}
+
+                <div className="question-navigation">
+
+                  <button
+                    className="admin-btn secondary"
+                    disabled={
+                      currentQuestion ===
+                      0
+                    }
+                    onClick={() =>
+                      setCurrentQuestion(
+                        (prev) =>
+                          Math.max(
+                            0,
+                            prev - 1
+                          )
+                      )
+                    }
+                  >
+                    ← Previous
+                  </button>
+
+                  <span>
+                    Question{" "}
+                    {currentQuestion +
+                      1}{" "}
+                    of{" "}
+                    {questions.length}
+                  </span>
+
+                  <button
+                    className="admin-btn primary"
+                    disabled={
+                      currentQuestion >=
+                      questions.length -
+                        1
+                    }
+                    onClick={() =>
+                      setCurrentQuestion(
+                        (prev) =>
+                          Math.min(
+                            questions.length -
+                              1,
+                            prev + 1
+                          )
+                      )
+                    }
+                  >
+                    Next →
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* =========================================
+                SAVE TEST
+            ========================================= */}
+
+            <div className="admin-card">
+
+              <div className="card-title">
+
+                <div>
+                  <h2>
+                    💾 Save Test
+                  </h2>
+
+                  <p>
+                    {getExamName(
+                      selectedExam
+                    )}{" "}
+                    • Test{" "}
+                    {testNumber}{" "}
+                    •{" "}
+                    {questions.length}{" "}
+                    Questions
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="save-test-area">
+
+                <button
+                  className="save-test-btn"
+                  onClick={
+                    saveTest
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  {saving
+                    ? "⏳ Saving..."
+                    : "💾 Save Test to Firebase"}
+                </button>
+
+              </div>
+
+            </div>
+
+          </>
+        )}
+
+        {/* =================================================
+            TEST LIST
+        ================================================= */}
+
+        {activeSection === "list" && (
           <div className="admin-card">
 
             <div className="card-title">
 
               <div>
-
                 <h2>
-                  📋 Test Information
+                  📚 Test List
                 </h2>
 
                 <p>
-                  Exam, Test Number,
-                  Status, Duration और
-                  Price सेट करें।
+                  Firebase में saved सभी tests।
                 </p>
-
               </div>
 
               <button
-                className="admin-btn secondary"
-                onClick={
-                  resetTestForm
-                }
+                className="admin-btn primary"
+                onClick={() => {
+                  resetTestForm();
+                  setActiveSection(
+                    "tests"
+                  );
+                }}
               >
                 ➕ New Test
               </button>
 
             </div>
 
-            <div className="form-grid">
-
-              {/* EXAM */}
-
-              <div className="form-group">
-
-                <label>
-                  🎯 Exam
-                </label>
-
-                <select
-                  value={
-                    selectedExam
-                  }
-                  onChange={(e) =>
-                    setSelectedExam(
-                      e.target.value
-                    )
-                  }
-                >
-                  {exams.map(
-                    (exam) => (
-                      <option
-                        key={
-                          exam.id
-                        }
-                        value={
-                          exam.id
-                        }
-                      >
-                        {
-                          exam.icon
-                        }{" "}
-                        {
-                          exam.name
-                        }
-                      </option>
-                    )
-                  )}
-                </select>
-
-              </div>
-
-              {/* TEST NUMBER */}
-
-              <div className="form-group">
-
-                <label>
-                  🔢 Test Number
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={
-                    testNumber
-                  }
-                  onChange={(e) =>
-                    setTestNumber(
-                      e.target.value
-                    )
-                  }
-                />
-
-              </div>
-
-              {/* TITLE */}
-
-              <div className="form-group form-group-full">
-
-                <label>
-                  📌 Test Title
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="जैसे: UPPCS Test 01 - History"
-                  value={
-                    testTitle
-                  }
-                  onChange={(e) =>
-                    setTestTitle(
-                      e.target.value
-                    )
-                  }
-                />
-
-              </div>
-
-              {/* STATUS */}
-
-              <div className="form-group">
-
-                <label>
-                  📢 Test Status
-                </label>
-
-                <select
-                  value={
-                    testStatus
-                  }
-                  onChange={(e) =>
-                    setTestStatus(
-                      e.target.value
-                    )
-                  }
-                >
-
-                  <option value="draft">
-                    🟠 Draft
-                  </option>
-
-                  <option value="public">
-                    🟢 Public
-                  </option>
-
-                  <option value="published">
-                    🟢 Published
-                  </option>
-
-                  <option value="unlisted">
-                    🔗 Unlisted
-                  </option>
-
-                </select>
-
-              </div>
-
-              {/* DURATION */}
-
-              <div className="form-group">
-
-                <label>
-                  ⏱️ Duration
-                  (Minutes)
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={
-                    testDuration
-                  }
-                  onChange={(e) =>
-                    setTestDuration(
-                      e.target.value
-                    )
-                  }
-                />
-
-              </div>
-
-              {/* PRICE */}
-
-              <div className="form-group">
-
-                <label>
-                  💰 Price (₹)
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  value={
-                    testPrice
-                  }
-                  onChange={(e) =>
-                    setTestPrice(
-                      e.target.value
-                    )
-                  }
-                />
-
-                <small>
-                  ₹0 = Free Test
-                </small>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* ===============================================
-              QUESTION MANAGER
-          =============================================== */}
-
-          <div className="admin-card">
-
-            <div className="card-title question-card-title">
-
-              <div>
-
-                <h2>
-                  ❓ Question Manager
-                </h2>
-
-                <p>
-                  Question{" "}
-                  {currentQuestion +
-                    1}{" "}
-                  /{" "}
-                  {
-                    questions.length
-                  }
-                </p>
-
-              </div>
-
-              <div className="question-top-actions">
-
-                {/* HIDDEN JSON INPUT */}
-
-                <input
-                  key={
-                    importInputKey
-                  }
-                  id="questions-json-input"
-                  type="file"
-                  accept=".json,application/json"
-                  style={{
-                    display:
-                      "none",
-                  }}
-                  onChange={
-                    handleImportQuestionsJSON
-                  }
-                />
-
-                {/* IMPORT */}
-
-                <button
-                  type="button"
-                  className="admin-btn secondary"
-                  onClick={() =>
-                    document
-                      .getElementById(
-                        "questions-json-input"
-                      )
-                      ?.click()
-                  }
-                  disabled={
-                    importingQuestions
-                  }
-                >
-                  {importingQuestions
-                    ? "⏳ Importing..."
-                    : "📥 Import Questions JSON"}
-                </button>
-
-                {/* EXPORT */}
-
-                <button
-                  type="button"
-                  className="admin-btn secondary"
-                  onClick={
-                    exportQuestionsJSON
-                  }
-                >
-                  📤 Export Questions JSON
-                </button>
-
-                {/* ADD */}
-
-                <button
-                  type="button"
-                  className="admin-btn secondary"
-                  onClick={
-                    addQuestion
-                  }
-                >
-                  ➕ Add Question
-                </button>
-
-                {/* DELETE */}
-
-                <button
-                  type="button"
-                  className="admin-btn danger"
-                  onClick={
-                    deleteQuestion
-                  }
-                >
-                  🗑️ Delete Question
-                </button>
-
-              </div>
-
-            </div>
-
-            {/* ============================================
-                QUESTION TABS
-            ============================================ */}
-
-            <div className="question-tabs">
-
-              {questions.map(
-                (q, index) => (
-                  <button
-                    key={
-                      q.id ||
-                      index
-                    }
-                    type="button"
-                    className={
-                      currentQuestion ===
-                      index
-                        ? "active"
-                        : ""
-                    }
-                    onClick={() =>
-                      setCurrentQuestion(
-                        index
-                      )
-                    }
-                  >
-                    {index + 1}
-                  </button>
-                )
-              )}
-
-            </div>
-
-            {/* ============================================
-                QUESTION EDITOR
-            ============================================ */}
-
-            <div className="question-editor">
-
-              <div className="question-number">
-                ❓ Question{" "}
-                {currentQuestion +
-                  1}
-              </div>
-
-              {/* QUESTION */}
-
-              <div className="form-group form-group-full">
-
-                <label>
-                  ❓ Question
-                </label>
-
-                <textarea
-                  rows="5"
-                  placeholder="यहाँ प्रश्न लिखें..."
-                  value={
-                    currentQuestionData.question ||
-                    ""
-                  }
-                  onChange={(e) =>
-                    updateQuestion(
-                      "question",
-                      e.target.value
-                    )
-                  }
-                />
-
-              </div>
-
-              {/* OPTIONS */}
-
-              <div className="options-heading">
-                🔤 Options
-              </div>
-
-              <div className="options-grid">
-
-                {[
-                  "A",
-                  "B",
-                  "C",
-                  "D",
-                ].map(
-                  (
-                    letter,
-                    index
-                  ) => (
-                    <div
-                      className="option-row"
-                      key={
-                        letter
-                      }
-                    >
-
-                      <div className="option-label">
-                        {
-                          letter
-                        }
-                      </div>
-
-                      <input
-                        type="text"
-                        placeholder={`Option ${letter}`}
-                        value={
-                          currentQuestionData
-                            .options?.[
-                            index
-                          ] || ""
-                        }
-                        onChange={(e) =>
-                          updateOption(
-                            index,
-                            e.target
-                              .value
-                          )
-                        }
-                      />
-
-                      <label className="correct-option">
-
-                        <input
-                          type="radio"
-                          name={`correct-answer-${currentQuestion}`}
-                          checked={
-                            Number(
-                              currentQuestionData.answer
-                            ) ===
-                            index
-                          }
-                          onChange={() =>
-                            updateQuestion(
-                              "answer",
-                              index
-                            )
-                          }
-                        />
-
-                        <span>
-                          सही उत्तर
-                        </span>
-
-                      </label>
-
-                    </div>
-                  )
-                )}
-
-              </div>
-
-              {/* EXPLANATION */}
-
-              <div className="form-group form-group-full">
-
-                <label>
-                  💡 सही उत्तर की व्याख्या
-                </label>
-
-                <textarea
-                  rows="5"
-                  placeholder="सही उत्तर की व्याख्या लिखें..."
-                  value={
-                    currentQuestionData.explanation ||
-                    ""
-                  }
-                  onChange={(e) =>
-                    updateQuestion(
-                      "explanation",
-                      e.target.value
-                    )
-                  }
-                />
-
-              </div>
-
-              {/* IMAGE */}
-
-              <div className="form-group form-group-full">
-
-                <label>
-                  🖼️ Explanation Image URL
-                </label>
-
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  value={
-                    currentQuestionData.explanationImage ||
-                    ""
-                  }
-                  onChange={(e) =>
-                    updateQuestion(
-                      "explanationImage",
-                      e.target.value
-                    )
-                  }
-                />
-
-              </div>
-
-              {/* NAVIGATION */}
-
-              <div className="question-navigation">
-
-                <button
-                  className="admin-btn secondary"
-                  disabled={
-                    currentQuestion ===
-                    0
-                  }
-                  onClick={() =>
-                    setCurrentQuestion(
-                      (prev) =>
-                        Math.max(
-                          0,
-                          prev - 1
-                        )
-                    )
-                  }
-                >
-                  ← Previous
-                </button>
-
-                <strong>
-                  Question{" "}
-                  {currentQuestion +
-                    1}{" "}
-                  /{" "}
-                  {
-                    questions.length
-                  }
-                </strong>
-
-                <button
-                  className="admin-btn secondary"
-                  disabled={
-                    currentQuestion >=
-                    questions.length -
-                      1
-                  }
-                  onClick={() =>
-                    setCurrentQuestion(
-                      (prev) =>
-                        Math.min(
-                          questions.length -
-                            1,
-                          prev + 1
-                        )
-                    )
-                  }
-                >
-                  Next →
-                </button>
-
-              </div>
-
-            </div>
-
-            {/* SAVE */}
-
-            <div className="save-test-area">
-
-              <button
-                className="save-test-btn"
-                onClick={
-                  saveTest
-                }
-                disabled={
-                  saving
-                }
-              >
-                {saving
-                  ? "⏳ Saving..."
-                  : "💾 Save Test to Firebase"}
-              </button>
-
-            </div>
-
-          </div>
-
-          {/* ===============================================
-              EXISTING TESTS
-          =============================================== */}
-
-          <div className="admin-card">
-
-            <div className="card-title">
-
-              <div>
-
-                <h2>
-                  📋 Existing Tests
-                </h2>
-
-                <p>
-                  Firebase में saved tests
-                </p>
-
-              </div>
-
-            </div>
-
             {testEntries.length ===
             0 ? (
               <div className="empty-box">
-                अभी कोई Test save नहीं है।
+                अभी कोई Test नहीं मिला।
               </div>
             ) : (
               <div className="test-list">
@@ -2071,43 +2232,51 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                       <div className="test-list-info">
 
                         <strong>
-                          {test.testNumber
-                            ? `Test ${test.testNumber} - `
-                            : ""}
-                          {test.title ||
+                          {test?.examIcon ||
+                            "📚"}{" "}
+                          {test?.title ||
                             id}
                         </strong>
 
                         <span>
+                          Exam:{" "}
                           {getExamName(
-                            test.exam
-                          )}{" "}
-                          •{" "}
-                          {test.totalQuestions ||
-                            test.questions
-                              ?.length ||
+                            test?.exam ||
+                              ""
+                          )}
+                        </span>
+
+                        <span>
+                          Test No:{" "}
+                          {test?.testNumber ||
+                            "-"}{" "}
+                          • Questions:{" "}
+                          {test?.questionCount ??
+                            test?.questions
+                              ?.length ??
                             0}{" "}
-                          Questions •{" "}
-                          {test.duration ||
+                          • Duration:{" "}
+                          {test?.duration ||
                             0}{" "}
                           min
                         </span>
 
+                        <span>
+                          Price: ₹
+                          {test?.price ??
+                            0}
+                        </span>
+
                         <span
                           className={`status-badge ${
-                            test.status ||
+                            test?.status ||
                             "draft"
                           }`}
                         >
-                          {test.status ===
-                            "public" ||
-                          test.status ===
-                            "published"
-                            ? "🟢 Public"
-                            : test.status ===
-                              "unlisted"
-                            ? "🔗 Unlisted"
-                            : "🟠 Draft"}
+                          {(
+                            test?.status ||
+                            "draft"
+                          ).toUpperCase()}
                         </span>
 
                       </div>
@@ -2131,7 +2300,7 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                           onClick={() =>
                             deleteTest(
                               id,
-                              test.title
+                              test
                             )
                           }
                         >
@@ -2148,36 +2317,30 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
             )}
 
           </div>
+        )}
 
-        </div>
-      )}
+        {/* =================================================
+            RESOURCES
+        ================================================= */}
 
-      {/* =================================================
-          RESOURCES
-      ================================================= */}
-
-      {activeSection ===
-        "resources" && (
-        <div className="admin-content">
-
+        {activeSection ===
+          "resources" && (
           <div className="admin-card">
 
             <div className="card-title">
 
               <div>
-
                 <h2>
-                  📚 Resources Manager
+                  📂 Site Resources
                 </h2>
 
                 <p>
-                  Website resources manage करें
+                  Website के resources manage करें।
                 </p>
-
               </div>
 
               <button
-                className="admin-btn secondary"
+                className="admin-btn primary"
                 onClick={
                   addResource
                 }
@@ -2190,7 +2353,9 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
             {siteResources.length ===
             0 ? (
               <div className="empty-box">
-                अभी कोई resource नहीं है।
+                कोई Resource नहीं है।
+                <br />
+                ऊपर Add Resource दबाएँ।
               </div>
             ) : (
               <div className="resources-list">
@@ -2203,6 +2368,7 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                     <div
                       className="resource-editor"
                       key={
+                        resource?.id ||
                         index
                       }
                     >
@@ -2221,7 +2387,7 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                         <input
                           type="text"
                           value={
-                            resource.title ||
+                            resource?.title ||
                             ""
                           }
                           onChange={(e) =>
@@ -2232,30 +2398,7 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                                 .value
                             )
                           }
-                        />
-
-                      </div>
-
-                      <div className="form-group">
-
-                        <label>
-                          Description
-                        </label>
-
-                        <textarea
-                          rows="3"
-                          value={
-                            resource.description ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            updateResource(
-                              index,
-                              "description",
-                              e.target
-                                .value
-                            )
-                          }
+                          placeholder="Resource title"
                         />
 
                       </div>
@@ -2267,9 +2410,9 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                         </label>
 
                         <input
-                          type="url"
+                          type="text"
                           value={
-                            resource.url ||
+                            resource?.url ||
                             ""
                           }
                           onChange={(e) =>
@@ -2280,6 +2423,31 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                                 .value
                             )
                           }
+                          placeholder="https://..."
+                        />
+
+                      </div>
+
+                      <div className="form-group form-group-full">
+
+                        <label>
+                          Description
+                        </label>
+
+                        <textarea
+                          value={
+                            resource?.description ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            updateResource(
+                              index,
+                              "description",
+                              e.target
+                                .value
+                            )
+                          }
+                          placeholder="Resource description"
                         />
 
                       </div>
@@ -2291,9 +2459,9 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                         </label>
 
                         <input
-                          type="url"
+                          type="text"
                           value={
-                            resource.image ||
+                            resource?.image ||
                             ""
                           }
                           onChange={(e) =>
@@ -2304,20 +2472,33 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
                                 .value
                             )
                           }
+                          placeholder="https://..."
                         />
 
                       </div>
 
-                      <button
-                        className="admin-btn danger"
-                        onClick={() =>
-                          deleteResource(
-                            index
-                          )
-                        }
+                      <div
+                        style={{
+                          display:
+                            "flex",
+                          alignItems:
+                            "flex-end",
+                          gap: "10px",
+                        }}
                       >
-                        🗑️ Delete Resource
-                      </button>
+
+                        <button
+                          className="admin-btn danger"
+                          onClick={() =>
+                            deleteResource(
+                              index
+                            )
+                          }
+                        >
+                          🗑️ Delete
+                        </button>
+
+                      </div>
 
                     </div>
                   )
@@ -2326,29 +2507,31 @@ Cancel = पुराने Questions के साथ JSON Questions जोड�
               </div>
             )}
 
-            <div className="save-resource-area">
+            {siteResources.length >
+              0 && (
+              <div className="save-resource-area">
 
-              <button
-                className="save-test-btn"
-                onClick={
-                  saveResources
-                }
-                disabled={
-                  saving
-                }
-              >
-                {saving
-                  ? "⏳ Saving..."
-                  : "💾 Save Resources"}
-              </button>
+                <button
+                  className="save-test-btn"
+                  onClick={
+                    saveResources
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  {saving
+                    ? "⏳ Saving..."
+                    : "💾 Save Resources"}
+                </button>
 
-            </div>
+              </div>
+            )}
 
           </div>
+        )}
 
-        </div>
-      )}
-
+      </main>
     </div>
   );
 }
