@@ -52,8 +52,7 @@ const firebaseApp = getApps().length
 
 const auth = getAuth(firebaseApp);
 
-const googleProvider =
-  new GoogleAuthProvider();
+const googleProvider = new GoogleAuthProvider();
 
 const db = getDatabase(firebaseApp);
 
@@ -366,6 +365,8 @@ async function findEmailByMobile(mobile) {
 
     let finished = false;
 
+    let unsubscribe = () => {};
+
     const finish = (callback, value) => {
       if (finished) return;
 
@@ -378,7 +379,7 @@ async function findEmailByMobile(mobile) {
       callback(value);
     };
 
-    const unsubscribe = onValue(
+    unsubscribe = onValue(
       usersRef,
       (snapshot) => {
         try {
@@ -415,13 +416,22 @@ async function findEmailByMobile(mobile) {
             }
           );
 
-          finish(resolve, foundEmail);
+          finish(
+            resolve,
+            foundEmail
+          );
         } catch (error) {
-          finish(reject, error);
+          finish(
+            reject,
+            error
+          );
         }
       },
       (error) => {
-        finish(reject, error);
+        finish(
+          reject,
+          error
+        );
       }
     );
   });
@@ -514,14 +524,6 @@ function RegisterPage({
           "Mobile lookup failed:",
           mobileError
         );
-
-        /*
-         * Mobile lookup Firebase Rules से blocked
-         * होने पर registration को रोकेंगे नहीं।
-         *
-         * Firebase Authentication Email duplicate
-         * को खुद handle करेगा।
-         */
       }
 
       if (existingEmail) {
@@ -533,7 +535,7 @@ function RegisterPage({
       }
 
       // ------------------------------------------
-      // FIREBASE AUTHENTICATION
+      // CREATE FIREBASE USER
       // ------------------------------------------
 
       const result =
@@ -559,7 +561,7 @@ function RegisterPage({
       );
 
       // ------------------------------------------
-      // USER PROFILE
+      // SAVE USER PROFILE
       // ------------------------------------------
 
       await set(
@@ -591,7 +593,6 @@ function RegisterPage({
       if (onSuccess) {
         onSuccess(newUser);
       }
-
     } catch (error) {
       console.error(
         "Registration Error:",
@@ -605,38 +606,30 @@ function RegisterPage({
         alert(
           "❌ यह Email पहले से registered है।\n\nयदि यह आपका account है तो Login करें।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
         "auth/invalid-email"
       ) {
         alert(
           "❌ Email ID सही नहीं है।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
         "auth/weak-password"
       ) {
         alert(
           "❌ Password कम से कम 6 characters का रखें।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
         "auth/network-request-failed"
       ) {
         alert(
           "❌ Internet connection की समस्या है।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
-        "PERMISSION_DENIED" ||
+          "PERMISSION_DENIED" ||
         error.message?.includes(
           "PERMISSION_DENIED"
         )
@@ -644,9 +637,7 @@ function RegisterPage({
         alert(
           "❌ Firebase Database Permission Denied.\n\nFirebase Realtime Database Rules check करें।"
         );
-      }
-
-      else {
+      } else {
         alert(
           "❌ Registration Error:\n" +
             (
@@ -655,7 +646,6 @@ function RegisterPage({
             )
         );
       }
-
     } finally {
       setLoading(false);
     }
@@ -663,7 +653,6 @@ function RegisterPage({
 
   return (
     <div className="auth-overlay">
-
       <div className="auth-card">
 
         <div className="auth-icon">
@@ -682,8 +671,6 @@ function RegisterPage({
           onSubmit={handleRegister}
         >
 
-          {/* NAME */}
-
           <label>
             👤 पूरा नाम
           </label>
@@ -699,8 +686,6 @@ function RegisterPage({
             }
             autoComplete="name"
           />
-
-          {/* MOBILE */}
 
           <label>
             📱 Mobile Number
@@ -723,8 +708,6 @@ function RegisterPage({
             autoComplete="tel"
           />
 
-          {/* EMAIL */}
-
           <label>
             📧 Email ID
           </label>
@@ -740,8 +723,6 @@ function RegisterPage({
             }
             autoComplete="email"
           />
-
-          {/* PASSWORD */}
 
           <label>
             🔐 Create Password
@@ -760,8 +741,6 @@ function RegisterPage({
             autoComplete="new-password"
           />
 
-          {/* EXAM */}
-
           <label>
             🎯 आप किस परीक्षा की तैयारी कर रहे हैं?
           </label>
@@ -774,7 +753,6 @@ function RegisterPage({
               )
             }
           >
-
             <option value="">
               -- परीक्षा चुनें --
             </option>
@@ -793,10 +771,7 @@ function RegisterPage({
             <option value="Other">
               Other
             </option>
-
           </select>
-
-          {/* BUTTON */}
 
           <button
             type="submit"
@@ -810,10 +785,7 @@ function RegisterPage({
 
         </form>
 
-        {/* LOGIN */}
-
         <div className="auth-switch">
-
           Account पहले से है?
 
           <button
@@ -822,10 +794,7 @@ function RegisterPage({
           >
             Login करें
           </button>
-
         </div>
-
-        {/* BACK */}
 
         <button
           type="button"
@@ -836,7 +805,6 @@ function RegisterPage({
         </button>
 
       </div>
-
     </div>
   );
 }
@@ -953,7 +921,6 @@ function LoginPage({
           result.user
         );
       }
-
     } catch (error) {
       console.error(
         "Login Error:",
@@ -967,36 +934,28 @@ function LoginPage({
         alert(
           "❌ User ID या Password गलत है।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
         "auth/user-not-found"
       ) {
         alert(
           "❌ यह account नहीं मिला।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
         "auth/wrong-password"
       ) {
         alert(
           "❌ Password गलत है।"
         );
-      }
-
-      else if (
+      } else if (
         error.code ===
         "auth/too-many-requests"
       ) {
         alert(
           "❌ बहुत ज्यादा Login प्रयास हुए हैं। कुछ समय बाद फिर कोशिश करें।"
         );
-      }
-
-      else if (
+      } else if (
         error.message?.includes(
           "PERMISSION_DENIED"
         )
@@ -1004,9 +963,7 @@ function LoginPage({
         alert(
           "❌ Mobile Login के लिए Database Permission जरूरी है।\n\nया Email से Login करें।"
         );
-      }
-
-      else {
+      } else {
         alert(
           "❌ Login Error:\n" +
             (
@@ -1015,7 +972,6 @@ function LoginPage({
             )
         );
       }
-
     } finally {
       setLoading(false);
     }
@@ -1075,8 +1031,10 @@ function LoginPage({
 
           <div
             style={{
-              position: "relative",
-              width: "100%",
+              position:
+                "relative",
+              width:
+                "100%",
             }}
           >
 
@@ -1095,7 +1053,8 @@ function LoginPage({
               }
               autoComplete="current-password"
               style={{
-                width: "100%",
+                width:
+                  "100%",
                 paddingRight:
                   "50px",
                 boxSizing:
@@ -1113,11 +1072,14 @@ function LoginPage({
               style={{
                 position:
                   "absolute",
-                right: "10px",
-                top: "50%",
+                right:
+                  "10px",
+                top:
+                  "50%",
                 transform:
                   "translateY(-50%)",
-                border: "none",
+                border:
+                  "none",
                 background:
                   "transparent",
                 cursor:
@@ -1168,7 +1130,6 @@ function LoginPage({
         </button>
 
         <div className="auth-switch">
-
           नया account बनाना है?
 
           <button
@@ -1177,7 +1138,6 @@ function LoginPage({
           >
             Create Account
           </button>
-
         </div>
 
         <button
@@ -1189,7 +1149,6 @@ function LoginPage({
         </button>
 
       </div>
-
     </div>
   );
 }
@@ -1232,7 +1191,6 @@ function ForgotPassword({
       );
 
       onBack();
-
     } catch (error) {
       console.error(
         "Forgot Password Error:",
@@ -1246,15 +1204,12 @@ function ForgotPassword({
         alert(
           "❌ इस Email से कोई account नहीं मिला।"
         );
-      }
-
-      else {
+      } else {
         alert(
           "❌ Error:\n" +
             error.message
         );
       }
-
     } finally {
       setLoading(false);
     }
@@ -1310,13 +1265,16 @@ function ForgotPassword({
 
         <div
           style={{
-            marginTop: "15px",
-            padding: "12px",
+            marginTop:
+              "15px",
+            padding:
+              "12px",
             background:
               "#fff7ed",
             borderRadius:
               "10px",
-            fontSize: "14px",
+            fontSize:
+              "14px",
             color:
               "#9a3412",
           }}
@@ -1334,7 +1292,6 @@ function ForgotPassword({
         </button>
 
       </div>
-
     </div>
   );
 }
@@ -1406,7 +1363,6 @@ function AdminLogin({
           loggedUser
         );
       }
-
     } catch (error) {
       console.error(
         "Admin Login Error:",
@@ -1417,7 +1373,6 @@ function AdminLogin({
         "❌ Admin Login Error:\n" +
           error.message
       );
-
     } finally {
       setLoading(false);
     }
@@ -1493,7 +1448,6 @@ function AdminLogin({
         </button>
 
       </div>
-
     </div>
   );
 }
@@ -1529,11 +1483,16 @@ function TestRunner({
   ] = useState(false);
 
   const buttonBase = {
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    boxSizing: "border-box",
+    border:
+      "none",
+    borderRadius:
+      "10px",
+    cursor:
+      "pointer",
+    fontFamily:
+      "inherit",
+    boxSizing:
+      "border-box",
   };
 
   const calculateResult = () => {
@@ -1554,9 +1513,21 @@ function TestRunner({
       }
     );
 
+    const attempted =
+      Object.keys(
+        answers
+      ).length;
+
     const wrong =
-      questions.length -
+      attempted -
       correct;
+
+    const unanswered =
+      Math.max(
+        0,
+        questions.length -
+          attempted
+      );
 
     const percentage =
       questions.length
@@ -1570,6 +1541,7 @@ function TestRunner({
     return {
       correct,
       wrong,
+      unanswered,
       percentage,
     };
   };
@@ -1578,7 +1550,8 @@ function TestRunner({
     return (
       <div
         style={{
-          padding: "20px",
+          padding:
+            "20px",
         }}
       >
 
@@ -1604,7 +1577,8 @@ function TestRunner({
 
         <div
           style={{
-            marginTop: "20px",
+            marginTop:
+              "20px",
             background:
               "#fff",
             padding:
@@ -1628,13 +1602,15 @@ function TestRunner({
     const {
       correct,
       wrong,
+      unanswered,
       percentage,
     } = calculateResult();
 
     return (
       <div
         style={{
-          padding: "20px",
+          padding:
+            "20px",
         }}
       >
 
@@ -1757,6 +1733,24 @@ function TestRunner({
             >
               ✗ गलत:{" "}
               {wrong}
+            </div>
+
+            <div
+              style={{
+                padding:
+                  "15px 25px",
+                borderRadius:
+                  "12px",
+                background:
+                  "#f1f5f9",
+                color:
+                  "#334155",
+                fontWeight:
+                  "800",
+              }}
+            >
+              ○ छोड़े:{" "}
+              {unanswered}
             </div>
 
           </div>
@@ -2156,6 +2150,7 @@ function TestRunner({
                         "center",
                     }}
                   >
+
                     <span
                       style={{
                         width:
@@ -2396,6 +2391,7 @@ export default function App() {
           setUser(
             currentUser
           );
+
           setAuthLoading(
             false
           );
@@ -2461,9 +2457,7 @@ export default function App() {
             setSiteResources(
               value
             );
-          }
-
-          else if (
+          } else if (
             value &&
             typeof value ===
               "object"
@@ -2473,9 +2467,7 @@ export default function App() {
                 value
               )
             );
-          }
-
-          else {
+          } else {
             setSiteResources(
               defaultResources
             );
@@ -2547,7 +2539,6 @@ export default function App() {
           );
 
         return result.user;
-
       } catch (error) {
         console.error(
           "Google Login Error:",
@@ -2572,6 +2563,7 @@ export default function App() {
       setUser(
         loggedUser
       );
+
       setAuthPage(
         null
       );
@@ -2604,6 +2596,13 @@ export default function App() {
           "home"
         );
 
+        setSelectedExam(
+          null
+        );
+
+        setSelectedTest(
+          null
+        );
       } catch (error) {
         console.error(
           error
@@ -3358,9 +3357,7 @@ export default function App() {
                                 openExam(
                                   exams[0]
                                 );
-                              }
-
-                              else {
+                              } else {
                                 setPage(
                                   item.page ||
                                     "resources"
@@ -3375,7 +3372,6 @@ export default function App() {
                       </button>
 
                     </div>
-
                   )
                 )}
 
